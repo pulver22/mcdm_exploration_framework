@@ -6,6 +6,7 @@
 #include "newray.h"
 #include "mcdmfunction.h"
 #include "graphpose.h"
+#include "movebasegoal.cpp"
 #include "Criteria/traveldistancecriterion.h"
 # define PI           3.14159265358979323846  /* pi */
 #include <unistd.h>
@@ -18,10 +19,10 @@ using namespace dummy;
 int main(int argc, char **argv) {
 
     ros::init(argc, argv, "mcdm_exploration_framework_node");
-	ros::NodeHandle nh;
-    // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm 100 75 5 0 15 180 0.95 0.12
+    ros::NodeHandle nh;
+    MoveBaseGoal goal; 
+    // Input : ./mcdm_online_exploration_ros ~/Maps/map_RiccardoFreiburg_1m2.pgm 100 75 5 0 15 180 0.95 0.12
     // resolution x y orientation range centralAngle precision threshold
-
     ifstream infile;
     infile.open(argv[1]);
     int resolution = atoi(argv[2]);
@@ -154,6 +155,7 @@ int main(int argc, char **argv) {
 		countBT = countBT -1;
 		string targetString = graph2.at(countBT).first;
 		target = record->getPoseFromEncoding(targetString);
+		
 		graph2.pop_back();
 		cout << "No significative position reachable. Come back to previous position" << endl;
 		history.push_back(function.getEncodedKey(target,2));
@@ -162,6 +164,8 @@ int main(int argc, char **argv) {
 	    }
     
 	    sensedCells = newSensedCells;
+	    
+	    goal.move(target.getX(), target.getY(), cos(target.getOrientation()/2), sin(target.getOrientation()/2));
 	    
 	    //NOTE: not requested for testing purpose
 	    //usleep(microseconds);

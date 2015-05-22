@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mcdm_exploration_framework
-  CATKIN_DEPENDS actionlib nav_msgs roscpp
+  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp
 #  DEPENDS system_lib
 )
 
@@ -27,7 +27,7 @@ include_directories(
 )
 
 add_library(mcdm_exploration_framework pose.cpp map.cpp newray.cpp ray.cpp graphpose.cpp mcdmfunction.cpp 
-map.cpp evaluationrecords.cpp Criteria/sensingtimecriterion.cpp
+map.cpp evaluationrecords.cpp movebasegoal.cpp Criteria/sensingtimecriterion.cpp
 Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cpp )
 
 add_executable(mcdm_online_exploration_ros main.cpp) 
