@@ -125,6 +125,7 @@ void Map::createGrid(int resolution)
   
   //get the size of the array and initialize to 0
   
+  /*
     Map::grid.reserve(numGridRows*numGridCols);
   
     for (gridRow = 0; gridRow < numGridRows; ++gridRow)
@@ -133,7 +134,12 @@ void Map::createGrid(int resolution)
 	    {
 	    grid[gridRow*numGridCols + gridCol] = 0;
 	    }
-    }
+    }*/
+  
+   for(int i = 0; i < numGridCols*numGridRows; ++i)
+  {
+    grid.push_back(0);
+  }
   
   //set 1 in the grid cells corrisponding to obstacles
     for(long row = 0; row < numRows; ++row)
@@ -143,7 +149,7 @@ void Map::createGrid(int resolution)
 		//if(map[row*numCols + col] == 0) 
 		if(map[row*numCols + col] < 250) 
 		{
-			grid[(long)(row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
+			grid[(long)(numRows-row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
 			
 		}
 	    }

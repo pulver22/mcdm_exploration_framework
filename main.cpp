@@ -1,4 +1,3 @@
-#include <ros/ros.h>
 #include <iostream>
 #include <iterator>
 #include "map.h"
@@ -6,23 +5,57 @@
 #include "newray.h"
 #include "mcdmfunction.h"
 #include "graphpose.h"
-#include "movebasegoal.cpp"
 #include "Criteria/traveldistancecriterion.h"
 # define PI           3.14159265358979323846  /* pi */
 #include <unistd.h>
-
+#include <ros/ros.h>
+#include "movebasegoal.h"
+#include <geometry_msgs/PointStamped.h>
+#include <tf/transform_listener.h>
+#include <nav_msgs/GetMap.h>
 
 
 using namespace std;
 using namespace dummy;
 
 int main(int argc, char **argv) {
-
     ros::init(argc, argv, "mcdm_exploration_framework_node");
     ros::NodeHandle nh;
-    MoveBaseGoal goal; 
-    // Input : ./mcdm_online_exploration_ros ~/Maps/map_RiccardoFreiburg_1m2.pgm 100 75 5 0 15 180 0.95 0.12
+    ros::ServiceClient map_service_client_ = nh.serviceClient<nav_msgs::GetMap>("static_map");
+    nav_msgs::GetMap srv_map;
+
+    
+    // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm 100 75 5 0 15 180 0.95 0.12
     // resolution x y orientation range centralAngle precision threshold
+    
+   
+    
+    if (map_service_client_.call(srv_map)){
+	ROS_INFO("Map service called successfully");
+	const nav_msgs::OccupancyGrid& map (srv_map.response.map);
+	//do something with the map
+	return 1;
+    }else{
+	ROS_ERROR("Failed to call map service");
+	return 0;
+    }
+    
+    
+    //MoveBaseGoal goal; 
+    ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
+    
+    //ros::Publisher grid_pub = nh.advertise<nav_msgs::OccupancyGrid>("mcdm_grid", 1000);
+
+    ros::Rate loop_rate(10);
+    
+    tf::TransformListener listener (ros::Duration(10.0));
+    
+
+    
+    //ros::spinOnce();
+    //loop_rate.sleep();
+    //if(cin.get()) break;
+    
     ifstream infile;
     infile.open(argv[1]);
     int resolution = atoi(argv[2]);
@@ -61,7 +94,29 @@ int main(int argc, char **argv) {
     //amount of time the robot should do nothing for scanning the environment ( final value expressed in second)
     unsigned int microseconds = 5 * 1000 * 1000 ;
     //cout << "total free cells in the main: " << totalFreeCells << endl;
+    list<Pose> unexploredFrontiers;
     
+    /*
+    nav_msgs::OccupancyGrid grid_msg;
+    grid_msg.info.map_load_time = ros::Time::now();
+    grid_msg.info.origin.position.x = 0;
+    grid_msg.info.origin.position.y = 1;
+    grid_msg.info.origin.position.z = 0;
+    grid_msg.info.origin.orientation.w = 0;
+    grid_msg.info.origin.orientation.x = 0;
+    grid_msg.info.origin.orientation.y = 0;
+    grid_msg.info.origin.orientation.z = 0;
+    grid_msg.info.resolution = 0.05*(100/resolution);
+    grid_msg.info.height = map.getNumGridRows();
+    grid_msg.info.width = map.getNumGridCols();
+    
+    for(int n = 0; n < map.getNumGridCols()*map.getNumGridRows(); ++n)
+    {
+    grid_msg.data.push_back((int8_t)100*map.getGridValue(n));
+    }
+    */
+    
+
     while(sensedCells < precision * totalFreeCells ){
 	long x = target.getX();
 	long y = target.getY();
@@ -98,6 +153,8 @@ int main(int argc, char **argv) {
 	    
 	    countBT = countBT -1;
 	    if (graph2.size() >0){
+		
+		// OLD METHOD
 		string targetString = graph2.at(countBT).first;
 		graph2.pop_back();
 		EvaluationRecords record;
@@ -107,6 +164,7 @@ int main(int argc, char **argv) {
 		cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 		count = count + 1;
 		cout << "Graph dimension : " << graph2.size() << endl;
+		
 	    } else {
 		cout << "-----------------------------------------------------------------"<<endl;
 		cout << "I came back to the original position since i don't have any other candidate position"<< endl;
@@ -133,43 +191,85 @@ int main(int argc, char **argv) {
 		frontiers.push_back(p4);
 	    }
 	    
+	    unexploredFrontiers = frontiers;
+	    
 	    cout << "Graph dimension : " << graph2.size() << endl;
 	    cout << "Candidate position: " << candidatePosition.size() << endl;
 	    cout <<"Frontiers: "<<  frontiers.size() << endl;
 	    EvaluationRecords *record = function.evaluateFrontiers(frontiers,map,threshold);
 	    //cout << "Record: " << record->size() << endl;
 	    cout << "Evaluation Record obtained" << endl;
-	    previous = target;
+	    
 	    
 	    if(record->size() != 0){
+		//set the previous pose equal to the actual one(actually represented by target)
+		previous = target;
 		std::pair<string,list<Pose>> pair = make_pair(actualPose,frontiers);
 		graph2.push_back(pair);
 		std::pair<Pose,double> result = function.selectNewPose(record);
 		target = result.first;
-		count = count + 1;
-		countBT = graph2.size();
-		numConfiguration++;
-		history.push_back(function.getEncodedKey(target,1));
-	    }else {
-		if(graph2.size() == 0) break;
-		countBT = countBT -1;
-		string targetString = graph2.at(countBT).first;
-		target = record->getPoseFromEncoding(targetString);
-		
-		graph2.pop_back();
-		cout << "No significative position reachable. Come back to previous position" << endl;
-		history.push_back(function.getEncodedKey(target,2));
-		cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
-		count = count + 1;
+		if (!target.isEqual(previous)){
+		    count = count + 1;
+		    countBT = graph2.size();
+		    numConfiguration++;
+		    history.push_back(function.getEncodedKey(target,1));
+		    cout << "Graph dimension : " << graph2.size() << endl;
+		    cout << record->size() << endl;
+		}else{
+		    cout << "[BT]Cell already explored!Come back to previous position";
+		    countBT = countBT -2;
+		    string targetString = graph2.at(countBT).first;
+		    target = record->getPoseFromEncoding(targetString);
+		    graph2.pop_back();
+		    history.push_back(function.getEncodedKey(target,2));
+		    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
+		    count = count + 1;
+		}
+	    }else {  
+		    
+		    //OLD METHOD
+		    
+		    if(graph2.size() == 0) break;
+		    
+		    countBT = countBT -1;
+		    string targetString = graph2.at(countBT).first;
+		    target = record->getPoseFromEncoding(targetString);
+		    graph2.pop_back();
+		    if(!target.isEqual(previous)){
+			previous = target;
+			cout << "[BT]No significative position reachable. Come back to previous position" << endl;
+			history.push_back(function.getEncodedKey(target,2));
+			cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
+			count = count + 1;
+		    }else {
+			countBT = countBT -1;
+			string targetString = graph2.at(countBT).first;
+			target = record->getPoseFromEncoding(targetString);
+			graph2.pop_back();
+			previous = target;
+			cout << "[BT]No significative position reachable. Come back to previous position" << endl;
+			history.push_back(function.getEncodedKey(target,2));
+			cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
+			count = count + 1;
+		    }
+		    
 	    }
     
 	    sensedCells = newSensedCells;
+	    //goal.move(target.getX(), target.getY(), cos(target.getOrientation()/2), sin(target.getOrientation()/2));
 	    
-	    goal.move(target.getX(), target.getY(), cos(target.getOrientation()/2), sin(target.getOrientation()/2));
+	    geometry_msgs::PointStamped p;
+	    p.header.frame_id = "map";
+	    p.header.stamp = ros::Time::now();
+	    p.point.x = (map.getNumGridRows() - target.getX() )* 0.05;
+	    p.point.y = (map.getNumGridCols() - target.getY() )* 0.05;
 	    
+	    //points.points.push_back(p);
 	    //NOTE: not requested for testing purpose
 	    //usleep(microseconds);
-	    
+	    marker_pub.publish(p);
+	    //grid_pub.publish< nav_msgs::OccupancyGrid>(grid_msg);
+	    sleep(2);
 	    frontiers.clear();
 	    candidatePosition.clear();
 	    delete record;
@@ -178,6 +278,9 @@ int main(int argc, char **argv) {
     
     map.drawVisitedCells(visitedCell,resolution);
     map.printVisitedCells(history);
+
+
+    //OLD METHOD
     if (graph2.size() ==0){
 	cout << "-----------------------------------------------------------------"<<endl;
 	cout << "I came back to the original position since i don't have any other candidate position"<< endl;
@@ -190,9 +293,14 @@ int main(int argc, char **argv) {
 	cout << "FINAL: MAP EXPLORED!" << endl;
 	cout << "-----------------------------------------------------------------"<<endl;
     }
-
-	while(ros::ok())
+    
+    /*
+    
+    while(ros::ok())
 	sleep(1);
 
-return 0;
+    return 0;
+    */
+    
+    
 }

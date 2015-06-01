@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   nav_msgs
   roscpp
+  tf
 )
 
 
@@ -30,7 +31,7 @@ add_library(mcdm_exploration_framework pose.cpp map.cpp newray.cpp ray.cpp graph
 map.cpp evaluationrecords.cpp movebasegoal.cpp Criteria/sensingtimecriterion.cpp
 Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cpp )
 
-add_executable(mcdm_online_exploration_ros main.cpp) 
+add_executable(mcdm_online_exploration_ros main.cpp movebasegoal.cpp) 
 target_link_libraries(mcdm_online_exploration_ros mcdm_exploration_framework ${catkin_LIBRARIES})
 
 list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -O3 -g  -ftest-coverage -fprofile-arcs")
