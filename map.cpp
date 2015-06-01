@@ -18,6 +18,35 @@ Map::Map()
   
 }
 
+Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::Pose origin){
+    
+    for(int i = 0; i < width*height; ++i){
+	grid.push_back(0);
+    }
+    numGridCols = width;
+    numGridRows = height;
+    //set 1 in the grid cells corrisponding to obstacles according to percentage value
+    // contained in data vector
+    for(long row = 0; row < height; ++row){
+	    for(long col = 0; col < width; ++col){
+		
+		//if(map[row*numCols + col] == 0) 
+		if(data.at(row*width + col) > 60) {
+		    grid[(height - row)*width + col] = 1;	
+		}
+		
+		if(data.at(row*width + col) <20) {
+		    grid[(height - row)*width + col] = 0;
+		}
+		
+		if(data.at(row*width + col) < 0) {
+		    grid[(height - row)*width + col] = 1;	
+		}
+	    }
+    }
+  Map::createNewMap();
+  
+}
 
 
 // create a monodimensional vector containing the map 
@@ -154,6 +183,7 @@ void Map::createGrid(int resolution)
 		}
 	    }
     }
+    
     
 }
 
