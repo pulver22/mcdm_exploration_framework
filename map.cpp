@@ -31,6 +31,7 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
 	    for(long col = 0; col < width; ++col){
 		
 		//if(map[row*numCols + col] == 0) 
+		
 		if(data.at(row*width + col) > 60) {
 		    grid[(height - row)*width + col] = 1;	
 		}
@@ -42,6 +43,7 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
 		if(data.at(row*width + col) < 0) {
 		    grid[(height - row)*width + col] = 1;	
 		}
+		
 	    }
     }
   Map::createNewMap();

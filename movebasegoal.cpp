@@ -30,9 +30,9 @@ void MoveBaseGoal::move(int x, int y, double orW, double orZ){
     ac.waitForResult();
 
     if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-	ROS_INFO("Hooray, the base moved 1 meter forward");
+	ROS_INFO("I'm moving...");
     else
-	ROS_INFO("The base failed to move forward 1 meter for some reason");
+	ROS_INFO("The base failed to move");
 }
 
 }
