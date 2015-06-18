@@ -21,10 +21,10 @@ Map::Map()
 Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::Pose origin){
     
     for(int i = 0; i < width*height; ++i){
-	grid.push_back(0);
+	map.push_back(0);
     }
-    numGridCols = width;
-    numGridRows = height;
+    numCols = width;
+    numRows = height;
     //set 1 in the grid cells corrisponding to obstacles according to percentage value
     // contained in data vector
     for(long row = 0; row < height; ++row){
@@ -34,23 +34,25 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
 		
 		if(data.at(row*width + col) > 60) {
 		    //grid[(height - row)*width + col] = 1;	
-		    grid[( row)*width + col] = 1;	
+		    map[( row)*width + col] = 1;	
 		    
 		}
 		
 		if(data.at(row*width + col) <20) {
 		    //grid[(height - row)*width + col] = 0;
-		    grid[(row)*width + col] = 0;
+		    map[(row)*width + col] = 0;
 		}
 		
 		if(data.at(row*width + col) < 0) {
 		    //grid[(height - row)*width + col] = 1;
-		    grid[(row)*width + col] = 1;
+		    map[(row)*width + col] = 1;
 		}
 		
 	    }
     }
   Map::createNewMap();
+  int tmpRes = resolution * 100;
+  Map::createGrid(tmpRes);
   
 }
 
@@ -145,14 +147,14 @@ void Map::createMap(std::ifstream& infile)
   }
 }
 
-// get the map as a monodimension vector with 0 and 1
+// Create a grid 1mx1m
 void Map::createGrid(int resolution)
 {
   //cluster cells into grid
   float clusterSize = (float)((100.0/resolution));
   Map::numGridRows = (long)numRows/clusterSize;
   Map::numGridCols = (long)numCols/clusterSize;
-  long gridRow = 0, gridCol = 0;
+  //long gridRow = 0, gridCol = 0;
   //cout << numGridCols << " : "<< numGridRows << endl;
   
 
@@ -182,7 +184,7 @@ void Map::createGrid(int resolution)
 	    for(long col = 0; col < numCols; ++col)
 	    {
 		//if(map[row*numCols + col] == 0) 
-		if(map[row*numCols + col] < 250) 
+		if(map[row*numCols + col] == 1) 
 		{
 			grid[(long)(numRows-row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
 			

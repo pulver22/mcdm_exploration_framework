@@ -98,14 +98,20 @@ int main(int argc, char **argv) {
 	double initY = start_pose.pose.position.y;
 	tf::Quaternion quat = tf::Quaternion(start_pose.pose.orientation.x,start_pose.pose.orientation.y,start_pose.pose.orientation.z,start_pose.pose.orientation.w);
 	
-	cout <<start_pose.pose.orientation.x <<","<< start_pose.pose.orientation.y <<","<< start_pose.pose.orientation.z<< ","<< start_pose.pose.orientation.w <<endl; 
+	//cout <<start_pose.pose.orientation.x <<","<< start_pose.pose.orientation.y <<","<< start_pose.pose.orientation.z<< ","<< start_pose.pose.orientation.w <<endl; 
 	
 	tfScalar angle = 2 * acos(quat[2]);
 	cout << "Initial position in the map frame:" << initX << "," << initY <<" with orientation :" << angle << endl;
 	
 	int initOrientation = (int)(angle * 57.30);
-	
 	cout << "Orientation after casting: " << initOrientation << endl;
+	/*
+	// NOTE: TO ADJUST ORIENTATION ACCORDING TO A MAP
+	if(initOrientation <= 45 || initOrientation > 315) initOrientation = 0;
+	if(initOrientation > 45 && initOrientation <= 135) initOrientation = 90;
+	if(initOrientation >135 && initOrientation <= 225) initOrientation = 180;
+	if(initOrientation > 225 && initOrientation <= 315) initOrientation = 270;
+	*/
 	double initFov = atoi(argv[1] );
 	initFov = initFov * PI /180;
 	int initRange = atoi(argv[2]);
@@ -119,6 +125,7 @@ int main(int argc, char **argv) {
 	pose = pose /resolution;
 	//pose = transform.operator*(pose);
 	
+	//NOTE: Y in map are X in image
 	Pose initialPose = Pose((long)pose.getY(),(long)pose.getX(),initOrientation,initRange,initFov);
 	Pose target = initialPose;
 	Pose previous = initialPose;
@@ -130,18 +137,20 @@ int main(int argc, char **argv) {
 	geometry_msgs::PointStamped p;
 	p.header.frame_id = "map";
 	p.header.stamp = ros::Time::now();
+	//NOTE: as before, Y in map are X in image
 	p.point.x = ( newMap.getNumGridRows() -  target.getX() )* resolution;
 	p.point.y = (target.getY() )* resolution;
 	
 	//cout << p.point.x << ","<< p.point.y << endl;
 	
 	tf::Vector3 vec =  tf::Vector3(p.point.x,p.point.y,0.0);
-	vec = transform.operator*(vec);
+	//vec = transform.operator*(vec);
 	
 	p.point.x = vec.getY() ;
 	p.point.y = vec.getX() ;
 	
 	//cout << p.point.x << ","<< p.point.y << endl;
+	marker_pub.publish(p);
 	//----------------------------------------
 	
 	
@@ -306,6 +315,7 @@ int main(int argc, char **argv) {
 	    geometry_msgs::PointStamped p;
 	    p.header.frame_id = "map";
 	    p.header.stamp = ros::Time::now();
+	    //NOTE: as before, Y in map are X in image
 	    p.point.x = (newMap.getNumGridRows() - target.getX() )* resolution;
 	    p.point.y = (target.getY() )* resolution;
 	    
@@ -313,7 +323,7 @@ int main(int argc, char **argv) {
 	    
 	    tf::Vector3 vec =  tf::Vector3(p.point.x,p.point.y,0.0);
 
-	    vec = transform.operator*(vec);
+	    //vec = transform.operator*(vec);
 	    
 	    p.point.x = vec.getY() ;
 	    p.point.y = vec.getX() ;
