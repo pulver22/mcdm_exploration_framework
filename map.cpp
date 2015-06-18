@@ -33,15 +33,19 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
 		//if(map[row*numCols + col] == 0) 
 		
 		if(data.at(row*width + col) > 60) {
-		    grid[(height - row)*width + col] = 1;	
+		    //grid[(height - row)*width + col] = 1;	
+		    grid[( row)*width + col] = 1;	
+		    
 		}
 		
 		if(data.at(row*width + col) <20) {
-		    grid[(height - row)*width + col] = 0;
+		    //grid[(height - row)*width + col] = 0;
+		    grid[(row)*width + col] = 0;
 		}
 		
 		if(data.at(row*width + col) < 0) {
-		    grid[(height - row)*width + col] = 1;	
+		    //grid[(height - row)*width + col] = 1;
+		    grid[(row)*width + col] = 1;
 		}
 		
 	    }

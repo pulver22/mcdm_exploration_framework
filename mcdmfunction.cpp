@@ -70,6 +70,8 @@ double MCDMFunction::evaluateFrontier( Pose& p,  dummy::Map &map)
     //NewRay ray;
     //ray.calculateInfoGainSensingTime(map,p.getX(),p.getY(),p.getOrientation(),p.getFOV(),p.getRange());
    
+    string tmp = getEncodedKey(p,0);
+    cout << tmp << endl;
       for (int i =0; i < activeCriteria.size(); i++){
 	Criterion *c = activeCriteria.at(i);
 	//string name = c->getName();
