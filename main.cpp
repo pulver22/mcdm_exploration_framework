@@ -86,10 +86,11 @@ int main(int argc, char **argv) {
 	    grid_pub.publish< nav_msgs::OccupancyGrid>(grid_msg);
 	}*/
     
+	/*NOTE: Transform between map and image, to be enabled if not present in the launch file
 	//tf::Transform tranMapToImage;
 	//tranMapToImage.setOrigin(tf::Vector3(0, 30, 0.0));
 	//tf::Vector3 vecImageToMap = tf::Vector3(0, 30,0.0);
-		
+	*/	
 	
 	// Get the initial pose in map frame
 	geometry_msgs::PoseStamped start_pose;
@@ -284,8 +285,8 @@ int main(int argc, char **argv) {
 		    
 		    if(graph2.size() == 0) break;
 		    
-		    countBT = countBT -1;
-		    string targetString = graph2.at(countBT).first;
+		   
+		    string targetString = graph2.at(graph2.size()-1).first;
 		    target = record->getPoseFromEncoding(targetString);
 		    graph2.pop_back();
 		    if(!target.isEqual(previous)){
@@ -295,8 +296,11 @@ int main(int argc, char **argv) {
 			cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 			count = count + 1;
 		    }else {
-			countBT = countBT -1;
-			string targetString = graph2.at(countBT).first;
+			if(graph2.size() == 0 ) {
+			    cout << "No other possibilities to do backtracking on previous positions" << endl;
+			    break;
+			}
+			string targetString = graph2.at(graph2.size()-1).first;
 			target = record->getPoseFromEncoding(targetString);
 			graph2.pop_back();
 			previous = target;
@@ -358,9 +362,10 @@ int main(int argc, char **argv) {
 	    goal.target_pose.pose.position.y = p.point.y;
 	    //goal.target_pose.pose.position.x = goal_pose.getX();
 	    //goal.target_pose.pose.position.y = goal_pose.getY();
-	    goal.target_pose.pose.orientation.w = cos(target.getOrientation()/2);
-	    goal.target_pose.pose.orientation.z = sin(target.getOrientation()/2);
+	    goal.target_pose.pose.orientation.w = cos(PI - target.getOrientation()/2);
+	    goal.target_pose.pose.orientation.z = sin(PI - target.getOrientation()/2);
 	    
+	    /*NOTE: PRINT THE MAP NEAR THE ROBOT
 	    int curX = previous.getX();
 	    int curY = previous.getY();
 	    int minX = curX - 30;
@@ -390,7 +395,7 @@ int main(int argc, char **argv) {
 		}
 		std::cout << std::endl;
 	    
-	    
+	    */
 	    
 	    
 	    ROS_INFO("Sending goal");
