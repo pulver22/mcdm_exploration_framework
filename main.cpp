@@ -39,6 +39,7 @@ int getIndex(int x, int y);
 
 
 
+
 int main(int argc, char **argv) {
     ros::init(argc, argv, "mcdm_exploration_framework_node");
     ros::NodeHandle nh;
@@ -107,13 +108,14 @@ int main(int argc, char **argv) {
 	double initY = start_pose.pose.position.y;
 	tf::Quaternion quat = tf::Quaternion(start_pose.pose.orientation.x,start_pose.pose.orientation.y,start_pose.pose.orientation.z,start_pose.pose.orientation.w);
 	
-	//cout <<start_pose.pose.orientation.x <<","<< start_pose.pose.orientation.y <<","<< start_pose.pose.orientation.z<< ","<< start_pose.pose.orientation.w <<endl; 
+	cout <<start_pose.pose.orientation.x <<","<< start_pose.pose.orientation.y <<","<< start_pose.pose.orientation.z<< ","<< start_pose.pose.orientation.w <<endl; 
 	
-	tfScalar angle = 2 * acos(quat[2]);
+	tfScalar angle = 2 * acos(quat[3]);
 	cout << "Initial position in the map frame:" << initX << "," << initY <<" with orientation :" << angle << endl;
 	
-	int initOrientation = (int)(angle * 57.30);
+	int initOrientation = (int)(angle * 180/PI);
 	cout << "Orientation after casting: " << initOrientation << endl;
+	
 	
 	/*
 	// NOTE: TO ADJUST ORIENTATION ACCORDING TO A MAP
@@ -143,40 +145,8 @@ int main(int argc, char **argv) {
 	
 	cout << "Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
 	
-	/*
-	//NOTE: PRINT THE MAP NEAR THE ROBOT-------------
-	int curX = previous.getX();
-	int curY = previous.getY();
-	int minX = curX - 30;
-	if(minX < 0) minX = 0;
-	int maxX = curX + 30;
-	if(maxX > newMap.getNumGridRows()-1) maxX= newMap.getNumGridRows()-1;
-	int minY = curY - 30;
-	if(minY < 0) minY = 0;
-	int maxY = curY + 30;
-	if(maxY > newMap.getNumGridCols()-1) maxY = newMap.getNumGridCols()-1;
-	//print portion of the map
-	    for(int i = minX; i < maxX; ++i)
-	    {
-		for(int j = minY; j < maxY; ++j)
-		{
-		    if(i == curX && j == curY)
-		    {
-			std::cout << "X ";
-		    }
-		    else if (i == target.getX() && j == target.getY())
-		    {
-			std::cout << "Y ";
-		    }
-		    else std::cout << newMap.getGridValue(i, j) << " ";
-		}
-		std::cout << std::endl;
-	    }
-	    std::cout << std::endl;
-	//---------------------------------------
-	*/
-	    
-	/*
+	
+	
 	//----------------- PRINT INITIAL POSITION
 	//ATTENTION: doesn't work! ...anyway the initial position is represented by the robot
 	geometry_msgs::PointStamped p;
@@ -197,7 +167,7 @@ int main(int argc, char **argv) {
 	//cout << p.point.x << ","<< p.point.y << endl;
 	marker_pub.publish(p);
 	//----------------------------------------
-	*/
+
 	
 	long numConfiguration =0;
 	//testing
@@ -240,7 +210,48 @@ int main(int argc, char **argv) {
 	vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
 	ray.emptyCandidatePositions();
 	
+	/*
+	//NOTE: PRINT THE MAP NEAR THE ROBOT-------------
+	int curX = previous.getX();
+	int curY = previous.getY();
+	int minX = curX - 30;
+	if(minX < 0) minX = 0;
+	int maxX = curX + 30;
+	if(maxX > newMap.getNumGridRows()-1) maxX= newMap.getNumGridRows()-1;
+	int minY = curY - 30;
+	if(minY < 0) minY = 0;
+	int maxY = curY + 30;
+	if(maxY > newMap.getNumGridCols()-1) maxY = newMap.getNumGridCols()-1;
+	//print portion of the map
+	    for(int i = minX; i < maxX; ++i)
+	    {
+		for(int j = minY; j < maxY; ++j)
+		{
+		    if(i == curX && j == curY)
+		    {
+			std::cout << "X ";
+		    }
+		    else if (i == target.getX() && j == target.getY())
+		    {
+			std::cout << "Y ";
+		    }
+		    else std::cout << newMap.getGridValue(i, j) << " ";
+		}
+		std::cout << std::endl;
+	    }
+	    std::cout << std::endl;
+	//---------------------------------------
+	*/
 	
+	//-------------------
+	//STAMP ACTUAL ORIENTATION IN MAP FRAME
+	geometry_msgs::PoseStamped current_pose;
+	current_pose = getCurrentPose();
+	tfScalar angle2 = 2 * acos(current_pose.pose.orientation.w);
+	
+	int currentOrientation = (int)(angle2 * 180 / PI);
+	cout << "Orientation after casting of current pose: " << currentOrientation << endl;
+	//-----------------------
 	
 	
 	if(candidatePosition.size() == 0) {
@@ -362,7 +373,7 @@ int main(int argc, char **argv) {
 	    sensedCells = newSensedCells;
 	    
 	    
-	    //---------------------------PRINT ACTUAL POSITION
+	    //---------------------------PRINT GOAL POSITION
 	    geometry_msgs::PointStamped p;
 	    p.header.frame_id = "map";
 	    p.header.stamp = ros::Time::now();
@@ -423,8 +434,9 @@ int main(int argc, char **argv) {
 	    else
 		ROS_INFO("The base failed to move");
 	    */
-	    
-	    move(p.point.x,p.point.y, cos(PI - target.getOrientation()/2), sin(PI - target.getOrientation()/2));
+	    double orientZ = (double)(target.getOrientation()* PI/(2*180));
+	    double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
+	    move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
 	  
 	    /* NOTE: DEBUG WITH RED ARROW
 	    geometry_msgs::PoseStamped goal;
@@ -450,20 +462,18 @@ int main(int argc, char **argv) {
 	newMap.printVisitedCells(history);
 
 
-	//OLD METHOD
-	if (graph2.size() ==0){
-	    cout << "-----------------------------------------------------------------"<<endl;
-	    cout << "I came back to the original position since i don't have any other candidate position"<< endl;
-	    cout << "Total cell visited :" << numConfiguration <<endl;
-	    cout << "-----------------------------------------------------------------"<<endl;
-	}else {
+	 if (graph2.size() != 0 && sensedCells >= precision * totalFreeCells ){
 	    cout << "-----------------------------------------------------------------"<<endl;
 	    cout << "Total cell visited :" << numConfiguration <<endl;
 	    cout << "Total travelled distance (cells): " << travelledDistance << endl;
 	    cout << "FINAL: MAP EXPLORED!" << endl;
 	    cout << "-----------------------------------------------------------------"<<endl;
-	}  
-	
+	}else{
+	    cout << "-----------------------------------------------------------------"<<endl;
+	    cout << "I came back to the original position since i don't have any other candidate position"<< endl;
+	    cout << "Total cell visited :" << numConfiguration <<endl;
+	    cout << "-----------------------------------------------------------------"<<endl;    
+	}
 	return 1;
     }
 	
@@ -556,7 +566,7 @@ int getIndex(int x, int y){
 }
 
 
-void move(int x, int y, double orW, double orZ){
+void move(int x, int y, double orZ, double orW){
     move_base_msgs::MoveBaseGoal goal;
 
     MoveBaseClient ac ("move_base", true);
@@ -566,9 +576,9 @@ void move(int x, int y, double orW, double orZ){
 
     goal.target_pose.pose.position.x = x;
     goal.target_pose.pose.position.y = y;
-    goal.target_pose.pose.orientation.w = orW;
     goal.target_pose.pose.orientation.z = orZ;
-
+    goal.target_pose.pose.orientation.w = orW;
+  
     ROS_INFO("Sending goal");
     ac.sendGoal(goal);
 
@@ -579,3 +589,4 @@ void move(int x, int y, double orW, double orZ){
     else
 	ROS_INFO("The base failed to move");
 }
+
