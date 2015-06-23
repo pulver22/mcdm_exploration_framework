@@ -6,6 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   roscpp
   tf
+  costmap_2d
 )
 
 

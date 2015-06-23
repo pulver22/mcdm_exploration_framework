@@ -14,6 +14,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetMap.h>
+#include <costmap_2d/costmap_2d_ros.h>
+
 
 
 using namespace std;
@@ -21,8 +23,21 @@ using namespace dummy;
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
+vector<int> occdata;
+int costmapReceived = 0;
+float costresolution;
+int costwidth;
+int costheight;
+geometry_msgs::Pose costorigin;
+nav_msgs::OccupancyGrid costmap_grid;
+
 geometry_msgs::PoseStamped getCurrentPose();
 void move(int x, int y, double orW, double orZ);
+void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg);
+void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg);
+int getIndex(int x, int y);
+
+
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "mcdm_exploration_framework_node");
@@ -33,6 +48,8 @@ int main(int argc, char **argv) {
     MoveBaseGoal goal;
     ros::Publisher moveBasePub = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1000);
     MoveBaseClient ac("move_base", true);
+    ros::Subscriber costmap_sub;
+    ros::Subscriber costmap_update_sub;
     
     while(!ac.waitForServer(ros::Duration(5.0))){
     ROS_INFO("Waiting for the move_base action server to come up");
@@ -40,51 +57,42 @@ int main(int argc, char **argv) {
     // Input :  15 180 0.95 0.12
     // range centralAngle precision threshold
     
+    ros::Rate r(10);
+    
     while(ros::ok()){
     
-    if (map_service_client_.call(srv_map)){
+    //if (map_service_client_.call(srv_map)){
+	
+	costmap_sub = nh.subscribe<nav_msgs::OccupancyGrid>("move_base/global_costmap/costmap", 100, grid_callback);
+	costmap_update_sub = nh.subscribe<map_msgs::OccupancyGridUpdate>("move_base/global_costmap/costmap_updates", 10, update_callback);
+
+	if(costmapReceived == 0) {
+	    //ROS_INFO_STREAM( "waiting for costmap" << std::endl);
+	    cout << "Waiting for costmap" << endl;
+	}
+
+	if(costmapReceived == 1)
+	{
+	/*
 	ROS_INFO("Map service called successfully");
 	const nav_msgs::OccupancyGrid& map (srv_map.response.map);
-	ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
 	float resolution = map.info.resolution;
 	int width = map.info.width;
 	int height = map.info.height;
 	geometry_msgs::Pose origin = map.info.origin;
 	tf::Transform transform;
 	transform.setOrigin( tf::Vector3(origin.position.x, origin.position.y, origin.position.z) );
-	//cout << origin.position.x << "," << origin.position.y << endl;
+	cout << origin.position.x << "," << origin.position.y << endl;
 	transform.setRotation(tf::Quaternion(origin.orientation.x,origin.orientation.y,origin.orientation.z,origin.orientation.w));
-
+	
 	vector<int> data;
 	for(int i=0; i < map.data.size(); i++){
 	    data.push_back(map.data.at(i));
 	}
-	Map newMap = Map(resolution,width,height,data,origin);
+	*/
+	Map newMap = Map(costresolution,costwidth,costheight,occdata,costorigin);
+	ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
 	
-	/*
-	// PRINT THE MAP AS READ BY THE ALGORITHM
-	while(1){   
-	    nav_msgs::OccupancyGrid grid_msg;
-	    ROS_INFO("publishing");
-	    grid_msg.info.map_load_time = ros::Time::now();
-	    grid_msg.info.origin.position.x = 0;
-	    grid_msg.info.origin.position.y = 0;
-	    grid_msg.info.origin.position.z = 0;
-	    grid_msg.info.origin.orientation.w = 0;
-	    grid_msg.info.origin.orientation.x = 0;
-	    grid_msg.info.origin.orientation.y = 0;
-	    grid_msg.info.origin.orientation.z = 0;
-	    grid_msg.info.resolution = resolution;
-	    grid_msg.info.height = newMap.getNumGridRows();
-	    grid_msg.info.width = newMap.getNumGridCols();
-	    
-	    for(int n = 0; n < newMap.getNumGridCols()*newMap.getNumGridRows(); ++n)
-	    {
-	    grid_msg.data.push_back((int8_t)100*newMap.getGridValue(n));
-	    }
-	    ROS_INFO("publishing end");
-	    grid_pub.publish< nav_msgs::OccupancyGrid>(grid_msg);
-	}*/
     
 	/*NOTE: Transform between map and image, to be enabled if not present in the launch file
 	//tf::Transform tranMapToImage;
@@ -106,6 +114,7 @@ int main(int argc, char **argv) {
 	
 	int initOrientation = (int)(angle * 57.30);
 	cout << "Orientation after casting: " << initOrientation << endl;
+	
 	/*
 	// NOTE: TO ADJUST ORIENTATION ACCORDING TO A MAP
 	if(initOrientation <= 45 || initOrientation > 315) initOrientation = 0;
@@ -113,6 +122,7 @@ int main(int argc, char **argv) {
 	if(initOrientation >135 && initOrientation <= 225) initOrientation = 180;
 	if(initOrientation > 225 && initOrientation <= 315) initOrientation = 270;
 	*/
+	
 	double initFov = atoi(argv[1] );
 	initFov = initFov * PI /180;
 	int initRange = atoi(argv[2]);
@@ -123,24 +133,58 @@ int main(int argc, char **argv) {
 	//convert from map frame to image
 	tf::Vector3 pose = tf::Vector3(initX,initY,0.0);
 	//pose = tranMapToImage.operator*(pose);
-	pose = pose /resolution;
+	//pose = pose /resolution;
 	//pose = transform.operator*(pose);
 	
 	//NOTE: Y in map are X in image
-	Pose initialPose = Pose((long)pose.getY(),(long)pose.getX(),initOrientation,initRange,initFov);
+	Pose initialPose = Pose(newMap.getNumGridRows() - (long)pose.getY(), (long)pose.getX(),initOrientation,initRange,initFov);
 	Pose target = initialPose;
 	Pose previous = initialPose;
 	
 	cout << "Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
 	
-	
+	/*
+	//NOTE: PRINT THE MAP NEAR THE ROBOT-------------
+	int curX = previous.getX();
+	int curY = previous.getY();
+	int minX = curX - 30;
+	if(minX < 0) minX = 0;
+	int maxX = curX + 30;
+	if(maxX > newMap.getNumGridRows()-1) maxX= newMap.getNumGridRows()-1;
+	int minY = curY - 30;
+	if(minY < 0) minY = 0;
+	int maxY = curY + 30;
+	if(maxY > newMap.getNumGridCols()-1) maxY = newMap.getNumGridCols()-1;
+	//print portion of the map
+	    for(int i = minX; i < maxX; ++i)
+	    {
+		for(int j = minY; j < maxY; ++j)
+		{
+		    if(i == curX && j == curY)
+		    {
+			std::cout << "X ";
+		    }
+		    else if (i == target.getX() && j == target.getY())
+		    {
+			std::cout << "Y ";
+		    }
+		    else std::cout << newMap.getGridValue(i, j) << " ";
+		}
+		std::cout << std::endl;
+	    }
+	    std::cout << std::endl;
+	//---------------------------------------
+	*/
+	    
+	/*
 	//----------------- PRINT INITIAL POSITION
+	//ATTENTION: doesn't work! ...anyway the initial position is represented by the robot
 	geometry_msgs::PointStamped p;
 	p.header.frame_id = "map";
 	p.header.stamp = ros::Time::now();
 	//NOTE: as before, Y in map are X in image
-	p.point.x = ( newMap.getNumGridRows() -  target.getX() )* resolution;
-	p.point.y = (target.getY() )* resolution;
+	p.point.x = ( newMap.getNumGridRows() -  target.getX() )* costresolution;
+	p.point.y = (target.getY() )* costresolution;
 	
 	//cout << p.point.x << ","<< p.point.y << endl;
 	
@@ -153,7 +197,7 @@ int main(int argc, char **argv) {
 	//cout << p.point.x << ","<< p.point.y << endl;
 	marker_pub.publish(p);
 	//----------------------------------------
-	
+	*/
 	
 	long numConfiguration =0;
 	//testing
@@ -205,11 +249,13 @@ int main(int argc, char **argv) {
 	    cout << "----- BACKTRACKING -----" << endl;
 	    
 	    
-	    countBT = countBT -1;
+	    
 	    if (graph2.size() >0){
 		
+		
 		// OLD METHOD
-		string targetString = graph2.at(countBT).first;
+		graph2.pop_back();
+		string targetString = graph2.at(graph2.size()-1).first;
 		graph2.pop_back();
 		EvaluationRecords record;
 		target = record.getPoseFromEncoding(targetString);
@@ -218,6 +264,7 @@ int main(int argc, char **argv) {
 		cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 		count = count + 1;
 		cout << "Graph dimension : " << graph2.size() << endl;
+		
 		
 	    } else {
 		cout << "-----------------------------------------------------------------"<<endl;
@@ -320,8 +367,8 @@ int main(int argc, char **argv) {
 	    p.header.frame_id = "map";
 	    p.header.stamp = ros::Time::now();
 	    //NOTE: as before, Y in map are X in image
-	    p.point.x = (newMap.getNumGridRows() - target.getX() )* resolution;
-	    p.point.y = (target.getY() )* resolution;
+	    p.point.x = (newMap.getNumGridRows() - target.getX() ); //* resolution;
+	    p.point.y = (target.getY() ) ;//* resolution;
 	    
 	    //cout << p.point.x << ","<< p.point.y << endl;
 	    
@@ -345,7 +392,7 @@ int main(int argc, char **argv) {
 	    tf::Vector3 goal_pose = tf::Vector3(target.getY(),target.getX(),0.0);
 	    //cout << "1)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
 	    
-	    goal_pose = goal_pose * resolution;
+	    goal_pose = goal_pose ;//* resolution;
 	    //cout << "2)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
 	    
 	    //goal_pose = goal_pose.operator-=(vecImageToMap);
@@ -355,7 +402,9 @@ int main(int argc, char **argv) {
 	    
 	    
 	    move_base_msgs::MoveBaseGoal goal;
-
+	    
+	    /* 
+	    //NOTE: DEBUG IF THE MOVE METHOD DOESN'T MOVE
 	    goal.target_pose.header.frame_id = "map";
 	    goal.target_pose.header.stamp = ros::Time::now();
 	    goal.target_pose.pose.position.x = p.point.x;
@@ -365,39 +414,6 @@ int main(int argc, char **argv) {
 	    goal.target_pose.pose.orientation.w = cos(PI - target.getOrientation()/2);
 	    goal.target_pose.pose.orientation.z = sin(PI - target.getOrientation()/2);
 	    
-	    /*NOTE: PRINT THE MAP NEAR THE ROBOT
-	    int curX = previous.getX();
-	    int curY = previous.getY();
-	    int minX = curX - 30;
-	    if(minX < 0) minX = 0;
-	    int maxX = curX + 30;
-	    if(maxX > newMap.getNumGridRows()-1) maxX= newMap.getNumGridRows()-1;
-	    int minY = curY - 30;
-	    if(minY < 0) minY = 0;
-	    int maxY = curY + 30;
-	    if(maxY > newMap.getNumGridCols()-1) maxY = newMap.getNumGridCols()-1;
-	    //print portion of the map
-		for(int i = minX; i < maxX; ++i)
-		{
-		    for(int j = minY; j < maxY; ++j)
-		    {
-			if(i == curX && j == curY)
-			{
-			    std::cout << "X ";
-			}
-			else if (i == target.getX()*resolution && j == target.getY()*resolution)
-			{
-			    std::cout << "Y ";
-			}
-			else std::cout << newMap.getGridValue(i, j) << " ";
-		    }
-		    std::cout << std::endl;
-		}
-		std::cout << std::endl;
-	    
-	    */
-	    
-	    
 	    ROS_INFO("Sending goal");
 	    ac.sendGoal(goal);
 	    ac.waitForResult();
@@ -406,10 +422,11 @@ int main(int argc, char **argv) {
 		ROS_INFO("I'm moving...");
 	    else
 		ROS_INFO("The base failed to move");
+	    */
 	    
-	    
-	    //goal.move(goal_pose.getX(),goal_pose.getY(), cos(target.getOrientation()/2), sin(target.getOrientation()/2));
-	   /*
+	    move(p.point.x,p.point.y, cos(PI - target.getOrientation()/2), sin(PI - target.getOrientation()/2));
+	  
+	    /* NOTE: DEBUG WITH RED ARROW
 	    geometry_msgs::PoseStamped goal;
 	    goal.header.frame_id = "map";
 	    goal.header.stamp = ros::Time::now();
@@ -424,10 +441,12 @@ int main(int argc, char **argv) {
 	    frontiers.clear();
 	    candidatePosition.clear();
 	    delete record;
+	    ros::spinOnce();
+	    r.sleep();
 	    }
 	}
     
-	newMap.drawVisitedCells(visitedCell,resolution);
+	newMap.drawVisitedCells(visitedCell,costresolution);
 	newMap.printVisitedCells(history);
 
 
@@ -446,11 +465,17 @@ int main(int argc, char **argv) {
 	}  
 	
 	return 1;
+    }
+	
+	/*
     }else{
 	ROS_ERROR("Failed to call map service");
 	return 0;
-    }
-    
+    }*/
+	
+    cout << "Spinning at the end" << endl;
+    ros::spinOnce();
+    r.sleep();
     }
     
     
@@ -488,13 +513,55 @@ geometry_msgs::PoseStamped getCurrentPose()
     return start_pose;
 }
 
-/*
+void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
+{
+    //cout << "alive" << endl;
+  if(costmapReceived == 0)
+  {
+    std::cout << "CALLBACK FIRST" << std::endl;
+    //costmap_grid = msg.get();
+    costresolution = msg->info.resolution;
+    costwidth = msg->info.width;
+    costheight = msg->info.height;
+    costorigin = msg->info.origin;
+    for(int i = 0; i < msg.get()->data.size(); ++i)
+    {
+      occdata.push_back(msg->data.at(i));
+    }
+    std::cout << "size of occdata " << occdata.size() << " size of message data " << msg->data.size() << std::endl;
+    std::cout << "height" << msg->info.height << " width " << msg->info.width << " resolution " << msg->info.resolution << std::endl;
+    costmapReceived = 1;
+  }
+  
+}
+
+void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg)
+{
+	//NOTE: everything is commented because we don't want update the costmap since the environment is 
+	//assumed static
+
+	//std::cout << "CALLBACK SECOND" << std::endl;
+        
+	/*int index = 0;
+        for(int y=msg->y; y< msg->y+msg->height; y++) {
+                for(int x=msg->x; x< msg->x+msg->width; x++) {
+                        costmap_grid.data[ getIndex(x,y) ] = msg->data[ index++ ];
+                }
+        }*/
+}
+
+int getIndex(int x, int y){
+        int sx = costmap_grid.info.width;
+        return y * sx + x;
+}
+
+
 void move(int x, int y, double orW, double orZ){
     move_base_msgs::MoveBaseGoal goal;
 
     MoveBaseClient ac ("move_base", true);
     //we'll send a goal to the robot to move 1 meter forward
-    goal.target_pose.header.frame_id = "base_link";
+    goal.target_pose.header.frame_id = "map";
     goal.target_pose.header.stamp = ros::Time::now();
 
     goal.target_pose.pose.position.x = x;
@@ -512,4 +579,3 @@ void move(int x, int y, double orW, double orZ){
     else
 	ROS_INFO("The base failed to move");
 }
-}*/

@@ -25,6 +25,8 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
     }
     numCols = width;
     numRows = height;
+    //numGridCols = width;
+    //numGridRows = height;
     //set 1 in the grid cells corrisponding to obstacles according to percentage value
     // contained in data vector
     for(long row = 0; row < height; ++row){
@@ -33,26 +35,31 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
 		//if(map[row*numCols + col] == 0) 
 		
 		if(data.at(row*width + col) > 60) {
+		    map[( height - row)*width + col] = 1;
 		    //grid[(height - row)*width + col] = 1;	
-		    map[( row)*width + col] = 1;	
+		    	
 		    
 		}
 		
 		if(data.at(row*width + col) <20) {
+		    map[(height - row)*width + col] = 0;
 		    //grid[(height - row)*width + col] = 0;
-		    map[(row)*width + col] = 0;
-		}
+		   
+   		}
 		
 		if(data.at(row*width + col) < 0) {
+		    map[(height - row)*width + col] = 1;
 		    //grid[(height - row)*width + col] = 1;
-		    map[(row)*width + col] = 1;
+		    
 		}
 		
 	    }
     }
-  Map::createNewMap();
+  
+ 
   int tmpRes = resolution * 100;
   Map::createGrid(tmpRes);
+  Map::createNewMap();
   
 }
 
@@ -184,9 +191,9 @@ void Map::createGrid(int resolution)
 	    for(long col = 0; col < numCols; ++col)
 	    {
 		//if(map[row*numCols + col] == 0) 
-		if(map[row*numCols + col] == 1) 
+		if(getMapValue(row,col) == 1) 
 		{
-			grid[(long)(numRows-row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
+			grid[(long)(row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
 			
 		}
 	    }
