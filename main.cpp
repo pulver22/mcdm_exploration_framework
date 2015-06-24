@@ -285,7 +285,8 @@ int main(int argc, char **argv) {
 		cout << "-----------------------------------------------------------------"<<endl;
 		exit(0);
 	    }
-
+	    
+	    sensedCells = newSensedCells;
 	}else{
 	    
 	    
@@ -448,7 +449,7 @@ int main(int argc, char **argv) {
 	    goal.pose.orientation.z = sin(target.getOrientation()/2);
 	    moveBasePub.publish<geometry_msgs::PoseStamped>(goal);
 	    */
-	   
+	    sensedCells = newSensedCells;
 	    sleep(2);
 	    frontiers.clear();
 	    candidatePosition.clear();
