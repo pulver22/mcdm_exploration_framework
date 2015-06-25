@@ -13,11 +13,13 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetMap.h>
 #include <costmap_2d/costmap_2d_ros.h>
+#include <algorithm>
 
 
 
 using namespace std;
-using namespace dummy;
+using namespace dummy;bool contains(std::list< Pose >& list, Pose& p);
+void cleanPossibleDestination2(std::list< Pose > &possibleDestinations, Pose& p);
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -162,6 +164,7 @@ int main(int argc, char **argv) {
 	unsigned int microseconds = 5 * 1000 * 1000 ;
 	//cout << "total free cells in the main: " << totalFreeCells << endl;
 	list<Pose> unexploredFrontiers;
+	list<Pose> tabuList;
 	
 	while(sensedCells < precision * totalFreeCells ){
 	    long x = target.getX();
@@ -189,6 +192,8 @@ int main(int argc, char **argv) {
 	    
 	    
 	    if(candidatePosition.size() == 0) {
+		
+		//NOTE: TAKE THIS BRANCH IF THERE ARE NO CANDIDATE POSITION FROM THE ACTUAL ONE
 		
 		cout << "No other candidate position" << endl;
 		cout << "----- BACKTRACKING -----" << endl;
@@ -221,6 +226,7 @@ int main(int argc, char **argv) {
 		sensedCells = newSensedCells;
 	    }else{
 		
+		//NOTE: TAKE THIS BRANCH IF THERE ARE CANDIDATE POSITION FROM THE ACTUAL ONE
 		
 		// need to convert from a <int,int pair> to a Pose with also orientation,laser range and angle
 		list<Pose> frontiers;
@@ -247,70 +253,50 @@ int main(int argc, char **argv) {
 		
 		
 		if(record->size() != 0){
+		    
+		    //NOTE: TAKE THIS BRANCH IF THERE ARE CANDIDATE POSITION THAT SATISFY THE THRESHOLD
+		    
 		    //set the previous pose equal to the actual one(actually represented by target)
 		    previous = target;
-		    std::pair<string,list<Pose>> pair = make_pair(actualPose,frontiers);
-		    graph2.push_back(pair);
 		    std::pair<Pose,double> result = function.selectNewPose(record);
 		    target = result.first;
-		    //if (!target.isEqual(previous)){
+		    if (contains(tabuList,target) == false){
+			
+			//NOTE: TAKE THIS BRANCH IF THE TARGET ISN'T VISITED YET
+			
 			count = count + 1;
 			numConfiguration++;
 			history.push_back(function.getEncodedKey(target,1));
 			cout << "Graph dimension : " << graph2.size() << endl;
-			//cout << record->size() << endl;
-		    /*}else{
-			cout << "[BT]Cell already explored!Come back to previous position";
-			countBT = countBT -2;
-			string targetString = graph2.at(countBT).first;
-			target = record->getPoseFromEncoding(targetString);
-			graph2.pop_back();
-			history.push_back(function.getEncodedKey(target,2));
-			cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
-			count = count + 1;
-		    }*/
-		    
-		    
-		    move_base_msgs::MoveBaseGoal goal;
-		
-		    // send to movebase the correct position to reach
-		    double orientZ = (double)(target.getOrientation()* PI/(2*180));
-		    double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
-		    move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
-		
-		    
-		}else {  
+			tabuList.push_back(target);
+			std::pair<string,list<Pose>> pair = make_pair(actualPose,frontiers);
+			graph2.push_back(pair);
 			
 			
-			if(graph2.size() == 0) break;
+			
+			//NOTE: send a goal to movebase
 			
 			
-			string targetString = graph2.at(graph2.size()-1).first;
-			target = record->getPoseFromEncoding(targetString);
-			graph2.pop_back();
+			/*
+			// NOTE: should be used with resolution different from 1mx1m
+			cout << "Goal in image: " << target.getY() << "," << target.getX() << endl;
+			tf::Vector3 goal_pose = tf::Vector3(target.getY(),target.getX(),0.0);
+			//cout << "1)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
 			
-			/*if(!target.isEqual(previous)){
-			    previous = target;
-			    cout << "[BT]Every frontier doen't satisfy the threshold. Come back to previous position" << endl;
-			    history.push_back(function.getEncodedKey(target,2));
-			    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
-			    count = count + 1;
-			}else {
-			    if(graph2.size() == 0 ) {
-				cout << "No other possibilities to do backtracking on previous positions since there are no more position in the graph" << endl;
-				break;
-			    }
-			    string targetString = graph2.at(graph2.size()-1).first;
-			    target = record->getPoseFromEncoding(targetString);
-			    graph2.pop_back();
-			    previous = target;
-			    cout << "[BT]No significative position reachable. Come back to two position ago" << endl;
-			    history.push_back(function.getEncodedKey(target,2));
-			    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
-			    count = count + 1;
-			}
+			goal_pose = goal_pose ;//* resolution;
+			//cout << "2)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
+			
+			//goal_pose = goal_pose.operator-=(vecImageToMap);
+			//cout << "3)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
+			
+			cout << "Goal in map: " << goal_pose.getX() <<","<< goal_pose.getY() << endl;
 			*/
 			
+			
+			move_base_msgs::MoveBaseGoal goal;
+			double orientZ = (double)(target.getOrientation()* PI/(2*180));
+			double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
+			move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
 			
 			//---------------------------PRINT GOAL POSITION
 			geometry_msgs::PointStamped p;
@@ -334,65 +320,56 @@ int main(int argc, char **argv) {
 			//NOTE: not requested for testing purpose
 			//usleep(microseconds);
 			marker_pub.publish(p);
+			//----------------------------------------------
 			
-			//--------------------------------------
-			cout << "[BT]No significative position reachable. Come back to previous position" << endl;
+		    }else{
+			
+			//NOTE: TAKE THIS BRANCH IF THE TARGET IS ALREASY VISITED
+			
+			cout << "[BT - Tabulist]There are visible cells but the selected one is already explored!Come back to previous position in the graph"<< endl;
+			cleanPossibleDestination2(graph2.at(graph2.size()-1).second,target);
+			string targetString = graph2.at(graph2.size()-1).first;
+			graph2.pop_back();
+			target = record->getPoseFromEncoding(targetString);
 			history.push_back(function.getEncodedKey(target,2));
 			cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 			count = count + 1;
+			cout << "Graph dimension : " << graph2.size() << endl;
+		    }  
+		}else {  
+			//NOTE: TAKE THIS BRANCH IF THERE ARE NO CANDIDATE POSITIONS THAT SATISFY THE THRESHOLD
+			
+			if(graph2.size() == 0) break;
+			
+			
+			string targetString = graph2.at(graph2.size()-1).first;
+			target = record->getPoseFromEncoding(targetString);
+			graph2.pop_back();
+			
+			if(!target.isEqual(previous)){
+			    previous = target;
+			    cout << "[BT]Every frontier doen't satisfy the threshold. Come back to previous position" << endl;
+			    history.push_back(function.getEncodedKey(target,2));
+			    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
+			    count = count + 1;
+			    cout << "Graph dimension : " << graph2.size() << endl;
+			}else {
+			    if(graph2.size() == 0 ) {
+				cout << "No other possibilities to do backtracking on previous positions since there are no more position in the graph" << endl;
+				break;
+			    }
+			    string targetString = graph2.at(graph2.size()-1).first;
+			    target = record->getPoseFromEncoding(targetString);
+			    graph2.pop_back();
+			    previous = target;
+			    cout << "[BT]There are no visible cells so come back to previous position" << endl;
+			    cout << "[BT]Cell already explored!Come back to previous position"<< endl;			    history.push_back(function.getEncodedKey(target,2));
+			    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
+			    count = count + 1;
+			}
+		
 		}
 	
-		/*
-		//---------------------------PRINT GOAL POSITION
-		geometry_msgs::PointStamped p;
-		p.header.frame_id = "map";
-		p.header.stamp = ros::Time::now();
-		//NOTE: as before, Y in map are X in image
-		p.point.x = (newMap.getNumGridRows() - target.getX() ); //* resolution;
-		p.point.y = (target.getY() ) ;//* resolution;
-		
-		//cout << p.point.x << ","<< p.point.y << endl;
-		
-		tf::Vector3 vec =  tf::Vector3(p.point.x,p.point.y,0.0);
-
-		//vec = transform.operator*(vec);
-		
-		p.point.x = vec.getY() ;
-		p.point.y = vec.getX() ;
-		
-		//cout << p.point.x << ","<< p.point.y << endl;
-		
-		//NOTE: not requested for testing purpose
-		//usleep(microseconds);
-		marker_pub.publish(p);
-		
-		//--------------------------------------
-		*/
-		
-		/*
-		// NOTE: should be used with resolution different from 1mx1m
-		cout << "Goal in image: " << target.getY() << "," << target.getX() << endl;
-		tf::Vector3 goal_pose = tf::Vector3(target.getY(),target.getX(),0.0);
-		//cout << "1)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
-		
-		goal_pose = goal_pose ;//* resolution;
-		//cout << "2)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
-		
-		//goal_pose = goal_pose.operator-=(vecImageToMap);
-		//cout << "3)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
-		
-		cout << "Goal in map: " << goal_pose.getX() <<","<< goal_pose.getY() << endl;
-		*/
-		
-		/*
-		move_base_msgs::MoveBaseGoal goal;
-		
-		// send to movebase the correct position to reach
-		double orientZ = (double)(target.getOrientation()* PI/(2*180));
-		double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
-		move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
-		*/
-		
 		sensedCells = newSensedCells;
 		sleep(2);
 		frontiers.clear();
@@ -528,5 +505,36 @@ void move(int x, int y, double orZ, double orW){
 	ROS_INFO("I'm moving...");
     else
 	ROS_INFO("The base failed to move");
+}
+
+bool contains(std::list<Pose>& list, Pose& p){
+    bool result = false;
+    MCDMFunction function;
+   
+    std::list<Pose>::iterator findIter = std::find(list.begin(), list.end(), p);
+    if (findIter != list.end()){
+	//cout << "Found it: "<< function.getEncodedKey(p,0) <<endl;
+	result = true;
+    }
+
+    return result;
+}
+
+void cleanPossibleDestination2(std::list< Pose >& possibleDestinations, Pose& p){
+    MCDMFunction function;
+    //cout<<"I remove "<< function.getEncodedKey(p,0) << endl;
+    //cout << possibleDestinations->size() << endl;
+    
+    
+    
+    
+    std::list<Pose>::iterator findIter = std::find(possibleDestinations.begin(), possibleDestinations.end(), p);
+    if (findIter != possibleDestinations.end()){
+	//cout << function.getEncodedKey(*findIter,0) << endl;
+	possibleDestinations.erase(findIter);
+    } else cout<< "not found" << endl;
+    
+   
+    
 }
 

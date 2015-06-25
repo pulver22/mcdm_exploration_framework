@@ -72,6 +72,14 @@ void Pose::setInformationGain(int value)
   Pose::informationGain = value;
 }
 
+bool Pose::operator==(const Pose& p)
+{
+    Pose p2 = p;
+    //std::cout <<aX<<" "<<aY<<" "<<orientation<<" "<<FOV<<" "<<range<<std::endl;
+    //std::cout<<p2.getX()<<" "<<p2.getY()<<" "<<p2.getOrientation()<<" "<<p2.getFOV()<<" "<<p2.getRange()<<std::endl;
+    //std::cout<< "compare " << (aX == p2.getX()) <<" "<< (aY == p2.getY()) <<" "<< (orientation == p2.getOrientation()) <<" "<< (FOV == p2.getFOV()) <<" "<< (range == p2.getRange() )<<std::endl;
+    return (aX == p2.getX()) && (aY == p2.getY()) && (orientation == p2.getOrientation()) && ((int)FOV == (int)(p2.getFOV())) && (range == p2.getRange());
+}
 
 
 

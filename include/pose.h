@@ -19,6 +19,7 @@ public:
   bool isEqual(Pose &p);
   int getInformationGain();
   void setInformationGain(int value);
+  bool operator==(const Pose& p);
 
   
   
