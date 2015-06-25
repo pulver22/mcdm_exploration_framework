@@ -1,10 +1,8 @@
 #include <iostream>
 #include <iterator>
 #include "map.h"
-#include "ray.h"
 #include "newray.h"
 #include "mcdmfunction.h"
-#include "graphpose.h"
 #include "Criteria/traveldistancecriterion.h"
 # define PI           3.14159265358979323846  /* pi */
 #include <unistd.h>
@@ -39,14 +37,14 @@ int getIndex(int x, int y);
 
 
 
-
+// Input :  15 180 0.95 0.12
+// range centralAngle precision threshold
 int main(int argc, char **argv) {
     ros::init(argc, argv, "mcdm_exploration_framework_node");
     ros::NodeHandle nh;
     ros::ServiceClient map_service_client_ = nh.serviceClient<nav_msgs::GetMap>("static_map");
     nav_msgs::GetMap srv_map;
     ros::Publisher grid_pub = nh.advertise<nav_msgs::OccupancyGrid>("mcdm_grid", 1000);
-    MoveBaseGoal goal;
     ros::Publisher moveBasePub = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1000);
     MoveBaseClient ac("move_base", true);
     ros::Subscriber costmap_sub;
@@ -55,8 +53,7 @@ int main(int argc, char **argv) {
     while(!ac.waitForServer(ros::Duration(5.0))){
     ROS_INFO("Waiting for the move_base action server to come up");
     }
-    // Input :  15 180 0.95 0.12
-    // range centralAngle precision threshold
+    
     
     ros::Rate r(10);
     
@@ -74,23 +71,7 @@ int main(int argc, char **argv) {
 
 	if(costmapReceived == 1)
 	{
-	/*
-	ROS_INFO("Map service called successfully");
-	const nav_msgs::OccupancyGrid& map (srv_map.response.map);
-	float resolution = map.info.resolution;
-	int width = map.info.width;
-	int height = map.info.height;
-	geometry_msgs::Pose origin = map.info.origin;
-	tf::Transform transform;
-	transform.setOrigin( tf::Vector3(origin.position.x, origin.position.y, origin.position.z) );
-	cout << origin.position.x << "," << origin.position.y << endl;
-	transform.setRotation(tf::Quaternion(origin.orientation.x,origin.orientation.y,origin.orientation.z,origin.orientation.w));
 	
-	vector<int> data;
-	for(int i=0; i < map.data.size(); i++){
-	    data.push_back(map.data.at(i));
-	}
-	*/
 	Map newMap = Map(costresolution,costwidth,costheight,occdata,costorigin);
 	ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
 	
@@ -108,22 +89,14 @@ int main(int argc, char **argv) {
 	double initY = start_pose.pose.position.y;
 	tf::Quaternion quat = tf::Quaternion(start_pose.pose.orientation.x,start_pose.pose.orientation.y,start_pose.pose.orientation.z,start_pose.pose.orientation.w);
 	
-	cout <<start_pose.pose.orientation.x <<","<< start_pose.pose.orientation.y <<","<< start_pose.pose.orientation.z<< ","<< start_pose.pose.orientation.w <<endl; 
+	//cout <<start_pose.pose.orientation.x <<","<< start_pose.pose.orientation.y <<","<< start_pose.pose.orientation.z<< ","<< start_pose.pose.orientation.w <<endl; 
 	
-	tfScalar angle = 2 * acos(quat[3]);
+	tfScalar angle = 2* atan2(quat[2],quat[3]);
+	
 	cout << "Initial position in the map frame:" << initX << "," << initY <<" with orientation :" << angle << endl;
 	
-	int initOrientation = (int)(angle * 180/PI);
+	int initOrientation = angle * 180 /PI;
 	cout << "Orientation after casting: " << initOrientation << endl;
-	
-	
-	/*
-	// NOTE: TO ADJUST ORIENTATION ACCORDING TO A MAP
-	if(initOrientation <= 45 || initOrientation > 315) initOrientation = 0;
-	if(initOrientation > 45 && initOrientation <= 135) initOrientation = 90;
-	if(initOrientation >135 && initOrientation <= 225) initOrientation = 180;
-	if(initOrientation > 225 && initOrientation <= 315) initOrientation = 270;
-	*/
 	
 	double initFov = atoi(argv[1] );
 	initFov = initFov * PI /180;
@@ -132,11 +105,14 @@ int main(int argc, char **argv) {
 	double threshold = atof(argv[4]);
 	
 	
+	//ATTENTION: should be adapted for cells different from 1mx1m
 	//convert from map frame to image
 	tf::Vector3 pose = tf::Vector3(initX,initY,0.0);
 	//pose = tranMapToImage.operator*(pose);
 	//pose = pose /resolution;
 	//pose = transform.operator*(pose);
+	
+	
 	
 	//NOTE: Y in map are X in image
 	Pose initialPose = Pose(newMap.getNumGridRows() - (long)pose.getY(), (long)pose.getX(),initOrientation,initRange,initFov);
@@ -170,7 +146,6 @@ int main(int argc, char **argv) {
 
 	
 	long numConfiguration =0;
-	//testing
 	vector<pair<string,list<Pose>>> graph2;
 	NewRay ray;
 	MCDMFunction function;
@@ -187,275 +162,244 @@ int main(int argc, char **argv) {
 	unsigned int microseconds = 5 * 1000 * 1000 ;
 	//cout << "total free cells in the main: " << totalFreeCells << endl;
 	list<Pose> unexploredFrontiers;
+	
 	while(sensedCells < precision * totalFreeCells ){
-	long x = target.getX();
-	long y = target.getY();
-	int orientation = target.getOrientation();
-	int range = target.getRange();
-	double FOV = target.getFOV();
-	string actualPose = function.getEncodedKey(target,0);
-	newMap.setCurrentPose(target);
-	travelledDistance = travelledDistance + target.getDistance(previous);
-	string encoding = to_string(target.getX()) + to_string(target.getY());
-	visitedCell.emplace(encoding,0);
-	
-	
-	cout << "-----------------------------------------------------------------"<<endl;
-	cout << "Round : " << count<< endl;
-	newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
-	cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
+	    long x = target.getX();
+	    long y = target.getY();
+	    int orientation = target.getOrientation();
+	    int range = target.getRange();
+	    double FOV = target.getFOV();
+	    string actualPose = function.getEncodedKey(target,0);
+	    newMap.setCurrentPose(target);
+	    travelledDistance = travelledDistance + target.getDistance(previous);
+	    string encoding = to_string(target.getX()) + to_string(target.getY());
+	    visitedCell.emplace(encoding,0);
+	    
+	    
+	    cout << "-----------------------------------------------------------------"<<endl;
+	    cout << "Round : " << count<< endl;
+	    newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
+	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
 
-	ray.performSensingOperation(newMap,x,y,orientation,FOV,range);
-	ray.findCandidatePositions(newMap,x,y,orientation,FOV,range);
-	vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
-	ray.emptyCandidatePositions();
-	
-	/*
-	//NOTE: PRINT THE MAP NEAR THE ROBOT-------------
-	int curX = previous.getX();
-	int curY = previous.getY();
-	int minX = curX - 30;
-	if(minX < 0) minX = 0;
-	int maxX = curX + 30;
-	if(maxX > newMap.getNumGridRows()-1) maxX= newMap.getNumGridRows()-1;
-	int minY = curY - 30;
-	if(minY < 0) minY = 0;
-	int maxY = curY + 30;
-	if(maxY > newMap.getNumGridCols()-1) maxY = newMap.getNumGridCols()-1;
-	//print portion of the map
-	    for(int i = minX; i < maxX; ++i)
-	    {
-		for(int j = minY; j < maxY; ++j)
-		{
-		    if(i == curX && j == curY)
-		    {
-			std::cout << "X ";
-		    }
-		    else if (i == target.getX() && j == target.getY())
-		    {
-			std::cout << "Y ";
-		    }
-		    else std::cout << newMap.getGridValue(i, j) << " ";
-		}
-		std::cout << std::endl;
-	    }
-	    std::cout << std::endl;
-	//---------------------------------------
-	*/
-	
-	//-------------------
-	//STAMP ACTUAL ORIENTATION IN MAP FRAME
-	geometry_msgs::PoseStamped current_pose;
-	current_pose = getCurrentPose();
-	tfScalar angle2 = 2 * acos(current_pose.pose.orientation.w);
-	
-	int currentOrientation = (int)(angle2 * 180 / PI);
-	cout << "Orientation after casting of current pose: " << currentOrientation << endl;
-	//-----------------------
-	
-	
-	if(candidatePosition.size() == 0) {
-	    
-	    cout << "No other candidate position" << endl;
-	    cout << "----- BACKTRACKING -----" << endl;
+	    ray.performSensingOperation(newMap,x,y,orientation,FOV,range);
+	    ray.findCandidatePositions(newMap,x,y,orientation,FOV,range);
+	    vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
+	    ray.emptyCandidatePositions();
 	    
 	    
 	    
-	    if (graph2.size() >1){
+	    if(candidatePosition.size() == 0) {
+		
+		cout << "No other candidate position" << endl;
+		cout << "----- BACKTRACKING -----" << endl;
 		
 		
-		// OLD METHOD
-		graph2.pop_back();
-		string targetString = graph2.at(graph2.size()-1).first;
-		graph2.pop_back();
-		EvaluationRecords record;
-		target = record.getPoseFromEncoding(targetString);
-		history.push_back(function.getEncodedKey(target,2));
-		cout << "[BT]No significative position reachable. Come back to previous position" << endl;
-		cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
-		count = count + 1;
-		cout << "Graph dimension : " << graph2.size() << endl;
 		
-		
-	    } else {
-		cout << "-----------------------------------------------------------------"<<endl;
-		cout << "I came back to the original position since i don't have any other candidate position"<< endl;
-		cout << "Total cell visited :" << numConfiguration <<endl;
-		cout << "FINAL: Map not completely explored!" << endl;
-		cout << "-----------------------------------------------------------------"<<endl;
-		exit(0);
-	    }
-	    
-	    sensedCells = newSensedCells;
-	}else{
-	    
-	    
-	    // need to convert from a <int,int pair> to a Pose with also orientation,laser range and angle
-	    list<Pose> frontiers;
-	    vector<pair<long,long> >::iterator it =candidatePosition.begin();
-	    for(it; it != candidatePosition.end(); it++){
-		Pose p1 = Pose((*it).first,(*it).second,0 ,range,FOV);
-		Pose p2 = Pose((*it).first,(*it).second,180,range,FOV);
-		Pose p3 = Pose((*it).first,(*it).second,90,range,FOV);
-		Pose p4 = Pose((*it).first,(*it).second,270,range,FOV);
-		frontiers.push_back(p1);
-		frontiers.push_back(p2);
-		frontiers.push_back(p3);
-		frontiers.push_back(p4);
-	    }
-	    
-	    unexploredFrontiers = frontiers;
-	    
-	    //cout << "Graph dimension : " << graph2.size() << endl;
-	    //cout << "Candidate position: " << candidatePosition.size() << endl;
-	    cout <<"Frontiers: "<<  frontiers.size() << endl;
-	    EvaluationRecords *record = function.evaluateFrontiers(frontiers,newMap,threshold);
-	    //cout << "Record: " << record->size() << endl;
-	    //cout << "Evaluation Record obtained" << endl;
-	    
-	    
-	    if(record->size() != 0){
-		//set the previous pose equal to the actual one(actually represented by target)
-		previous = target;
-		std::pair<string,list<Pose>> pair = make_pair(actualPose,frontiers);
-		graph2.push_back(pair);
-		std::pair<Pose,double> result = function.selectNewPose(record);
-		target = result.first;
-		if (!target.isEqual(previous)){
-		    count = count + 1;
-		    countBT = graph2.size();
-		    numConfiguration++;
-		    history.push_back(function.getEncodedKey(target,1));
-		    cout << "Graph dimension : " << graph2.size() << endl;
-		    //cout << record->size() << endl;
-		}else{
-		    cout << "[BT]Cell already explored!Come back to previous position";
-		    countBT = countBT -2;
-		    string targetString = graph2.at(countBT).first;
-		    target = record->getPoseFromEncoding(targetString);
+		if (graph2.size() > 0){
+		    
+		    
+		    string targetString = graph2.at(graph2.size()-1).first;
 		    graph2.pop_back();
+		    EvaluationRecords record;
+		    target = record.getPoseFromEncoding(targetString);
 		    history.push_back(function.getEncodedKey(target,2));
+		    cout << "[BT]No significative position reachable. Come back to previous position" << endl;
 		    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 		    count = count + 1;
+		    cout << "Graph dimension : " << graph2.size() << endl;
+		    
+		    
+		} else {
+		    cout << "-----------------------------------------------------------------"<<endl;
+		    cout << "I came back to the original position since i don't have any other candidate position"<< endl;
+		    cout << "Total cell visited :" << numConfiguration <<endl;
+		    cout << "FINAL: Map not completely explored!" << endl;
+		    cout << "-----------------------------------------------------------------"<<endl;
+		    exit(0);
 		}
-	    }else {  
-		    
-		    //OLD METHOD
-		    
-		    if(graph2.size() == 0) break;
-		    
-		   
-		    string targetString = graph2.at(graph2.size()-1).first;
-		    target = record->getPoseFromEncoding(targetString);
-		    graph2.pop_back();
-		    if(!target.isEqual(previous)){
-			previous = target;
-			cout << "[BT]No significative position reachable. Come back to previous position" << endl;
+		
+		sensedCells = newSensedCells;
+	    }else{
+		
+		
+		// need to convert from a <int,int pair> to a Pose with also orientation,laser range and angle
+		list<Pose> frontiers;
+		vector<pair<long,long> >::iterator it =candidatePosition.begin();
+		for(it; it != candidatePosition.end(); it++){
+		    Pose p1 = Pose((*it).first,(*it).second,0 ,range,FOV);
+		    Pose p2 = Pose((*it).first,(*it).second,180,range,FOV);
+		    Pose p3 = Pose((*it).first,(*it).second,90,range,FOV);
+		    Pose p4 = Pose((*it).first,(*it).second,270,range,FOV);
+		    frontiers.push_back(p1);
+		    frontiers.push_back(p2);
+		    frontiers.push_back(p3);
+		    frontiers.push_back(p4);
+		}
+		
+		unexploredFrontiers = frontiers;
+		
+		//cout << "Graph dimension : " << graph2.size() << endl;
+		//cout << "Candidate position: " << candidatePosition.size() << endl;
+		//cout <<"Frontiers: "<<  frontiers.size() << endl;
+		EvaluationRecords *record = function.evaluateFrontiers(frontiers,newMap,threshold);
+		//cout << "Record: " << record->size() << endl;
+		//cout << "Evaluation Record obtained" << endl;
+		
+		
+		if(record->size() != 0){
+		    //set the previous pose equal to the actual one(actually represented by target)
+		    previous = target;
+		    std::pair<string,list<Pose>> pair = make_pair(actualPose,frontiers);
+		    graph2.push_back(pair);
+		    std::pair<Pose,double> result = function.selectNewPose(record);
+		    target = result.first;
+		    //if (!target.isEqual(previous)){
+			count = count + 1;
+			numConfiguration++;
+			history.push_back(function.getEncodedKey(target,1));
+			cout << "Graph dimension : " << graph2.size() << endl;
+			//cout << record->size() << endl;
+		    /*}else{
+			cout << "[BT]Cell already explored!Come back to previous position";
+			countBT = countBT -2;
+			string targetString = graph2.at(countBT).first;
+			target = record->getPoseFromEncoding(targetString);
+			graph2.pop_back();
 			history.push_back(function.getEncodedKey(target,2));
 			cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 			count = count + 1;
-		    }else {
-			if(graph2.size() == 0 ) {
-			    cout << "No other possibilities to do backtracking on previous positions" << endl;
-			    break;
-			}
+		    }*/
+		    
+		    
+		    move_base_msgs::MoveBaseGoal goal;
+		
+		    // send to movebase the correct position to reach
+		    double orientZ = (double)(target.getOrientation()* PI/(2*180));
+		    double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
+		    move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
+		
+		    
+		}else {  
+			
+			
+			if(graph2.size() == 0) break;
+			
+			
 			string targetString = graph2.at(graph2.size()-1).first;
 			target = record->getPoseFromEncoding(targetString);
 			graph2.pop_back();
-			previous = target;
+			
+			/*if(!target.isEqual(previous)){
+			    previous = target;
+			    cout << "[BT]Every frontier doen't satisfy the threshold. Come back to previous position" << endl;
+			    history.push_back(function.getEncodedKey(target,2));
+			    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
+			    count = count + 1;
+			}else {
+			    if(graph2.size() == 0 ) {
+				cout << "No other possibilities to do backtracking on previous positions since there are no more position in the graph" << endl;
+				break;
+			    }
+			    string targetString = graph2.at(graph2.size()-1).first;
+			    target = record->getPoseFromEncoding(targetString);
+			    graph2.pop_back();
+			    previous = target;
+			    cout << "[BT]No significative position reachable. Come back to two position ago" << endl;
+			    history.push_back(function.getEncodedKey(target,2));
+			    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
+			    count = count + 1;
+			}
+			*/
+			
+			
+			//---------------------------PRINT GOAL POSITION
+			geometry_msgs::PointStamped p;
+			p.header.frame_id = "map";
+			p.header.stamp = ros::Time::now();
+			//NOTE: as before, Y in map are X in image
+			p.point.x = (newMap.getNumGridRows() - target.getX() ); //* resolution;
+			p.point.y = (target.getY() ) ;//* resolution;
+			
+			//cout << p.point.x << ","<< p.point.y << endl;
+			
+			tf::Vector3 vec =  tf::Vector3(p.point.x,p.point.y,0.0);
+
+			//vec = transform.operator*(vec);
+			
+			p.point.x = vec.getY() ;
+			p.point.y = vec.getX() ;
+			
+			//cout << p.point.x << ","<< p.point.y << endl;
+			
+			//NOTE: not requested for testing purpose
+			//usleep(microseconds);
+			marker_pub.publish(p);
+			
+			//--------------------------------------
 			cout << "[BT]No significative position reachable. Come back to previous position" << endl;
 			history.push_back(function.getEncodedKey(target,2));
 			cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 			count = count + 1;
-		    }
-		    
-	    }
-    
-	    sensedCells = newSensedCells;
-	    
-	    
-	    //---------------------------PRINT GOAL POSITION
-	    geometry_msgs::PointStamped p;
-	    p.header.frame_id = "map";
-	    p.header.stamp = ros::Time::now();
-	    //NOTE: as before, Y in map are X in image
-	    p.point.x = (newMap.getNumGridRows() - target.getX() ); //* resolution;
-	    p.point.y = (target.getY() ) ;//* resolution;
-	    
-	    //cout << p.point.x << ","<< p.point.y << endl;
-	    
-	    tf::Vector3 vec =  tf::Vector3(p.point.x,p.point.y,0.0);
+		}
+	
+		/*
+		//---------------------------PRINT GOAL POSITION
+		geometry_msgs::PointStamped p;
+		p.header.frame_id = "map";
+		p.header.stamp = ros::Time::now();
+		//NOTE: as before, Y in map are X in image
+		p.point.x = (newMap.getNumGridRows() - target.getX() ); //* resolution;
+		p.point.y = (target.getY() ) ;//* resolution;
+		
+		//cout << p.point.x << ","<< p.point.y << endl;
+		
+		tf::Vector3 vec =  tf::Vector3(p.point.x,p.point.y,0.0);
 
-	    //vec = transform.operator*(vec);
-	    
-	    p.point.x = vec.getY() ;
-	    p.point.y = vec.getX() ;
-	    
-	    //cout << p.point.x << ","<< p.point.y << endl;
-	    
-	    //NOTE: not requested for testing purpose
-	    //usleep(microseconds);
-	    marker_pub.publish(p);
-	    
-	    //--------------------------------------
-	    
-	    
-	    cout << "Goal in image: " << target.getY() << "," << target.getX() << endl;
-	    tf::Vector3 goal_pose = tf::Vector3(target.getY(),target.getX(),0.0);
-	    //cout << "1)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
-	    
-	    goal_pose = goal_pose ;//* resolution;
-	    //cout << "2)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
-	    
-	    //goal_pose = goal_pose.operator-=(vecImageToMap);
-	    //cout << "3)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
-	    
-	    cout << "Goal in map: " << goal_pose.getX() <<","<< goal_pose.getY() << endl;
-	    
-	    
-	    move_base_msgs::MoveBaseGoal goal;
-	    
-	    /* 
-	    //NOTE: DEBUG IF THE MOVE METHOD DOESN'T MOVE
-	    goal.target_pose.header.frame_id = "map";
-	    goal.target_pose.header.stamp = ros::Time::now();
-	    goal.target_pose.pose.position.x = p.point.x;
-	    goal.target_pose.pose.position.y = p.point.y;
-	    //goal.target_pose.pose.position.x = goal_pose.getX();
-	    //goal.target_pose.pose.position.y = goal_pose.getY();
-	    goal.target_pose.pose.orientation.w = cos(PI - target.getOrientation()/2);
-	    goal.target_pose.pose.orientation.z = sin(PI - target.getOrientation()/2);
-	    
-	    ROS_INFO("Sending goal");
-	    ac.sendGoal(goal);
-	    ac.waitForResult();
-
-	    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-		ROS_INFO("I'm moving...");
-	    else
-		ROS_INFO("The base failed to move");
-	    */
-	    double orientZ = (double)(target.getOrientation()* PI/(2*180));
-	    double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
-	    move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
-	  
-	    /* NOTE: DEBUG WITH RED ARROW
-	    geometry_msgs::PoseStamped goal;
-	    goal.header.frame_id = "map";
-	    goal.header.stamp = ros::Time::now();
-	    goal.pose.position.x = goal_pose.getX();
-	    goal.pose.position.y = goal_pose.getY();
-	    goal.pose.orientation.w = cos(target.getOrientation()/2);
-	    goal.pose.orientation.z = sin(target.getOrientation()/2);
-	    moveBasePub.publish<geometry_msgs::PoseStamped>(goal);
-	    */
-	    sensedCells = newSensedCells;
-	    sleep(2);
-	    frontiers.clear();
-	    candidatePosition.clear();
-	    delete record;
-	    ros::spinOnce();
-	    r.sleep();
+		//vec = transform.operator*(vec);
+		
+		p.point.x = vec.getY() ;
+		p.point.y = vec.getX() ;
+		
+		//cout << p.point.x << ","<< p.point.y << endl;
+		
+		//NOTE: not requested for testing purpose
+		//usleep(microseconds);
+		marker_pub.publish(p);
+		
+		//--------------------------------------
+		*/
+		
+		/*
+		// NOTE: should be used with resolution different from 1mx1m
+		cout << "Goal in image: " << target.getY() << "," << target.getX() << endl;
+		tf::Vector3 goal_pose = tf::Vector3(target.getY(),target.getX(),0.0);
+		//cout << "1)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
+		
+		goal_pose = goal_pose ;//* resolution;
+		//cout << "2)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
+		
+		//goal_pose = goal_pose.operator-=(vecImageToMap);
+		//cout << "3)" <<goal_pose.getX() << "," << goal_pose.getY() << endl;
+		
+		cout << "Goal in map: " << goal_pose.getX() <<","<< goal_pose.getY() << endl;
+		*/
+		
+		/*
+		move_base_msgs::MoveBaseGoal goal;
+		
+		// send to movebase the correct position to reach
+		double orientZ = (double)(target.getOrientation()* PI/(2*180));
+		double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
+		move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
+		*/
+		
+		sensedCells = newSensedCells;
+		sleep(2);
+		frontiers.clear();
+		candidatePosition.clear();
+		delete record;
+		ros::spinOnce();
+		r.sleep();
 	    }
 	}
     
@@ -463,7 +407,7 @@ int main(int argc, char **argv) {
 	newMap.printVisitedCells(history);
 
 
-	 if (graph2.size() != 0 && sensedCells >= precision * totalFreeCells ){
+	 if (sensedCells >= precision * totalFreeCells ){
 	    cout << "-----------------------------------------------------------------"<<endl;
 	    cout << "Total cell visited :" << numConfiguration <<endl;
 	    cout << "Total travelled distance (cells): " << travelledDistance << endl;
@@ -478,11 +422,6 @@ int main(int argc, char **argv) {
 	return 1;
     }
 	
-	/*
-    }else{
-	ROS_ERROR("Failed to call map service");
-	return 0;
-    }*/
 	
     cout << "Spinning at the end" << endl;
     ros::spinOnce();

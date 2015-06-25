@@ -2,10 +2,8 @@
 #include <iterator>
 #include <algorithm>
 #include "map.h"
-#include "ray.h"
 #include "newray.h"
 #include "mcdmfunction.h"
-#include "graphpose.h"
 #include "Criteria/traveldistancecriterion.h"
 # define PI           3.14159265358979323846  /* pi */
 #include <unistd.h>

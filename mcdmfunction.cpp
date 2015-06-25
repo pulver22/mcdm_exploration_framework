@@ -86,7 +86,7 @@ double MCDMFunction::evaluateFrontier( Pose& p,  dummy::Map &map)
 
 
 // Scan a list of candidate positions,then apply the choquet fuzzy algorithm
-EvaluationRecords* MCDMFunction::evaluateFrontiers( std::list< Pose >& frontiers,  Map& map,double threshold)
+EvaluationRecords* MCDMFunction::evaluateFrontiers(const std::list< Pose >& frontiers,  Map& map,double threshold)
 {         
     //myMutex.lock();
    
@@ -117,7 +117,7 @@ EvaluationRecords* MCDMFunction::evaluateFrontiers( std::list< Pose >& frontiers
     //ldbg << "number of active criteria: "<<activeCriteria->size() << endl;
   
     //Evaluate the frontiers
-    list<Pose>::iterator it2 ;
+    list<Pose>::const_iterator it2 ;
     for (it2 = frontiers.begin(); it2 != frontiers.end(); it2++){
 	Pose f = *it2;
 	double value = 0.0;
@@ -136,14 +136,11 @@ EvaluationRecords* MCDMFunction::evaluateFrontiers( std::list< Pose >& frontiers
     
     
     // analyze every single frontier f, and add in the evaluationRecords <frontier, evaluation>
-    for(list<Pose>::iterator i=frontiers.begin(); i!=frontiers.end(); i++){
-	
+    for(list<Pose>::const_iterator i=frontiers.begin(); i!=frontiers.end(); i++){
+	//cout <<"---------------------NEW FRONTIER -------------------"<<endl;
 	Pose f = *i;
-	// order criteria depending on the considered frontier
-	//qsort(&activeCriteria,activeCriteria.size(),sizeof(Criterion),CriterionComparator(f));
 	
-	//ATTENTION: doesn't work
-	//NOTE: maybe work
+	// order criteria depending on the considered frontier
 	sort(activeCriteria.begin(),activeCriteria.end(),CriterionComparator(f));
 	/*
 	cout << "criteria ordered: " << endl;
@@ -155,37 +152,74 @@ EvaluationRecords* MCDMFunction::evaluateFrontiers( std::list< Pose >& frontiers
 	//apply the choquet integral
 	Criterion *lastCrit = NULL;
 	double finalValue = 0.0;
-	for(vector<Criterion *>::iterator i = activeCriteria.begin(); i != activeCriteria.end(); i++){
+	double c1 = 0.0,c2 = 0.0,c3 = 0.0,e1 = 0.0,e2 = 0.0,e3 = 0.0;
+	for(vector<Criterion *>::iterator k = activeCriteria.begin(); k != activeCriteria.end(); k++){
+	    //cout << "------------------New criterio observed------------- " << endl;
 	    Criterion *c = NULL ;
 	    double weight = 0.0;
 	    //Get the list of criterion whose evaluation is >= than the one's considered
 	    list<string> names;
-	   for(vector<Criterion *>::iterator j = i+1; j != activeCriteria.end(); j++){
+	    // c = *k;
+	    // names.push_back(c->getName());
+	    
+	    for(vector<Criterion *>::iterator j = k; j != activeCriteria.end(); j++){
 	       //CHECK IF THE ITERATOR RETURN THE COUPLE <STRING,CRITERION>
 	       Criterion *next = (*j);
 	       names.push_back(next->getName());
-	   }
-	    weight = matrix->getWeight(names);
-	
+	       //cout << "alive" << endl;
+	    }
+	    //cout << "alive 2 "<< endl;
+	    if(k == activeCriteria.begin()){
+		weight = 1;
+	    }else{
+		weight = matrix->getWeight(names);
+	    }
+	    //cout << "alive 3" << endl;
+	    
+	    /*
+	    for (list<string>::iterator i = names.begin(); i != names.end(); i++){
+		cout << *i << "," ;
+	    }
+	    cout << weight << endl;*/
+	    
 //               lprint << "#"<<names << " - w = " << weight << " - ";
 //               lprint << names <<" with weight "<<weight<<endl;
-	    if(i==activeCriteria.begin()){
-		c = (*i);
+	    if(k==activeCriteria.begin()){
+		c = (*k);
 		finalValue += c->getEvaluation(f) * weight;
+		//c1 = weight;
+		//e1 = c->getEvaluation(f);
+		//cout <<"----------------"<<endl;
+		//cout << c->getName() << "," << c->getWeight() <<","<< c->getEvaluation(f) << endl;
+		//cout << c1 << ","<< e1 << endl;
+		//if ((c->getName() =="informationGain") && (c->getEvaluation(f) < 0.3)){ finalValue = finalValue * 0.5;}
 //                         lprint << "#crit "<<c->getName()<<" - eval = "<<c->getEvaluation(f) << endl;
 	    } else {
-		c = (*i);
+		c = (*k);
 		double tmpValue = c->getEvaluation(f)-lastCrit->getEvaluation(f);
 //                         lprint << "#crit "<<c->getName()<<" - eval = "<<c->getEvaluation(f) << endl;
 		finalValue += tmpValue*weight;
+		//cout << c->getName() << "," << c->getWeight() <<","<< c->getEvaluation(f) << endl;
+		/*
+		if (k == activeCriteria.end()){
+		    c3 = weight;
+		    e3 = c->getEvaluation(f);
+		}else {
+		    c2 = weight;
+		    e2 = c->getEvaluation(f);
+		}*/
+		//cout << tmpValue <<"," << weight<<endl;
+		
+		
 	    }
 	    lastCrit = c;
 	    //delete c;
 	}
-	
+
 	//cout <<"X: "<< f.getX() <<"; Y : " <<f.getY()<<", Orientation :"<<f.getOrientation() <<", Evaluation : "<<finalValue << endl;
 	if(finalValue > threshold){
 	    toRet->putEvaluation(f, finalValue);
+	    //cout << this->getEncodedKey(f,0) << " : " << finalValue << " : "<< c1 << "," << e1 <<","<< c2 << "," << e2 <<","<< c3 << "," << e3 << endl;
 	}
 	//delete lastCrit;
     }

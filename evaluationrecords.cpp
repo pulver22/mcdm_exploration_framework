@@ -1,6 +1,5 @@
 #include "evaluationrecords.h"
 #include <functional>
-#include "graphpose.h"
 #include <sstream>
 #include <iostream>
 
