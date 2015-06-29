@@ -73,8 +73,23 @@ int main(int argc, char **argv) {
 
 	if(costmapReceived == 1)
 	{
-	cout << "alive" << endl;
-	Map newMap = Map(costresolution,costwidth,costheight,occdata,costorigin);
+	double initFov = atoi(argv[1] );
+	initFov = initFov * PI /180;
+	int initRange = atoi(argv[2]);
+	double precision = atof(argv[3]);
+	double threshold = atof(argv[4]);
+	
+	/* resolution = 0 -> full resolution 
+	 * resolution = 1 -> 1mx1m
+	 * resolution = X -> X%(full resolution)
+	 */
+	double resolution = atof(argv[5]);
+	
+	if(resolution == 1){
+	    resolution = costresolution;
+	}
+	
+	Map newMap = Map(resolution,costwidth,costheight,occdata,costorigin);
 	ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
 	
     
@@ -100,28 +115,25 @@ int main(int argc, char **argv) {
 	int initOrientation = angle * 180 /PI;
 	cout << "Orientation after casting: " << initOrientation << endl;
 	
-	double initFov = atoi(argv[1] );
-	initFov = initFov * PI /180;
-	int initRange = atoi(argv[2]);
-	double precision = atof(argv[3]);
-	double threshold = atof(argv[4]);
-	
 	
 	//ATTENTION: should be adapted for cells different from 1mx1m
 	//convert from map frame to image
 	tf::Vector3 pose = tf::Vector3(initX,initY,0.0);
 	//pose = tranMapToImage.operator*(pose);
-	pose = pose /costresolution;
+	if(resolution == 0){
+	    pose = pose / costresolution;
+	}
 	//pose = transform.operator*(pose);
 	
-	
+	cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << newMap.getNumGridRows() - (long)pose.getY() << endl;
+
 	
 	//NOTE: Y in map are X in image
 	Pose initialPose = Pose(newMap.getNumGridRows() - (long)pose.getY(), (long)pose.getX(),initOrientation,initRange,initFov);
 	Pose target = initialPose;
 	Pose previous = initialPose;
 	
-	cout << "Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
+	cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
 	
 	
 	
@@ -296,8 +308,19 @@ int main(int argc, char **argv) {
 			p.header.frame_id = "map";
 			p.header.stamp = ros::Time::now();
 			//NOTE: as before, Y in map are X in image
-			p.point.x = (newMap.getNumGridRows() - target.getX() )* costresolution;
-			p.point.y = (target.getY() ) * costresolution;
+			
+			if(resolution == costresolution){
+			    //NOTE: 1mx1m
+			    p.point.x = (newMap.getNumGridRows() - target.getX() );//* costresolution;
+			    p.point.y = (target.getY() );// * costresolution;
+			   
+			}
+			if(resolution == 0){
+			    //NOTE: full resolution
+			    p.point.x = (newMap.getNumGridRows() - target.getX() ) * costresolution;
+			    p.point.y = (target.getY() ) * costresolution;
+			    
+			}
 			
 			//cout << p.point.x << ","<< p.point.y << endl;
 			
@@ -308,7 +331,7 @@ int main(int argc, char **argv) {
 			p.point.x = vec.getY() ;
 			p.point.y = vec.getX() ;
 			
-			cout << "New goal in map: X = "p.point.x << ", Y = "<< p.point.y << endl;
+			cout << "New goal in map: X = "<< p.point.x << ", Y = "<< p.point.y << endl;
 			
 			//NOTE: not requested for testing purpose
 			//usleep(microseconds);

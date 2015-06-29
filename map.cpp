@@ -20,83 +20,84 @@ Map::Map()
 
 Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::Pose origin){
     
-    /*
-    NOTE: to be used with 1mx1m cells
-    for(int i = 0; i < width*height; ++i){
-	map.push_back(0);
-    }
+    if(resolution > 0 && resolution <= 1){
+	//NOTE: to be used with 1mx1m cells
+	for(int i = 0; i < width*height; ++i){
+	    map.push_back(0);
+	}
 
-    numCols = width;
-    numRows = height;
-    //numGridCols = width;
-    //numGridRows = height;
-    //set 1 in the grid cells corrisponding to obstacles according to percentage value
-    // contained in data vector
-    for(long row = 0; row < height; ++row){
-	    for(long col = 0; col < width; ++col){
-		
-		//if(map[row*numCols + col] == 0) 
-		
-		if(data.at(row*width + col) > 60) {
-		    map[( height - row)*width + col] = 1;
-		    //grid[(height - row)*width + col] = 1;	
+	numCols = width;
+	numRows = height;
+	cout <<" numRows: " << numRows <<", numCols: "<< numCols << endl;
+	//set 1 in the grid cells corrisponding to obstacles according to percentage value
+	// contained in data vector
+	for(long row = 0; row < height; ++row){
+		for(long col = 0; col < width; ++col){
+		    
+		    //if(map[row*numCols + col] == 0) 
+		    
+		    if(data.at(row*width + col) > 60) {
+			map[( height - row)*width + col] = 1;
+			//grid[(height - row)*width + col] = 1;	
+			    
 			
+		    }
+		    
+		    if(data.at(row*width + col) <20) {
+			map[(height - row)*width + col] = 0;
+			//grid[(height - row)*width + col] = 0;
+		    
+		    }
+		    
+		    if(data.at(row*width + col) < 0) {
+			map[(height - row)*width + col] = 1;
+			//grid[(height - row)*width + col] = 1;
+			
+		    }
 		    
 		}
-		
-		if(data.at(row*width + col) <20) {
-		    map[(height - row)*width + col] = 0;
-		    //grid[(height - row)*width + col] = 0;
-		
-		}
-		
-		if(data.at(row*width + col) < 0) {
-		    map[(height - row)*width + col] = 1;
-		    //grid[(height - row)*width + col] = 1;
+	}
+	
+	
+	int tmpRes = resolution * 100;
+	Map::createGrid(tmpRes);
+	Map::createNewMap();
+	
+    }else if(resolution == 0){
+	
+	//NOTE: to be used with default resolution
+	for(int i = 0; i < width*height; ++i){
+	    grid.push_back(0);
+	}
+	
+	
+	numGridCols = width;
+	numGridRows = height;
+	//set 1 in the grid cells corrisponding to obstacles according to percentage value
+	// contained in data vector
+	for(long row = 0; row < height; ++row){
+		for(long col = 0; col < width; ++col){
+		    
+		    
+		    
+		    if(data.at(row*width + col) > 60) {
+			grid[(height - row)*width + col] = 1;	
+		    }
+		    
+		    if(data.at(row*width + col) <20) {
+			grid[(height - row)*width + col] = 0; 
+		    }
+		    
+		    if(data.at(row*width + col) < 0) {
+			grid[(height - row)*width + col] = 1;
+		    }
 		    
 		}
-		
-	    }
-    }
+	}
 
-    //int tmpRes = resolution * 100;
-    int tmpRes = resolution ;
-    Map::createGrid(tmpRes);
-    Map::createNewMap();*/
-
-    
-    
-    //NOTE: to be used with default resolution
-    for(int i = 0; i < width*height; ++i){
-	grid.push_back(0);
+	Map::createNewMap();
+	
     }
-    
-    
-    numGridCols = width;
-    numGridRows = height;
-    //set 1 in the grid cells corrisponding to obstacles according to percentage value
-    // contained in data vector
-    for(long row = 0; row < height; ++row){
-	    for(long col = 0; col < width; ++col){
-		
-		
-		
-		if(data.at(row*width + col) > 60) {
-		    grid[(height - row)*width + col] = 1;	
-		}
-		
-		if(data.at(row*width + col) <20) {
-		    grid[(height - row)*width + col] = 0; 
-   		}
-		
-		if(data.at(row*width + col) < 0) {
-		    grid[(height - row)*width + col] = 1;
-		}
-		
-	    }
-    }
-
-  Map::createNewMap();
 }
 
 
@@ -197,7 +198,7 @@ void Map::createGrid(int resolution)
   float clusterSize = (float)((100.0/resolution));
   Map::numGridRows = (long)numRows/clusterSize;
   Map::numGridCols = (long)numCols/clusterSize;
- 
+  cout <<" numGridRows: " << numGridRows <<", numGridCols: "<< numGridCols << endl;
   
    for(int i = 0; i < numGridCols*numGridRows; ++i)
   {
