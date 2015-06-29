@@ -67,19 +67,13 @@ Criterion * MCDMFunction::createCriterion(string name, double weight)
 //the evaluate method provided by Criterion class)
 double MCDMFunction::evaluateFrontier( Pose& p,  dummy::Map &map)
 {
-    //NewRay ray;
-    //ray.calculateInfoGainSensingTime(map,p.getX(),p.getY(),p.getOrientation(),p.getFOV(),p.getRange());
+
    
-      for (int i =0; i < activeCriteria.size(); i++){
+    for (int i =0; i < activeCriteria.size(); i++){
 	Criterion *c = activeCriteria.at(i);
-	//string name = c->getName();
-	//double weight = c->getWeight();
-	//cout << name <<" " << weight <<  endl;
 	c->evaluate(p,map);
-	//cout << "Alive in evaluateFrontier" << endl;
-   }
-   
-    //for loop, over the criteria, to compute the utility of the frontier.
+    }
+
 
     return 0.0;
 }
@@ -88,11 +82,9 @@ double MCDMFunction::evaluateFrontier( Pose& p,  dummy::Map &map)
 // Scan a list of candidate positions,then apply the choquet fuzzy algorithm
 EvaluationRecords* MCDMFunction::evaluateFrontiers(const std::list< Pose >& frontiers,  Map& map,double threshold)
 {         
-    //myMutex.lock();
+    
    
     //Clean the last evaluation
-    //         lprint << "clean evaluations" << endl;
-    // ATTENTION : to be fixed -> you need to clear criteria[ i ].Criterion ...
     //NOTE: probably working
     unordered_map<string,Criterion *>::iterator it;
     for(it = criteria.begin(); it != criteria.end(); it++){
@@ -101,20 +93,13 @@ EvaluationRecords* MCDMFunction::evaluateFrontiers(const std::list< Pose >& fron
     }
     
     
-    /*
-    //Get the list of activeCriteria
-    if(activeCriteria.size() == 0){
-	activeCriteria = new vector<Criterion >();
-    }
-    */
-    
     // listActiveCriteria contains the name of the criteria while "criteria struct" contain the pairs <name, criterion>
     vector<string> listActiveCriteria = matrix->getActiveCriteria();
     for(vector<string>::iterator it = listActiveCriteria.begin(); it != listActiveCriteria.end(); it++){
 	activeCriteria.push_back(criteria[*it]);
     }
     
-    //ldbg << "number of active criteria: "<<activeCriteria->size() << endl;
+
   
     //Evaluate the frontiers
     list<Pose>::const_iterator it2 ;
@@ -131,123 +116,99 @@ EvaluationRecords* MCDMFunction::evaluateFrontiers(const std::list< Pose >& fron
     }
     
     //Create the EvaluationRecords
-    //         lprint << "#number of frontier to evaluate: "<<frontiers.size()<<endl;
     EvaluationRecords *toRet = new EvaluationRecords();
     
     
     // analyze every single frontier f, and add in the evaluationRecords <frontier, evaluation>
     for(list<Pose>::const_iterator i=frontiers.begin(); i!=frontiers.end(); i++){
+	
 	//cout <<"---------------------NEW FRONTIER -------------------"<<endl;
+	
+	double infoGainImportance;
+	bool dobreak = false;
 	Pose f = *i;
 	
 	// order criteria depending on the considered frontier
 	sort(activeCriteria.begin(),activeCriteria.end(),CriterionComparator(f));
-	/*
-	cout << "criteria ordered: " << endl;
-	for (int i =0; i < activeCriteria.size(); i++){
-	    Criterion *c = activeCriteria.at(i);
-	    cout << c->getName() << ": " << c->getEvaluation(f) << endl;
-	}*/
+	
 	   
 	//apply the choquet integral
 	Criterion *lastCrit = NULL;
 	double finalValue = 0.0;
-	double c1 = 0.0,c2 = 0.0,c3 = 0.0,e1 = 0.0,e2 = 0.0,e3 = 0.0;
-	for(vector<Criterion *>::iterator k = activeCriteria.begin(); k != activeCriteria.end(); k++){
-	    //cout << "------------------New criterio observed------------- " << endl;
-	    Criterion *c = NULL ;
-	    double weight = 0.0;
-	    //Get the list of criterion whose evaluation is >= than the one's considered
-	    list<string> names;
-	    // c = *k;
-	    // names.push_back(c->getName());
-	    
-	    for(vector<Criterion *>::iterator j = k; j != activeCriteria.end(); j++){
-	       //CHECK IF THE ITERATOR RETURN THE COUPLE <STRING,CRITERION>
-	       Criterion *next = (*j);
-	       names.push_back(next->getName());
-	       //cout << "alive" << endl;
-	    }
-	    //cout << "alive 2 "<< endl;
-	    if(k == activeCriteria.begin()){
-		weight = 1;
-	    }else{
-		weight = matrix->getWeight(names);
-	    }
-	    //cout << "alive 3" << endl;
-	    
-	    /*
-	    for (list<string>::iterator i = names.begin(); i != names.end(); i++){
-		cout << *i << "," ;
-	    }
-	    cout << weight << endl;*/
-	    
-//               lprint << "#"<<names << " - w = " << weight << " - ";
-//               lprint << names <<" with weight "<<weight<<endl;
-	    if(k==activeCriteria.begin()){
-		c = (*k);
-		finalValue += c->getEvaluation(f) * weight;
-		//c1 = weight;
-		//e1 = c->getEvaluation(f);
-		//cout <<"----------------"<<endl;
-		//cout << c->getName() << "," << c->getWeight() <<","<< c->getEvaluation(f) << endl;
-		//cout << c1 << ","<< e1 << endl;
-		//if ((c->getName() =="informationGain") && (c->getEvaluation(f) < 0.3)){ finalValue = finalValue * 0.5;}
-//                         lprint << "#crit "<<c->getName()<<" - eval = "<<c->getEvaluation(f) << endl;
-	    } else {
-		c = (*k);
-		double tmpValue = c->getEvaluation(f)-lastCrit->getEvaluation(f);
-//                         lprint << "#crit "<<c->getName()<<" - eval = "<<c->getEvaluation(f) << endl;
-		finalValue += tmpValue*weight;
-		//cout << c->getName() << "," << c->getWeight() <<","<< c->getEvaluation(f) << endl;
-		/*
-		if (k == activeCriteria.end()){
-		    c3 = weight;
-		    e3 = c->getEvaluation(f);
-		}else {
-		    c2 = weight;
-		    e2 = c->getEvaluation(f);
-		}*/
-		//cout << tmpValue <<"," << weight<<endl;
-		
-		
-	    }
-	    lastCrit = c;
-	    //delete c;
-	}
 
-	//cout <<"X: "<< f.getX() <<"; Y : " <<f.getY()<<", Orientation :"<<f.getOrientation() <<", Evaluation : "<<finalValue << endl;
-	if(finalValue > threshold){
-	    toRet->putEvaluation(f, finalValue);
-	    //cout << this->getEncodedKey(f,0) << " : " << finalValue << " : "<< c1 << "," << e1 <<","<< c2 << "," << e2 <<","<< c3 << "," << e3 << endl;
-	}
-	//delete lastCrit;
+	    for(vector<Criterion *>::iterator k = activeCriteria.begin();!dobreak && k != activeCriteria.end(); k++){
+		//cout << "------------------New criterio observed------------- " << endl;
+		Criterion *c = NULL ;
+		double weight = 0.0;
+		//Get the list of criterion whose evaluation is >= than the one's considered
+		list<string> names;
+		
+		
+		for(vector<Criterion *>::iterator j = k; j != activeCriteria.end(); j++){
+		//CHECK IF THE ITERATOR RETURN THE COUPLE <STRING,CRITERION>
+		Criterion *next = (*j);
+		names.push_back(next->getName());
+		}
+		
+		if(k == activeCriteria.begin()){
+		    weight = 1;
+		}else{
+		    weight = matrix->getWeight(names);
+		}
+		
+		
+		if(k==activeCriteria.begin()){
+		    c = (*k);
+		    finalValue += c->getEvaluation(f) * weight;
+		    
+		    
+		    if ((c->getName() =="informationGain") && (c->getEvaluation(f) == 0)){ 
+			//cout << "alive" << endl;
+			dobreak = true;
+			break;
+		    }
+    //                        
+		} else {
+		    c = (*k);
+		    double tmpValue = c->getEvaluation(f)-lastCrit->getEvaluation(f);
+		    finalValue += tmpValue*weight;
+		    //cout << c->getName() << "," << c->getWeight() <<","<< c->getEvaluation(f) << endl;
+		    
+		    
+		    //cout << tmpValue <<"," << weight<<endl;
+		     if ((c->getName() =="informationGain") && (c->getEvaluation(f) == 0)){ 
+			//cout << "alive" << endl;
+			dobreak = true;
+			break;
+		    }
+		    
+		}
+		lastCrit = c;
+		
+	    }
+
+	    if(finalValue > threshold){
+		toRet->putEvaluation(f, finalValue);
+	    }
+	
+	
     }
-//         }
+
     
     
     activeCriteria.clear();
-    /*
-    for(vector<Criterion*>::iterator itActive= activeCriteria.begin();itActive !=activeCriteria.end();itActive++){
-	delete *itActive;
-    }*/
-    
-    //delete activeCriteria;
-    //activeCriteria = NULL;
-    //myMutex.unlock();
     return toRet;
 }
 
 pair<Pose,double> MCDMFunction::selectNewPose(EvaluationRecords *evaluationRecords)
-{	
-    
+{    
     Pose newTarget;
     double value = 0;
     unordered_map<string,double> evaluation = evaluationRecords->getEvaluations();
     for(unordered_map<string,double>::iterator it = evaluation.begin(); it != evaluation.end(); it++){
 	string tmp = (*it).first;
 	Pose p = evaluationRecords->getPoseFromEncoding(tmp);
-	if(value < (*it).second){
+	if(value <= (*it).second){
 		newTarget = p;
 		value = (*it).second;
 	    }//else continue;
@@ -267,15 +228,14 @@ string MCDMFunction::getEncodedKey(Pose& p, int value)
     //value = 1 : encode x,y,orientation, take first 
     //value = 2 : encode x,y,orientation, take multiple time
     if(value == 0){
-	key =  to_string(p.getX()) + "/" + to_string( p.getY()) + "/" + to_string( (int)p.getOrientation()) + "/"  + to_string(p.getRange()) + "/" + to_string((int)p.getFOV());
+	key =  to_string(p.getX()) + "/" + to_string( p.getY()) + "/" + to_string( p.getOrientation()) + "/"  + to_string(p.getRange()) + "/" + to_string(p.getFOV());
     }else if(value == 1){
-	key = to_string(p.getX()) + "/" + to_string( p.getY()) + "/" + to_string( (int)p.getOrientation()) + "/" + "1";
+	key = to_string(p.getX()) + "/" + to_string( p.getY()) + "/" + to_string( p.getOrientation()) + "/" + "1";
     } else if (value ==2){
-	key = to_string(p.getX()) + "/" + to_string( p.getY()) + "/" + to_string( (int)p.getOrientation()) + "/" + "0";
+	key = to_string(p.getX()) + "/" + to_string( p.getY()) + "/" + to_string( p.getOrientation()) + "/" + "0";
     }
     return key;
 }
-
 
 
 

@@ -20,9 +20,12 @@ Map::Map()
 
 Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::Pose origin){
     
+    /*
+    NOTE: to be used with 1mx1m cells
     for(int i = 0; i < width*height; ++i){
 	map.push_back(0);
     }
+
     numCols = width;
     numRows = height;
     //numGridCols = width;
@@ -37,15 +40,15 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
 		if(data.at(row*width + col) > 60) {
 		    map[( height - row)*width + col] = 1;
 		    //grid[(height - row)*width + col] = 1;	
-		    	
+			
 		    
 		}
 		
 		if(data.at(row*width + col) <20) {
 		    map[(height - row)*width + col] = 0;
 		    //grid[(height - row)*width + col] = 0;
-		   
-   		}
+		
+		}
 		
 		if(data.at(row*width + col) < 0) {
 		    map[(height - row)*width + col] = 1;
@@ -55,12 +58,45 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
 		
 	    }
     }
-  
- 
-  int tmpRes = resolution * 100;
-  Map::createGrid(tmpRes);
+
+    //int tmpRes = resolution * 100;
+    int tmpRes = resolution ;
+    Map::createGrid(tmpRes);
+    Map::createNewMap();*/
+
+    
+    
+    //NOTE: to be used with default resolution
+    for(int i = 0; i < width*height; ++i){
+	grid.push_back(0);
+    }
+    
+    
+    numGridCols = width;
+    numGridRows = height;
+    //set 1 in the grid cells corrisponding to obstacles according to percentage value
+    // contained in data vector
+    for(long row = 0; row < height; ++row){
+	    for(long col = 0; col < width; ++col){
+		
+		
+		
+		if(data.at(row*width + col) > 60) {
+		    grid[(height - row)*width + col] = 1;	
+		}
+		
+		if(data.at(row*width + col) <20) {
+		    grid[(height - row)*width + col] = 0; 
+   		}
+		
+		if(data.at(row*width + col) < 0) {
+		    grid[(height - row)*width + col] = 1;
+		}
+		
+	    }
+    }
+
   Map::createNewMap();
-  
 }
 
 
@@ -161,24 +197,7 @@ void Map::createGrid(int resolution)
   float clusterSize = (float)((100.0/resolution));
   Map::numGridRows = (long)numRows/clusterSize;
   Map::numGridCols = (long)numCols/clusterSize;
-  //long gridRow = 0, gridCol = 0;
-  //cout << numGridCols << " : "<< numGridRows << endl;
-  
-
-  //cout << "Total cell: " << totalFreeCells << endl;
-  
-  //get the size of the array and initialize to 0
-  
-  /*
-    Map::grid.reserve(numGridRows*numGridCols);
-  
-    for (gridRow = 0; gridRow < numGridRows; ++gridRow)
-    {
-	    for (gridCol = 0; gridCol < numGridCols; ++gridCol)
-	    {
-	    grid[gridRow*numGridCols + gridCol] = 0;
-	    }
-    }*/
+ 
   
    for(int i = 0; i < numGridCols*numGridRows; ++i)
   {
@@ -190,11 +209,12 @@ void Map::createGrid(int resolution)
     {
 	    for(long col = 0; col < numCols; ++col)
 	    {
-		//if(map[row*numCols + col] == 0) 
+ 
 		if(getMapValue(row,col) == 1) 
 		{
 			grid[(long)(row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
-			
+			//NOTE: i don't remember when it should be used
+			//map[(long)(row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
 		}
 	    }
     }

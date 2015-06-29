@@ -1,3 +1,4 @@
+
 #ifndef MCDMWEIGHTREADER_H
 #define MCDMWEIGHTREADER_H
 

@@ -67,13 +67,13 @@ int main(int argc, char **argv) {
 	costmap_update_sub = nh.subscribe<map_msgs::OccupancyGridUpdate>("move_base/global_costmap/costmap_updates", 10, update_callback);
 
 	if(costmapReceived == 0) {
-	    //ROS_INFO_STREAM( "waiting for costmap" << std::endl);
-	    cout << "Waiting for costmap" << endl;
+	    ROS_INFO_STREAM( "waiting for costmap" << std::endl);
+	    //cout << "Waiting for costmap" << endl;
 	}
 
 	if(costmapReceived == 1)
 	{
-	
+	cout << "alive" << endl;
 	Map newMap = Map(costresolution,costwidth,costheight,occdata,costorigin);
 	ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
 	
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 	//convert from map frame to image
 	tf::Vector3 pose = tf::Vector3(initX,initY,0.0);
 	//pose = tranMapToImage.operator*(pose);
-	//pose = pose /resolution;
+	pose = pose /costresolution;
 	//pose = transform.operator*(pose);
 	
 	
@@ -165,6 +165,7 @@ int main(int argc, char **argv) {
 	//cout << "total free cells in the main: " << totalFreeCells << endl;
 	list<Pose> unexploredFrontiers;
 	list<Pose> tabuList;
+	EvaluationRecords record;
 	
 	while(sensedCells < precision * totalFreeCells ){
 	    long x = target.getX();
@@ -180,7 +181,7 @@ int main(int argc, char **argv) {
 	    
 	    
 	    cout << "-----------------------------------------------------------------"<<endl;
-	    cout << "Round : " << count<< endl;
+	    cout << "Round : " << count + 1<< endl;
 	    newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
 	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
 
@@ -202,11 +203,9 @@ int main(int argc, char **argv) {
 		
 		if (graph2.size() > 0){
 		    
-		    
 		    string targetString = graph2.at(graph2.size()-1).first;
-		    graph2.pop_back();
-		    EvaluationRecords record;
 		    target = record.getPoseFromEncoding(targetString);
+		    graph2.pop_back();
 		    history.push_back(function.getEncodedKey(target,2));
 		    cout << "[BT]No significative position reachable. Come back to previous position" << endl;
 		    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
@@ -292,19 +291,13 @@ int main(int argc, char **argv) {
 			cout << "Goal in map: " << goal_pose.getX() <<","<< goal_pose.getY() << endl;
 			*/
 			
-			
-			move_base_msgs::MoveBaseGoal goal;
-			double orientZ = (double)(target.getOrientation()* PI/(2*180));
-			double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
-			move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
-			
 			//---------------------------PRINT GOAL POSITION
 			geometry_msgs::PointStamped p;
 			p.header.frame_id = "map";
 			p.header.stamp = ros::Time::now();
 			//NOTE: as before, Y in map are X in image
-			p.point.x = (newMap.getNumGridRows() - target.getX() ); //* resolution;
-			p.point.y = (target.getY() ) ;//* resolution;
+			p.point.x = (newMap.getNumGridRows() - target.getX() )* costresolution;
+			p.point.y = (target.getY() ) * costresolution;
 			
 			//cout << p.point.x << ","<< p.point.y << endl;
 			
@@ -315,12 +308,19 @@ int main(int argc, char **argv) {
 			p.point.x = vec.getY() ;
 			p.point.y = vec.getX() ;
 			
-			//cout << p.point.x << ","<< p.point.y << endl;
+			cout << "New goal in map: X = "p.point.x << ", Y = "<< p.point.y << endl;
 			
 			//NOTE: not requested for testing purpose
 			//usleep(microseconds);
 			marker_pub.publish(p);
 			//----------------------------------------------
+			
+			
+			move_base_msgs::MoveBaseGoal goal;
+			double orientZ = (double)(target.getOrientation()* PI/(2*180));
+			double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
+			move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
+			
 			
 		    }else{
 			
@@ -399,9 +399,11 @@ int main(int argc, char **argv) {
 	return 1;
     }
 	
-	
+    //ROS_INFO_STREAM( "waiting for costmap" << std::endl);
     cout << "Spinning at the end" << endl;
+    sleep(1);
     ros::spinOnce();
+    //ros::spin();
     r.sleep();
     }
     

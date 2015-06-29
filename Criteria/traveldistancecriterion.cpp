@@ -22,7 +22,7 @@
 
 
 TravelDistanceCriterion::TravelDistanceCriterion(double weight)
-	: Criterion(TRAVEL_DISTANCE, weight,true)
+	: Criterion(TRAVEL_DISTANCE, weight,false)
 {
 
 }
