@@ -196,8 +196,8 @@ int main(int argc, char **argv) {
 	    cout << "Round : " << count + 1<< endl;
 	    newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
 	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
-
-	    ray.performSensingOperation(newMap,x,y,orientation,FOV,range);
+	    target.setScanAngles(ray.getSensingTime(newMap,x,y,orientation,FOV,range));
+	    ray.performSensingOperation(newMap,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
 	    ray.findCandidatePositions(newMap,x,y,orientation,FOV,range);
 	    vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
 	    ray.emptyCandidatePositions();

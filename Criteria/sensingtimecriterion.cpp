@@ -18,7 +18,8 @@
 #include "Criteria/sensingtimecriterion.h"
 #include "Criteria/criteriaName.h"
 #include "newray.h"
-
+# define PI           3.14159265358979323846  /* pi */
+#include <iostream>
 
 SensingTimeCriterion::SensingTimeCriterion(double weight):
     Criterion(SENSING_TIME, weight,true)
@@ -34,24 +35,55 @@ SensingTimeCriterion::~SensingTimeCriterion()
 
 double SensingTimeCriterion::SensingTimeCriterion::evaluate(Pose &p,dummy::Map &map)
 {
-    NewRay ray;
+   NewRay ray;
     double sensingTime;
+    double angle;
+    int orientation = p.getOrientation();
     
-    float phi = p.getFOV();
-    if (phi <= 30){
+    double startingPhi = orientation*PI/180 - (p.getFOV())/2;	
+    double endingPhi = orientation*PI/180 + (p.getFOV())/2;
+    int add2pi = 0;
+  
+    if(startingPhi <= 0) 
+    {
+    add2pi = 1;
+    startingPhi = 2*PI + startingPhi;
+    endingPhi = 2*PI + endingPhi;
+    }
+    
+    
+    
+    
+    
+    //sensingTime = ray.getSensingTime(map,p.getX(),p.getY(),p.getOrientation(),p.getFOV(),p.getRange());
+    p.setScanAngles(ray.getSensingTime(map,p.getX(),p.getY(),p.getOrientation(),p.getFOV(),p.getRange()));
+    double minPhi = p.getScanAngles().first;
+    double maxPhi = p.getScanAngles().second;
+   
+    //std::cout << "minPhi " << p.getScanAngles().first << " maxPhi " << p.getScanAngles().second << std::endl;
+    
+    
+    if(minPhi - startingPhi <= endingPhi - maxPhi) angle = (endingPhi - startingPhi - 2*(minPhi - startingPhi));
+	else angle = (endingPhi - startingPhi - 2*(endingPhi - maxPhi));
+	
+	/*
+	angle = (angle*180)/PI;
+
+    if (angle <= 30){
 	sensingTime = 0.2;
-    }else if (phi >30 & phi <= 60){
+    }else if (angle >30 & angle <= 60){
 	sensingTime = 0.4;
-    }else if (phi > 60 & phi <=90){
+    }else if (angle > 60 & angle <=90){
 	sensingTime = 0.6;
-    }else if (phi > 90 & phi <= 120){
+    }else if (angle > 90 & angle <= 120){
 	sensingTime = 0.8;
     }else {
 	sensingTime = 1;
     }
-    //sensingTime = ray.getSensingTime(map,p.getX(),p.getY(),p.getOrientation(),p.getFOV(),p.getRange());
-    Criterion::insertEvaluation(p,sensingTime);
-    return sensingTime;
+    
+    */
+    Criterion::insertEvaluation(p,angle);
+    return angle;
 }
 
 /*

@@ -81,6 +81,15 @@ bool Pose::operator==(const Pose& p)
     return (aX == p2.getX()) && (aY == p2.getY()) && (orientation == p2.getOrientation()) && ((int)FOV == (int)(p2.getFOV())) && (range == p2.getRange());
 }
 
+void Pose::setScanAngles(std::pair< double, double > angles)
+{
+  scanAngles = angles;
+}
+
+std::pair<double, double> Pose::getScanAngles()
+{
+  return scanAngles;
+}
 
 
 

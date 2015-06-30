@@ -4,6 +4,7 @@
 #include <vector>
 #include "math.h"
 #include "map.h"
+#include <utility>
 
 using namespace dummy;
 
@@ -17,8 +18,8 @@ public:
   void findCandidatePositions(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
   int isCandidate(const dummy::Map &map, long i, long j);
   std::vector<std::pair<long, long> > getCandidatePositions();
-  double getSensingTime(const dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
-  void performSensingOperation(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
+  pair< double, double > getSensingTime(const Map& map, long int posX, long int posY, int orientation, double FOV, int range);
+  void performSensingOperation(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range, double firstAngle, double lastAngle);
   void emptyCandidatePositions();
   int getInformationGain(const dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
   long convertPoint(long y);
