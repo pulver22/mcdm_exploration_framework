@@ -14,12 +14,20 @@
 #include <nav_msgs/GetMap.h>
 #include <costmap_2d/costmap_2d_ros.h>
 #include <algorithm>
+#include "ptu_control/commandSweep.h"
+
 
 
 
 using namespace std;
 using namespace dummy;bool contains(std::list< Pose >& list, Pose& p);
 void cleanPossibleDestination2(std::list< Pose > &possibleDestinations, Pose& p);
+void gasDETECTION(Pose& p);
+geometry_msgs::PoseStamped getCurrentPose();
+void move(int x, int y, double orW, double orZ);
+void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg);
+void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg);
+int getIndex(int x, int y);
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -30,13 +38,9 @@ int costwidth;
 int costheight;
 geometry_msgs::Pose costorigin;
 nav_msgs::OccupancyGrid costmap_grid;
-
-geometry_msgs::PoseStamped getCurrentPose();
-void move(int x, int y, double orW, double orZ);
-void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg);
-void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg);
-int getIndex(int x, int y);
-
+double min_pan_angle, max_pan_angle, min_tilt_angle, max_tilt_angle, sample_delay, tilt_angle;
+int    num_pan_sweeps, num_tilt_sweeps;
+double sensing_range, offsetY_base_rmld, FoV;
 
 
 // Input :  15 180 0.95 0.12
@@ -82,11 +86,14 @@ int main(int argc, char **argv) {
 	/* resolution = 0 -> full resolution 
 	 * resolution = 1 -> 1mx1m
 	 * resolution = X -> X%(full resolution)
-	 */
+	 *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION/
 	double resolution = atof(argv[5]);
+	
 	
 	if(resolution == 1){
 	    resolution = costresolution;
+	}else if(resolution > 0 && resolution < 1){
+	    costresolution = (1 / resolution) * costresolution;
 	}
 	
 	Map newMap = Map(resolution,costwidth,costheight,occdata,costorigin);
@@ -120,7 +127,11 @@ int main(int argc, char **argv) {
 	//convert from map frame to image
 	tf::Vector3 pose = tf::Vector3(initX,initY,0.0);
 	//pose = tranMapToImage.operator*(pose);
-	if(resolution == 0){
+	/*if(resolution == 0){
+	    pose = pose / costresolution;
+	}*/
+	
+	if(resolution >= 0 && resolution < 1){
 	    pose = pose / costresolution;
 	}
 	//pose = transform.operator*(pose);
@@ -197,6 +208,7 @@ int main(int argc, char **argv) {
 	    newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
 	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
 	    target.setScanAngles(ray.getSensingTime(newMap,x,y,orientation,FOV,range));
+	    gasDETECTION(target);
 	    ray.performSensingOperation(newMap,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
 	    ray.findCandidatePositions(newMap,x,y,orientation,FOV,range);
 	    vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
@@ -313,9 +325,9 @@ int main(int argc, char **argv) {
 			    //NOTE: 1mx1m
 			    p.point.x = (newMap.getNumGridRows() - target.getX() );//* costresolution;
 			    p.point.y = (target.getY() );// * costresolution;
-			   
+			   x
 			}
-			if(resolution == 0){
+			if(resolution >= 0 && resolution < 1){
 			    //NOTE: full resolution
 			    p.point.x = (newMap.getNumGridRows() - target.getX() ) * costresolution;
 			    p.point.y = (target.getY() ) * costresolution;
@@ -549,17 +561,57 @@ void cleanPossibleDestination2(std::list< Pose >& possibleDestinations, Pose& p)
     MCDMFunction function;
     //cout<<"I remove "<< function.getEncodedKey(p,0) << endl;
     //cout << possibleDestinations->size() << endl;
-    
-    
-    
-    
+
     std::list<Pose>::iterator findIter = std::find(possibleDestinations.begin(), possibleDestinations.end(), p);
     if (findIter != possibleDestinations.end()){
 	//cout << function.getEncodedKey(*findIter,0) << endl;
 	possibleDestinations.erase(findIter);
     } else cout<< "not found" << endl;
     
-   
-    
 }
+
+void gasDETECTION(Pose& p){
+	ros::NodeHandle n;
+  	ros::ServiceClient client1 = n.serviceClient<ptu_control::commandSweep>("/ptu_control/sweep");
+  	
+	ptu_control::commandSweep srvSweep;
+	//amtec::GetStatus  srvState;
+	//rosservice call /ptu_control/sweep "{min_pan: -45.0, max_pan: 45.0, min_tilt: -10.0, max_tilt: -10.0, n_pan: 1, n_tilt: 1, samp_delay: 0.1}"
+
+	// Finding Tilt Angle:
+	//--------------------------
+	/*
+	* 	  | phi
+	*  0.904m |
+	*         |
+	*         |--
+	*         |_|_____________________________theta
+	* 		    sensing range
+	*  phi   = atan(sensing range / 0.904)
+	*  theta = atan(0.904 / sensing range)
+	*  tilt_angle = 90-phi
+	*/
+
+	tilt_angle = (atan(sensing_range/offsetY_base_rmld)*(180/M_PI))-90;
+
+	srvSweep.request.min_pan  	= p.getScanAngles().first;        //min_pan_angle;   //-10;
+	srvSweep.request.max_pan  	= p.getScanAngles().second;        //max_pan_angle;   // 10;
+	srvSweep.request.min_tilt 	= tilt_angle; 	   //min_tilt_angle;  //-10;
+	srvSweep.request.max_tilt 	= tilt_angle;      //max_tilt_angle;  //-10;
+	srvSweep.request.n_pan    	= num_pan_sweeps;  //  1;
+	srvSweep.request.n_tilt   	= num_tilt_sweeps; //  1;
+	srvSweep.request.samp_delay = sample_delay;    //0.1;
+
+	if (client1.call(srvSweep)){
+		ROS_INFO("Gas detection in progress ... <%.2f~%.2f,%.2f>",p.getScanAngles().first,p.getScanAngles().second,tilt_angle);}
+	else{
+		ROS_ERROR("Failed to initialize gas scanning.");}
+	/*
+	if(client2.call(srvState)){
+		ROS_INFO("Got status");
+		ROS_INFO("Sum: %f", (float)srvState.response.position_pan);}
+	else{
+		ROS_ERROR("Failed to get status.");} */
+}
+
 
