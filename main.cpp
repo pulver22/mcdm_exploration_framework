@@ -86,9 +86,9 @@ int main(int argc, char **argv) {
 	/* resolution = 0 -> full resolution 
 	 * resolution = 1 -> 1mx1m
 	 * resolution = X -> X%(full resolution)
-	 *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION/
+	 *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
 	double resolution = atof(argv[5]);
-	
+
 	
 	if(resolution == 1){
 	    resolution = costresolution;
@@ -127,11 +127,8 @@ int main(int argc, char **argv) {
 	//convert from map frame to image
 	tf::Vector3 pose = tf::Vector3(initX,initY,0.0);
 	//pose = tranMapToImage.operator*(pose);
-	/*if(resolution == 0){
-	    pose = pose / costresolution;
-	}*/
-	
-	if(resolution >= 0 && resolution < 1){
+	if(resolution >= 0 && resolution < 1 && resolution != costresolution){
+	    cout << "alive"<< endl;
 	    pose = pose / costresolution;
 	}
 	//pose = transform.operator*(pose);
@@ -321,17 +318,16 @@ int main(int argc, char **argv) {
 			p.header.stamp = ros::Time::now();
 			//NOTE: as before, Y in map are X in image
 			
-			if(resolution == costresolution){
-			    //NOTE: 1mx1m
-			    p.point.x = (newMap.getNumGridRows() - target.getX() );//* costresolution;
-			    p.point.y = (target.getY() );// * costresolution;
-			   x
-			}
-			if(resolution >= 0 && resolution < 1){
+			
+			if(resolution >= 0 && resolution < 1 && resolution != costresolution){
 			    //NOTE: full resolution
 			    p.point.x = (newMap.getNumGridRows() - target.getX() ) * costresolution;
 			    p.point.y = (target.getY() ) * costresolution;
 			    
+			}else {
+			     //NOTE: 1mx1m
+			    p.point.x = (newMap.getNumGridRows() - target.getX() );//* costresolution;
+			    p.point.y = (target.getY() );// * costresolution;
 			}
 			
 			//cout << p.point.x << ","<< p.point.y << endl;
