@@ -15,6 +15,7 @@
 #include <costmap_2d/costmap_2d_ros.h>
 #include <algorithm>
 #include "ptu_control/commandSweep.h"
+#include "PathFinding/astar.h"
 
 
 
@@ -177,6 +178,7 @@ int main(int argc, char **argv) {
 	int count = 0;
 	int countBT;
 	double travelledDistance = 0;
+	int numOfTurning = 0;
 	unordered_map<string,int> visitedCell;
 	vector<string>history;
 	history.push_back(function.getEncodedKey(target,1));
@@ -186,6 +188,7 @@ int main(int argc, char **argv) {
 	list<Pose> unexploredFrontiers;
 	list<Pose> tabuList;
 	EvaluationRecords record;
+	Astar astar;
 	
 	while(sensedCells < precision * totalFreeCells ){
 	    long x = target.getX();
@@ -195,7 +198,9 @@ int main(int argc, char **argv) {
 	    double FOV = target.getFOV();
 	    string actualPose = function.getEncodedKey(target,0);
 	    newMap.setCurrentPose(target);
-	    travelledDistance = travelledDistance + target.getDistance(previous);
+	    string path = astar.pathFind(target.getX(),target.getY(),previous.getX(),previous.getY(),newMap);
+	    travelledDistance = travelledDistance + astar.lenghtPath(path);
+	    numOfTurning = numOfTurning + astar.getNumberOfTurning(path);
 	    string encoding = to_string(target.getX()) + to_string(target.getY());
 	    visitedCell.emplace(encoding,0);
 	    
@@ -419,6 +424,7 @@ int main(int argc, char **argv) {
 	    cout << "-----------------------------------------------------------------"<<endl;
 	    cout << "Total cell visited :" << numConfiguration <<endl;
 	    cout << "Total travelled distance (cells): " << travelledDistance << endl;
+	    cout << "Total number of turning: " << numOfTurning << endl;
 	    cout << "FINAL: MAP EXPLORED!" << endl;
 	    cout << "-----------------------------------------------------------------"<<endl;
 	}else{

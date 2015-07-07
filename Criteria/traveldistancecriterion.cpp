@@ -1,5 +1,4 @@
-/*
- * Copyright 2015 <copyright holder> <email>
+/* Copyright 2015 <copyright holder> <email>
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +17,7 @@
 #include "Criteria/traveldistancecriterion.h"
 #include "Criteria/criteriaName.h"
 #include <iostream>
+#include "PathFinding/astar.h"
 
 
 
@@ -35,10 +35,15 @@ TravelDistanceCriterion::~TravelDistanceCriterion()
 
 double TravelDistanceCriterion::evaluate( Pose &p, dummy::Map &map)
 {
+    //cout << "travel " << endl;
+    Astar astar;
     Pose robotPosition = map.getRobotPosition();
-    double distance = robotPosition.getDistance(p);
+    //double distance = robotPosition.getDistance(p);
+    string path = astar.pathFind(robotPosition.getX(),robotPosition.getY(),p.getX(),p.getY(),map);
+    double distance = astar.lenghtPath(path);
+    //cout << "alive after calling a*" << endl;
     Criterion::insertEvaluation(p, distance);
-    //cout << "alive in td" << endl;
+    
     return distance;
 }
 
