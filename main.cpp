@@ -16,6 +16,7 @@
 #include <algorithm>
 #include "ptu_control/commandSweep.h"
 #include "PathFinding/astar.h"
+#include "std_msgs/Int16.h"
 
 
 
@@ -23,12 +24,14 @@
 using namespace std;
 using namespace dummy;bool contains(std::list< Pose >& list, Pose& p);
 void cleanPossibleDestination2(std::list< Pose > &possibleDestinations, Pose& p);
-void gasDETECTION(Pose& p);
+void gasDetection(Pose& p);
+void ptuStateCallback(const std_msgs::Int16::ConstPtr& sta);
 geometry_msgs::PoseStamped getCurrentPose();
 void move(int x, int y, double orW, double orZ);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg);
 int getIndex(int x, int y);
+
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -42,6 +45,7 @@ nav_msgs::OccupancyGrid costmap_grid;
 double min_pan_angle, max_pan_angle, min_tilt_angle, max_tilt_angle, sample_delay, tilt_angle;
 int    num_pan_sweeps, num_tilt_sweeps;
 double sensing_range, offsetY_base_rmld, FoV;
+int statusPTU;
 
 
 // Input :  15 180 0.95 0.12
@@ -56,6 +60,7 @@ int main(int argc, char **argv) {
     MoveBaseClient ac("move_base", true);
     ros::Subscriber costmap_sub;
     ros::Subscriber costmap_update_sub;
+    ros::Subscriber ptu_sub = nh.subscribe("/ptu_control/state",10,ptuStateCallback);
     
     while(!ac.waitForServer(ros::Duration(5.0))){
     ROS_INFO("Waiting for the move_base action server to come up");
@@ -210,7 +215,14 @@ int main(int argc, char **argv) {
 	    newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
 	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
 	    target.setScanAngles(ray.getSensingTime(newMap,x,y,orientation,FOV,range));
-	    gasDETECTION(target);
+	    
+	    //NOTE: perform gas sensing------------
+	    gasDetection(target);
+	    while(statusPTU!=3){}
+	    ros::WallDuration(5).sleep();
+	    while(statusPTU!=0){}
+	    cout << "Gas detection COMPLETED!"<< endl;
+	    //-------------------------------------
 	    ray.performSensingOperation(newMap,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
 	    ray.findCandidatePositions(newMap,x,y,orientation,FOV,range);
 	    vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
@@ -572,7 +584,7 @@ void cleanPossibleDestination2(std::list< Pose >& possibleDestinations, Pose& p)
     
 }
 
-void gasDETECTION(Pose& p){
+void gasDetection(Pose& p){
 	ros::NodeHandle n;
   	ros::ServiceClient client1 = n.serviceClient<ptu_control::commandSweep>("/ptu_control/sweep");
   	
@@ -616,4 +628,8 @@ void gasDETECTION(Pose& p){
 		ROS_ERROR("Failed to get status.");} */
 }
 
+void ptuStateCallback(const std_msgs::Int16::ConstPtr& sta){
+	//ROS_INFO("PTU status is...%d",sta->data);
+	statusPTU=sta->data;
+}
 
