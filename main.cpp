@@ -15,22 +15,24 @@
 #include <costmap_2d/costmap_2d_ros.h>
 #include <algorithm>
 #include "ptu_control/commandSweep.h"
+#include "amtec/GetStatus.h"
 #include "PathFinding/astar.h"
 #include "std_msgs/Int16.h"
-
-
+#include <boost/thread.hpp>
+//#include <spinner.h>
 
 
 using namespace std;
 using namespace dummy;bool contains(std::list< Pose >& list, Pose& p);
 void cleanPossibleDestination2(std::list< Pose > &possibleDestinations, Pose& p);
-void gasDetection(Pose& p);
-void ptuStateCallback(const std_msgs::Int16::ConstPtr& sta);
+void gasDetection();
+void stateCallback(const std_msgs::Int16::ConstPtr& sta);
 geometry_msgs::PoseStamped getCurrentPose();
 void move(int x, int y, double orW, double orZ);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg);
 int getIndex(int x, int y);
+void scanning();
 
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
@@ -45,7 +47,7 @@ nav_msgs::OccupancyGrid costmap_grid;
 double min_pan_angle, max_pan_angle, min_tilt_angle, max_tilt_angle, sample_delay, tilt_angle;
 int    num_pan_sweeps, num_tilt_sweeps;
 double sensing_range, offsetY_base_rmld, FoV;
-int statusPTU;
+int statusPTU, prevStatusPTU;
 
 
 // Input :  15 180 0.95 0.12
@@ -55,12 +57,12 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh;
     ros::ServiceClient map_service_client_ = nh.serviceClient<nav_msgs::GetMap>("static_map");
     nav_msgs::GetMap srv_map;
-    ros::Publisher grid_pub = nh.advertise<nav_msgs::OccupancyGrid>("mcdm_grid", 1000);
+    //ros::Publisher grid_pub = nh.advertise<nav_msgs::OccupancyGrid>("mcdm_grid", 1000);
     ros::Publisher moveBasePub = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1000);
     MoveBaseClient ac("move_base", true);
     ros::Subscriber costmap_sub;
     ros::Subscriber costmap_update_sub;
-    ros::Subscriber ptu_sub = nh.subscribe("/ptu_control/state",10,ptuStateCallback);
+    ros::Subscriber ptu_sub = nh.subscribe("/ptu_control/state",10,stateCallback);
     
     while(!ac.waitForServer(ros::Duration(5.0))){
     ROS_INFO("Waiting for the move_base action server to come up");
@@ -71,11 +73,11 @@ int main(int argc, char **argv) {
     
     while(ros::ok()){
     
-    //if (map_service_client_.call(srv_map)){
+    if (map_service_client_.call(srv_map)){
 	
 	costmap_sub = nh.subscribe<nav_msgs::OccupancyGrid>("move_base/global_costmap/costmap", 100, grid_callback);
 	costmap_update_sub = nh.subscribe<map_msgs::OccupancyGridUpdate>("move_base/global_costmap/costmap_updates", 10, update_callback);
-
+	
 	if(costmapReceived == 0) {
 	    ROS_INFO_STREAM( "waiting for costmap" << std::endl);
 	    //cout << "Waiting for costmap" << endl;
@@ -85,7 +87,9 @@ int main(int argc, char **argv) {
 	{
 	double initFov = atoi(argv[1] );
 	initFov = initFov * PI /180;
+	FoV = initFov;
 	int initRange = atoi(argv[2]);
+	sensing_range = initRange;
 	double precision = atof(argv[3]);
 	double threshold = atof(argv[4]);
 	
@@ -102,6 +106,7 @@ int main(int argc, char **argv) {
 	    costresolution = (1 / resolution) * costresolution;
 	}
 	
+	
 	Map newMap = Map(resolution,costwidth,costheight,occdata,costorigin);
 	ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
 	
@@ -110,7 +115,7 @@ int main(int argc, char **argv) {
 	//tf::Transform tranMapToImage;
 	//tranMapToImage.setOrigin(tf::Vector3(0, 30, 0.0));
 	//tf::Vector3 vecImageToMap = tf::Vector3(0, 30,0.0);
-	*/	
+	*/
 	
 	// Get the initial pose in map frame
 	geometry_msgs::PoseStamped start_pose;
@@ -195,6 +200,8 @@ int main(int argc, char **argv) {
 	EvaluationRecords record;
 	Astar astar;
 	
+
+	
 	while(sensedCells < precision * totalFreeCells ){
 	    long x = target.getX();
 	    long y = target.getY();
@@ -215,14 +222,24 @@ int main(int argc, char **argv) {
 	    newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
 	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
 	    target.setScanAngles(ray.getSensingTime(newMap,x,y,orientation,FOV,range));
-	    
+	   
 	    //NOTE: perform gas sensing------------
-	    gasDetection(target);
-	    while(statusPTU!=3){}
-	    ros::WallDuration(5).sleep();
-	    while(statusPTU!=0){}
-	    cout << "Gas detection COMPLETED!"<< endl;
+	    offsetY_base_rmld = 0.904;
+	    //tilt_angle = (atan(sensing_range/offsetY_base_rmld)*(180/PI))-90;
+	    tilt_angle = -10;
+	    num_pan_sweeps = 1;
+	    num_tilt_sweeps = 1;
+	    sample_delay = 0.1;
+	    min_pan_angle = target.getScanAngles().first * 180 / PI;
+	    max_pan_angle = target.getScanAngles().second * 180 / PI;
+	    int diff = max_pan_angle - min_pan_angle;
+	    min_pan_angle = -(diff/2);
+	    max_pan_angle = (diff/2);
+	   
+	    boost::thread mythread(scanning);
+	    mythread.join();
 	    //-------------------------------------
+	    
 	    ray.performSensingOperation(newMap,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
 	    ray.findCandidatePositions(newMap,x,y,orientation,FOV,range);
 	    vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
@@ -423,8 +440,11 @@ int main(int argc, char **argv) {
 		frontiers.clear();
 		candidatePosition.clear();
 		delete record;
+		//with rate
 		ros::spinOnce();
 		r.sleep();
+		//without rate
+		//ros::spin();
 	    }
 	}
     
@@ -446,17 +466,21 @@ int main(int argc, char **argv) {
 	    cout << "-----------------------------------------------------------------"<<endl;    
 	}
 	return 1;
+	
     }
 	
     //ROS_INFO_STREAM( "waiting for costmap" << std::endl);
     cout << "Spinning at the end" << endl;
     sleep(1);
+    //with rate
     ros::spinOnce();
-    //ros::spin();
     r.sleep();
+    //without rate
+    //ros::spin();
     }
     
     
+}
 }
 
 
@@ -584,14 +608,14 @@ void cleanPossibleDestination2(std::list< Pose >& possibleDestinations, Pose& p)
     
 }
 
-void gasDetection(Pose& p){
+void gasDetection(){
+	
 	ros::NodeHandle n;
   	ros::ServiceClient client1 = n.serviceClient<ptu_control::commandSweep>("/ptu_control/sweep");
-  	
-	ptu_control::commandSweep srvSweep;
-	//amtec::GetStatus  srvState;
-	//rosservice call /ptu_control/sweep "{min_pan: -45.0, max_pan: 45.0, min_tilt: -10.0, max_tilt: -10.0, n_pan: 1, n_tilt: 1, samp_delay: 0.1}"
+  	ros::ServiceClient client2 = n.serviceClient<amtec::GetStatus>("/amtec/get_status");
 
+	ptu_control::commandSweep srvSweep;
+	
 	// Finding Tilt Angle:
 	//--------------------------
 	/*
@@ -605,31 +629,54 @@ void gasDetection(Pose& p){
 	*  theta = atan(0.904 / sensing range)
 	*  tilt_angle = 90-phi
 	*/
-
-	tilt_angle = (atan(sensing_range/offsetY_base_rmld)*(180/M_PI))-90;
-
-	srvSweep.request.min_pan  	= p.getScanAngles().first;        //min_pan_angle;   //-10;
-	srvSweep.request.max_pan  	= p.getScanAngles().second;        //max_pan_angle;   // 10;
+	
+	
+	
+	srvSweep.request.min_pan  	= min_pan_angle;        //min_pan_angle;   //-10;
+	srvSweep.request.max_pan  	= max_pan_angle;       //max_pan_angle;   // 10;
 	srvSweep.request.min_tilt 	= tilt_angle; 	   //min_tilt_angle;  //-10;
 	srvSweep.request.max_tilt 	= tilt_angle;      //max_tilt_angle;  //-10;
 	srvSweep.request.n_pan    	= num_pan_sweeps;  //  1;
 	srvSweep.request.n_tilt   	= num_tilt_sweeps; //  1;
-	srvSweep.request.samp_delay = sample_delay;    //0.1;
+	srvSweep.request.samp_delay	= sample_delay;    //0.1;
 
 	if (client1.call(srvSweep)){
-		ROS_INFO("Gas detection in progress ... <%.2f~%.2f,%.2f>",p.getScanAngles().first,p.getScanAngles().second,tilt_angle);}
-	else{
-		ROS_ERROR("Failed to initialize gas scanning.");}
-	/*
-	if(client2.call(srvState)){
-		ROS_INFO("Got status");
-		ROS_INFO("Sum: %f", (float)srvState.response.position_pan);}
-	else{
-		ROS_ERROR("Failed to get status.");} */
+	    ROS_INFO("Gas detection in progress ... <%.2f~%.2f,%.2f>",min_pan_angle,max_pan_angle,tilt_angle);    
+	}else{
+	    ROS_ERROR("Failed to initialize gas scanning.");
+	}
+	
+	
 }
 
-void ptuStateCallback(const std_msgs::Int16::ConstPtr& sta){
+void stateCallback(const std_msgs::Int16::ConstPtr& sta){
 	//ROS_INFO("PTU status is...%d",sta->data);
 	statusPTU=sta->data;
 }
 
+void scanning(){
+    ros::NodeHandle nh("~");
+    ros::Subscriber ptu_sub; 
+    ptu_sub = nh.subscribe<std_msgs::Int16>("/ptu_control/state",100,stateCallback);
+    ros::AsyncSpinner spinner(0);
+    spinner.start();
+    gasDetection();
+    while(ros::ok()){
+	
+	while(statusPTU!=3){
+	    sleep(1);
+	    //ROS_INFO("PTU status is...%d",statusPTU);
+	}
+	ROS_INFO("Scannning started!");
+	ros::WallDuration(5).sleep();
+	while(statusPTU!=0){ 
+	    sleep(1);
+	    //ROS_INFO("PTU status is...%d",statusPTU);
+	}
+	
+	ROS_INFO("Gas detection COMPLETED!");
+	spinner.stop();
+	break;
+    }
+ 
+}

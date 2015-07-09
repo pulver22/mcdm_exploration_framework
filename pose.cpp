@@ -1,6 +1,7 @@
 #include "pose.h"
 #include <cmath>
-
+#include <iostream>
+using namespace std;
 
 Pose::Pose(long aX,long aY, int orientation, int range, double FOV)
 {
@@ -83,6 +84,7 @@ bool Pose::operator==(const Pose& p)
 
 void Pose::setScanAngles(std::pair< double, double > angles)
 {
+  //cout << angles.first << ":"<<angles.second << endl;
   scanAngles = angles;
 }
 
