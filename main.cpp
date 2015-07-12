@@ -33,7 +33,7 @@ void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg);
 int getIndex(int x, int y);
 void scanning();
-
+double getPtuAngle(double mapAngle, int orientation);
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -199,6 +199,7 @@ int main(int argc, char **argv) {
 	list<Pose> tabuList;
 	EvaluationRecords record;
 	Astar astar;
+	bool scan = true;
 	
 
 	
@@ -221,30 +222,31 @@ int main(int argc, char **argv) {
 	    cout << "Round : " << count + 1<< endl;
 	    newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
 	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
-	    target.setScanAngles(ray.getSensingTime(newMap,x,y,orientation,FOV,range));
-	   
-	    //NOTE: perform gas sensing------------
-	    offsetY_base_rmld = 0.904;
-	    //tilt_angle = (atan(sensing_range/offsetY_base_rmld)*(180/PI))-90;
-	    tilt_angle = -10;
-	    num_pan_sweeps = 1;
-	    num_tilt_sweeps = 1;
-	    sample_delay = 0.1;
-	    min_pan_angle = target.getScanAngles().first * 180 / PI;
-	    max_pan_angle = target.getScanAngles().second * 180 / PI;
-	    int diff = max_pan_angle - min_pan_angle;
-	    min_pan_angle = -(diff/2);
-	    max_pan_angle = (diff/2);
-	   
-	    boost::thread mythread(scanning);
-	    mythread.join();
-	    //-------------------------------------
-	    
+	    target.setScanAngles(ray.getSensingTime(newMap,x,y,orientation,FOV,range));	    
 	    ray.performSensingOperation(newMap,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
 	    ray.findCandidatePositions(newMap,x,y,orientation,FOV,range);
 	    vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
 	    ray.emptyCandidatePositions();
 	    
+	    if(scan){
+		//NOTE: perform gas sensing------------
+		offsetY_base_rmld = 0.904;
+		tilt_angle = (atan(sensing_range/offsetY_base_rmld)*(180/PI))-90;
+		//tilt_angle = -10;
+		num_pan_sweeps = 1;
+		num_tilt_sweeps = 1;
+		sample_delay = 0.1;
+		//cout << "angolo finale:" << endl;
+		max_pan_angle = getPtuAngle(target.getScanAngles().second, target.getOrientation());
+		//cout << "angolo iniziale:" << endl;
+		min_pan_angle = getPtuAngle(target.getScanAngles().first, target.getOrientation());
+	    
+		boost::thread mythread(scanning);
+		mythread.join();
+		min_pan_angle = 0;
+		max_pan_angle = 0;
+		//-------------------------------------
+	    }
 	    
 	    
 	    if(candidatePosition.size() == 0) {
@@ -266,7 +268,7 @@ int main(int argc, char **argv) {
 		    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 		    count = count + 1;
 		    cout << "Graph dimension : " << graph2.size() << endl;
-		    
+		    scan = false;
 		    
 		} else {
 		    cout << "-----------------------------------------------------------------"<<endl;
@@ -317,7 +319,7 @@ int main(int argc, char **argv) {
 		    if (contains(tabuList,target) == false){
 			
 			//NOTE: TAKE THIS BRANCH IF THE TARGET ISN'T VISITED YET
-			
+			scan = true;
 			count = count + 1;
 			numConfiguration++;
 			history.push_back(function.getEncodedKey(target,1));
@@ -385,7 +387,7 @@ int main(int argc, char **argv) {
 			double orientZ = (double)(target.getOrientation()* PI/(2*180));
 			double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
 			move(p.point.x,p.point.y, sin(orientZ), cos(orientW));
-			
+			scan = true;
 			
 		    }else{
 			
@@ -400,6 +402,7 @@ int main(int argc, char **argv) {
 			cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 			count = count + 1;
 			cout << "Graph dimension : " << graph2.size() << endl;
+			scan = false;
 		    }  
 		}else {  
 			//NOTE: TAKE THIS BRANCH IF THERE ARE NO CANDIDATE POSITIONS THAT SATISFY THE THRESHOLD
@@ -418,6 +421,7 @@ int main(int argc, char **argv) {
 			    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 			    count = count + 1;
 			    cout << "Graph dimension : " << graph2.size() << endl;
+			    scan = false;
 			}else {
 			    if(graph2.size() == 0 ) {
 				cout << "No other possibilities to do backtracking on previous positions since there are no more position in the graph" << endl;
@@ -431,6 +435,7 @@ int main(int argc, char **argv) {
 			    cout << "[BT]Cell already explored!Come back to previous position"<< endl;			    history.push_back(function.getEncodedKey(target,2));
 			    cout << "New target: x = " << target.getY() << ",y = " << target.getX() <<", orientation = " << target.getOrientation() << endl;
 			    count = count + 1;
+			    scan = false;
 			}
 		
 		}
@@ -630,7 +635,11 @@ void gasDetection(){
 	*  tilt_angle = 90-phi
 	*/
 	
-	
+	if(min_pan_angle > max_pan_angle){
+	    double tmp = min_pan_angle;
+	    min_pan_angle = max_pan_angle;
+	    max_pan_angle = tmp;
+	}
 	
 	srvSweep.request.min_pan  	= min_pan_angle;        //min_pan_angle;   //-10;
 	srvSweep.request.max_pan  	= max_pan_angle;       //max_pan_angle;   // 10;
@@ -679,4 +688,26 @@ void scanning(){
 	break;
     }
  
+}
+
+double getPtuAngle(double mapAngle, int orientation)
+{
+    double ptuAngle = 0;
+    // get the angle in degrees
+    int tmp = mapAngle * 180 / PI;
+   // cout << mapAngle << " -> " << tmp << endl;
+    tmp = tmp % 360 ;
+    //cout << tmp <<endl;
+    if(orientation == 0){
+	if(tmp > 0 && tmp < 90) ptuAngle = tmp * (-1);
+    }if (tmp < 90){
+	ptuAngle = tmp;
+    }else {
+	tmp = orientation + 360 - tmp;
+	if(tmp < 90) ptuAngle = tmp;
+	else ptuAngle = tmp- 360;
+    }
+    if(orientation < 0 || orientation >= 180) ptuAngle = ptuAngle * (-1);
+    //cout << ptuAngle <<endl;
+    return ptuAngle;
 }
