@@ -699,7 +699,9 @@ double getPtuAngle(double mapAngle, int orientation)
     tmp = tmp % 360 ;
     //cout << tmp <<endl;
     if(orientation == 0){
-	if(tmp > 0 && tmp < 90) ptuAngle = tmp * (-1);
+	//ATTENTION: i'm not sure about this branch...need to be tested
+	//NOTE: commented should be ok
+	//if(tmp > 0 && tmp < 90) ptuAngle = tmp * (-1);
     }if (tmp < 90){
 	ptuAngle = tmp;
     }else {
