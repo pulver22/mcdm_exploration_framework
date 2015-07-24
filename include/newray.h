@@ -16,14 +16,17 @@ public:
   NewRay();
   //~Ray();
   void findCandidatePositions(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
+  void findCandidatePositions2(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
   int isCandidate(const dummy::Map &map, long i, long j);
   std::vector<std::pair<long, long> > getCandidatePositions();
   pair< double, double > getSensingTime(const Map& map, long int posX, long int posY, int orientation, double FOV, int range);
-  void performSensingOperation(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range, double firstAngle, double lastAngle);
+  int performSensingOperation(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range, double firstAngle, double lastAngle);
   void emptyCandidatePositions();
   int getInformationGain(const dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
   long convertPoint(long y);
+  long convertPointPP(long y);
   void calculateInfoGainSensingTime (const dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
+  int setGridToPathGridScale(int value);
   
 protected:
   double mapX, mapY;			//coordinates in the map
@@ -34,8 +37,11 @@ protected:
   std::vector<std::pair<long, long> > edgePoints;
   long numGridCols;
   long numGridRows;
+  long numPathPlanningGridRows;
+  long numPathPlanningGridCols;
   long informationGain;
   double sensingTime;
+  int gridToPathGridScale;
 };
 
 

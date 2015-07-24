@@ -6,6 +6,7 @@
 #include <vector>
 #include <sstream>
 #include <string.h>
+#include <list>
 
 
 using namespace std;
@@ -67,7 +68,7 @@ public:
 	* and the frontiers when you do not need them.
 	* @return the list of the evaluated frontiers.
 	*/
-    vector<Pose> getFrontiers();
+    list< Pose > getFrontiers();
     /**
 	* Method that remove a frontier from the evaluation record.
 	* @param frontier the frontier to remove.

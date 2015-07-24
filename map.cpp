@@ -4,7 +4,7 @@
 using namespace std;
 
 namespace dummy{
-  
+
 Map::Map(std::ifstream& infile, int resolution)
 {
   Map::createMap(infile);
@@ -15,11 +15,11 @@ Map::Map(std::ifstream& infile, int resolution)
 
 Map::Map()
 {
-  
+
 }
 
-Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::Pose origin){
-    
+Map::Map(float resolution, float costresolution, int width,int height,vector<int> data,geometry_msgs::Pose origin){
+
     if(resolution > 0 && resolution <= 1){
 	//NOTE: to be used with 1mx1m cells
 	for(int i = 0; i < width*height; ++i){
@@ -33,75 +33,76 @@ Map::Map(float resolution,int width,int height,vector<int> data,geometry_msgs::P
 	// contained in data vector
 	for(long row = 0; row < height; ++row){
 		for(long col = 0; col < width; ++col){
-		    
-		    //if(map[row*numCols + col] == 0) 
-		    
+
+		    //if(map[row*numCols + col] == 0)
+
 		    if(data.at(row*width + col) > 60) {
 			map[( height - row)*width + col] = 1;
-			//grid[(height - row)*width + col] = 1;	
-			    
-			
+			//grid[(height - row)*width + col] = 1;
+
+
 		    }
-		    
+
 		    if(data.at(row*width + col) <20) {
 			map[(height - row)*width + col] = 0;
 			//grid[(height - row)*width + col] = 0;
-		    
+
 		    }
-		    
+
 		    if(data.at(row*width + col) < 0) {
 			map[(height - row)*width + col] = 1;
 			//grid[(height - row)*width + col] = 1;
-			
+
 		    }
-		    
+
 		}
 	}
-	
-	
-	int tmpRes = resolution * 100;
-	Map::createGrid(tmpRes);
+
+
+	//int tmpRes = resolution * 100;
+	Map::createGrid(resolution);
+	Map::createPathPlanningGrid(costresolution);
 	Map::createNewMap();
-	
+
     }else if(resolution == 0){
-	
+
 	//NOTE: to be used with default resolution
 	for(int i = 0; i < width*height; ++i){
 	    grid.push_back(0);
 	}
-	
-	
+
+
 	numGridCols = width;
 	numGridRows = height;
 	//set 1 in the grid cells corrisponding to obstacles according to percentage value
 	// contained in data vector
 	for(long row = 0; row < height; ++row){
 		for(long col = 0; col < width; ++col){
-		    
-		    
-		    
+
+
+
 		    if(data.at(row*width + col) > 60) {
-			grid[(height - row)*width + col] = 1;	
+			grid[(height - row)*width + col] = 1;
 		    }
-		    
+
 		    if(data.at(row*width + col) <20) {
-			grid[(height - row)*width + col] = 0; 
+			grid[(height - row)*width + col] = 0;
 		    }
-		    
+
 		    if(data.at(row*width + col) < 0) {
 			grid[(height - row)*width + col] = 1;
 		    }
-		    
+
 		}
 	}
 
 	Map::createNewMap();
-	
+
     }
 }
 
 
-// create a monodimensional vector containing the map 
+// create a monodimensional vector containing the map
 void Map::createMap(std::ifstream& infile)
 {
   long row = 0, col = 0;
@@ -111,9 +112,9 @@ void Map::createMap(std::ifstream& infile)
   // First line : version
   getline(infile,inputLine);
   if(inputLine.compare("P2") != 0) {
-      
+
     long rows, cols, size, greylevels;
-    
+
      //Second line : comment
     char comment_char = infile.get();
     if(comment_char == '#') {
@@ -128,10 +129,10 @@ void Map::createMap(std::ifstream& infile)
     // Third line : size
     ss >> numCols >> numRows >> greylevels;
     // cout << numCols << " columns and " << numRows << " rows" << endl;
-    
+
     size = numCols * numRows;
 
-    
+
     long* data = new long[size];
     for(long* ptr = data; ptr < data+size; ptr++) {
         // read in binary char
@@ -143,18 +144,18 @@ void Map::createMap(std::ifstream& infile)
     }
     // close the stream
     infile.close();
-    
+
     Map::map.reserve(numRows*numCols);
 
     // Following lines : data
 
     for(long* ptr = data, i = 0; ptr < data+size; ptr++, i++) {
-	
+
 	map[i] = *ptr ;
 	//cout << map[i];
     }
    delete data;
-    
+
   }else{
 
 
@@ -175,43 +176,43 @@ void Map::createMap(std::ifstream& infile)
   // Third line : size
   ss >> numCols >> numRows;
  // cout << numCols << " columns and " << numRows << " rows" << endl;
-  
+
  //max value of color
  getline(infile,inputLine);
- 
- 
+
+
  //std::vector<int> array(numRows*numCols);
  Map::map.reserve(numRows*numCols);
 
   // Following lines : data
   for(row = 0; row < numRows; ++row)
     for (col = 0; col < numCols; ++col) ss >> Map::map[row*numCols + col];
- 
+
   //infile.close();
   }
 }
 
 // Create a grid 1mx1m
-void Map::createGrid(int resolution)
+void Map::createGrid(float resolution)
 {
   //cluster cells into grid
-  float clusterSize = (float)((100.0/resolution));
+  float clusterSize = (float)((1/resolution));
   Map::numGridRows = (long)numRows/clusterSize;
   Map::numGridCols = (long)numCols/clusterSize;
   cout <<" numGridRows: " << numGridRows <<", numGridCols: "<< numGridCols << endl;
-  
+
    for(int i = 0; i < numGridCols*numGridRows; ++i)
   {
     grid.push_back(0);
   }
-  
+
   //set 1 in the grid cells corrisponding to obstacles
     for(long row = 0; row < numRows; ++row)
     {
 	    for(long col = 0; col < numCols; ++col)
 	    {
- 
-		if(getMapValue(row,col) == 1) 
+
+		if(getMapValue(row,col) == 1)
 		{
 			grid[(long)(row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
 			//NOTE: i don't remember when it should be used
@@ -219,23 +220,131 @@ void Map::createGrid(int resolution)
 		}
 	    }
     }
-    
-    
+
+
 }
+
+void Map::createPathPlanningGrid(float resolution)
+{
+  //cluster cells into grid
+  float clusterSize = (float)((1/resolution));
+  //std::cout << "imgResolution: " << resolution << " clusterSize: " << clusterSize << std::endl;
+  Map::numPathPlanningGridRows = (int)(numRows/clusterSize);
+  Map::numPathPlanningGridCols = (int)(numCols/clusterSize);
+  cout <<" numPathPlanningGridRows: " << numPathPlanningGridRows <<", numPathPlanningGridCols: "<< numPathPlanningGridCols << endl;
+
+   for(int i = 0; i < numPathPlanningGridCols*numPathPlanningGridRows; ++i)
+  {
+    pathPlanningGrid.push_back(0);
+  }
+
+  //set 1 in the grid cells corrisponding to obstacles
+    for(long row = 0; row < numRows; ++row)
+    {
+	    for(long col = 0; col < numCols; ++col)
+	    {
+
+		if(getMapValue(row,col) == 1)
+		{
+			pathPlanningGrid[(long)(row/clusterSize)*numPathPlanningGridCols + (long)(col/clusterSize)] = 1;
+			//NOTE: i don't remember when it should be used
+			//map[(long)(row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
+		}
+	    }
+    }
+    Map::gridToPathGridScale = (int)(numGridRows / numPathPlanningGridRows);
+
+
+}
+
+
+void Map::updatePathPlanningGrid(int posX, int posY, int rangeInMeters)
+{
+
+  //int ppX = (int)(posX/gridToPathGridScale);
+  //int ppY = (int)(posY/gridToPathGridScale);
+  int minX = posX - rangeInMeters;
+  int maxX = posX + rangeInMeters;
+  if(minX < 0) minX = 0;
+  if(maxX > numPathPlanningGridRows - 1) maxX = numPathPlanningGridRows - 1;
+  int minY = posY - rangeInMeters;
+  int maxY = posY + rangeInMeters;
+  if(minY < 0) minY = 0;
+  if(maxY > numPathPlanningGridCols - 1) maxY = numPathPlanningGridCols - 1;
+
+  for(int row = minX; row <= maxX; ++row)
+  {
+    for(int col = minY; col <= maxY; ++col)
+    {
+      int countScanned = 0;
+      int setToOne = 0;
+      for(int gridRow = row*gridToPathGridScale; gridRow < row*gridToPathGridScale + gridToPathGridScale; ++gridRow)
+      {
+	for(int gridCol = col*gridToPathGridScale; gridCol < col*gridToPathGridScale + gridToPathGridScale; ++gridCol)
+	{
+	  //std::cout << "X: " << row << " Y: " << col << " gridX: " << gridRow << " gridY: " << gridCol << std::endl;
+	  if(getGridValue(gridRow, gridCol) == 1)
+	  {
+	    setToOne = 1;
+	  }
+
+	  if(getGridValue(gridRow, gridCol) == 2)
+	  {
+	    countScanned++;
+	  }
+	}
+      }
+      if(countScanned == gridToPathGridScale*gridToPathGridScale)
+      {
+	setPathPlanningGridValue(2, row, col);
+      }
+       if(setToOne == 1) setPathPlanningGridValue(1, row, col);
+    }
+  }
+
+
+}
+
+int Map::getPathPlanningGridValue(long i,long j) const
+{
+  return pathPlanningGrid[i*numPathPlanningGridCols + j];
+}
+
+void Map::setPathPlanningGridValue(int value, int i, int j)
+{
+  pathPlanningGrid[i*numPathPlanningGridCols + j] = value;
+}
+
+int Map::getPathPlanningNumCols() const
+{
+  return numPathPlanningGridCols;
+}
+
+int Map::getPathPlanningNumRows() const
+{
+  return numPathPlanningGridRows;
+}
+
+int Map::getGridToPathGridScale() const
+{
+ return gridToPathGridScale;
+}
+
+
 
 void Map::createNewMap()
 {
     //cout << "ciao" << endl;
     std::ofstream imgNew("/home/pulver/Desktop/test.pgm", ios::out);
-    
+
     //imgNew << "h"<<endl;
-    
+
     std::ofstream txt("/home/pulver/Desktop/freeCell.txt");
     long columns = numGridCols;
     long rows = numGridRows;
-    
+
     imgNew << "P2\n" << columns << " " << rows << "\n255\n";
-    
+
     for(long row = 0; row < rows; ++row)
     {
 	for(long col = 0; col < columns; ++col)
@@ -248,12 +357,12 @@ void Map::createNewMap()
 	    //else put 0 as free cell
 	    else {
 		imgNew <<  0 << " ";
-		
+
 	    }
 	}
 	//imgNew << "\n";
     }
-    
+
     imgNew.close();
     txt.close();
 }
@@ -276,10 +385,10 @@ void Map::addEdgePoint(int x, int y)
   edgePoints.push_back(pair);
 }
 
-  
+
 std::vector<vector<long> > Map::getMap2D(){
     vector<vector<long> > map2D;
-    
+
     for (long gridRow = 0; gridRow < numGridRows; ++gridRow)
   {
     for (long gridCol = 0; gridCol < numGridCols; ++gridCol)
@@ -287,9 +396,9 @@ std::vector<vector<long> > Map::getMap2D(){
       map2D[gridRow].at(gridCol) = getGridValue(gridRow,gridCol);
     }
   }
-    
+
     return map2D;
-    
+
 }
 
 //various getters
@@ -366,9 +475,9 @@ void Map::drawVisitedCells(unordered_map<string,int>& visitedCells,int resolutio
     std::ofstream resultMap("/home/pulver/Desktop/result.pgm", ios::out);
     long columns = numGridCols;
     long rows = numGridRows;
-    
+
     resultMap << "P2\n" << columns << " " << rows << "\n255\n";
-    
+
     for(long row = 0; row < rows; ++row)
     {
 	for(long col = 0; col < columns; ++col)
@@ -381,14 +490,14 @@ void Map::drawVisitedCells(unordered_map<string,int>& visitedCells,int resolutio
 	    //else put 0 as free cell
 	    else {
 		resultMap <<  0 << " ";
-		
+
 	    }
 	}
 	//imgNew << "\n";
     }
-    
+
    resultMap.close();
-    
+
 }
 
 void Map::printVisitedCells(vector< string >& history)
@@ -404,7 +513,7 @@ void Map::printVisitedCells(vector< string >& history)
 	std::string::size_type pos = encoding.find('/');
 	x = encoding.substr(0,pos);
 	int xValue = atoi(x.c_str());
-	//cout << x << endl;	
+	//cout << x << endl;
 	string newString = encoding.substr(pos+1,encoding.size());
 	//cout << newString << endl;
 	std::string::size_type newPos = newString.find('/');
@@ -429,10 +538,10 @@ void Map::printVisitedCells(vector< string >& history)
 	newPos = newString.find('/');
 	phi = newString.substr(0,newPos);
 	double phiValue = atoi(phi.c_str());
-	
+
 	txt << xValue << "  " << yValue << " " << orientationValue << " " << r <<endl;
     }
-    
+
 }
 
 
