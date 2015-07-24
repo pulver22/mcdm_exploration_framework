@@ -31,16 +31,17 @@ bool operator<(const Node & a,const Node & b){
 string Astar::pathFind( const int & xStart, const int & yStart, const int & xFinish, const int & yFinish,
 		    Map& originalMap )
 {
-    const int m = originalMap.getNumGridCols();
-    const int n = originalMap.getNumGridRows();
+    const int m = originalMap.getPathPlanningNumCols();
+    const int n = originalMap.getPathPlanningNumRows();
     int map[n][m];
     int closed_nodes_map[n][m]; // map of closed (tried-out) nodes
     int open_nodes_map[n][m]; // map of open (not-yet-tried) nodes
     int dir_map[n][m]; // map of directions
+    
     // create map
     for(int y=0;y<m;y++)
     {
-        for(int x=0;x<m;x++) map[x][y]= originalMap.getGridValue(x,y);
+        for(int x=0;x<n;x++) map[x][y]= originalMap.getPathPlanningGridValue(x,y);
     }
     //cout << "alive in pathfind"<< endl;
     static priority_queue<Node> pq[2]; // list of open (not-yet-tried) nodes

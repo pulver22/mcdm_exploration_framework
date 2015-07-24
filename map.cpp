@@ -71,7 +71,8 @@ Map::Map(float resolution, float costresolution, int width,int height,vector<int
 	    grid.push_back(0);
 	}
 
-
+	numCols = width;
+	numRows = height;
 	numGridCols = width;
 	numGridRows = height;
 	//set 1 in the grid cells corrisponding to obstacles according to percentage value
@@ -97,6 +98,7 @@ Map::Map(float resolution, float costresolution, int width,int height,vector<int
 	}
 
 	Map::createNewMap();
+	Map::createPathPlanningGrid(1.0);
 
     }
 }
@@ -227,11 +229,12 @@ void Map::createGrid(float resolution)
 void Map::createPathPlanningGrid(float resolution)
 {
   //cluster cells into grid
-  float clusterSize = (float)((1/resolution));
+ 
+    float clusterSize = (float)((1/resolution));
   //std::cout << "imgResolution: " << resolution << " clusterSize: " << clusterSize << std::endl;
   Map::numPathPlanningGridRows = (int)(numRows/clusterSize);
   Map::numPathPlanningGridCols = (int)(numCols/clusterSize);
-  cout <<" numPathPlanningGridRows: " << numPathPlanningGridRows <<", numPathPlanningGridCols: "<< numPathPlanningGridCols << endl;
+  cout <<"numPathPlanningGridRows: " << numPathPlanningGridRows <<", numPathPlanningGridCols: "<< numPathPlanningGridCols << endl;
 
    for(int i = 0; i < numPathPlanningGridCols*numPathPlanningGridRows; ++i)
   {
@@ -243,9 +246,12 @@ void Map::createPathPlanningGrid(float resolution)
     {
 	    for(long col = 0; col < numCols; ++col)
 	    {
-
-		if(getMapValue(row,col) == 1)
-		{
+		if(resolution == 1.0){
+		    if(getGridValue(row,col) == 1)
+			pathPlanningGrid[(long)(row/clusterSize)*numPathPlanningGridCols + (long)(col/clusterSize)] = 1;
+		
+		    
+		}else if(getMapValue(row,col) == 1){
 			pathPlanningGrid[(long)(row/clusterSize)*numPathPlanningGridCols + (long)(col/clusterSize)] = 1;
 			//NOTE: i don't remember when it should be used
 			//map[(long)(row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
@@ -253,7 +259,7 @@ void Map::createPathPlanningGrid(float resolution)
 	    }
     }
     Map::gridToPathGridScale = (int)(numGridRows / numPathPlanningGridRows);
-
+    
 
 }
 

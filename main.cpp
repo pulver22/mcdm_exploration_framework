@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
 		    candidatePosition = ray.getCandidatePositions();
 			ray.emptyCandidatePositions();
 		}
-
+	    /*
 	    for(int i = 0; i < newMap.getPathPlanningNumRows(); ++i)
 		{
 		for(int j = 0; j < newMap.getPathPlanningNumCols(); ++j)
@@ -254,6 +254,7 @@ int main(int argc, char **argv) {
 		std::cout << std::endl;
 		}
 		std::cout << std::endl;
+	    */
 
 	    if(scan){
 		//NOTE: perform gas sensing------------
@@ -713,8 +714,8 @@ void scanning(){
     ptu_sub = nh.subscribe<std_msgs::Int16>("/ptu_control/state",100,stateCallback);
     ros::AsyncSpinner spinner(0);
     spinner.start();
+    clock_t start = clock();
     gasDetection();
-	clock_t start = clock();
     while(ros::ok()){
 
 	while(statusPTU!=3){
@@ -731,7 +732,7 @@ void scanning(){
 	ROS_INFO("Gas detection COMPLETED!");
 	clock_t end = clock();
 	double tmpScanning = double(end - start);
-	cout << "Time of current scan : "<< tmpScanning;
+	cout << "Time of current scan : "<< tmpScanning << endl;
 	timeOfScanning = timeOfScanning + tmpScanning;
 	spinner.stop();
 	break;
