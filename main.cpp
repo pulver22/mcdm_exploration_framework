@@ -19,6 +19,8 @@
 #include "PathFinding/astar.h"
 #include "std_msgs/Int16.h"
 #include <boost/thread.hpp>
+#include <time.h>
+#include <ctime>
 //#include <spinner.h>
 
 
@@ -56,6 +58,7 @@ double timeOfScanning = 0;
 // Input :  15 180 0.95 0.12
 // range centralAngle precision threshold
 int main(int argc, char **argv) {
+    auto startMCDM = chrono::high_resolution_clock::now();
     ros::init(argc, argv, "mcdm_exploration_framework_node");
     ros::NodeHandle nh;
     ros::ServiceClient map_service_client_ = nh.serviceClient<nav_msgs::GetMap>("static_map");
@@ -141,24 +144,25 @@ int main(int argc, char **argv) {
 	//convert from map frame to image
 	tf::Vector3 pose = tf::Vector3(initX,initY,0.0);
 	//pose = tranMapToImage.operator*(pose);
-	/*
+	
+	Pose target , previous ;
 	if(resolution >= 0 && resolution < 1 && resolution != costresolution){
-	    cout << "alive"<< endl;
+	    //full resolution and scaling
 	    pose = pose / costresolution;
+	    //cout << "[BEFORE]Initial position in the image frame: " << pose.getX() * costresolution<< "," << (newMap.getPathPlanningNumRows() - (long)pose.getY())*costresolution << endl;
+	    Pose initialPose = Pose(newMap.getPathPlanningNumRows() - (long)pose.getY(), (long)pose.getX(),initOrientation,initRange,initFov);
+	    target = initialPose;
+	    previous = initialPose;
+	    cout << "[AFTER]Initial position in the image frame: " << target.getY()*costresolution << "," << target.getX()*costresolution << endl;
+	}else{
+	    //1mx1m
+	    //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << newMap.getPathPlanningNumRows() - (long)pose.getY() << endl;
+	    //NOTE: Y in map are X in image
+	    Pose initialPose = Pose(newMap.getPathPlanningNumRows() - (long)pose.getY(), (long)pose.getX(),initOrientation,initRange,initFov);
+	    target = initialPose;
+	    previous = initialPose;
+	    cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
 	}
-	*/
-	//pose = transform.operator*(pose);
-
-	cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << newMap.getPathPlanningNumRows() - (long)pose.getY() << endl;
-
-
-	//NOTE: Y in map are X in image
-	Pose initialPose = Pose(newMap.getPathPlanningNumRows() - (long)pose.getY(), (long)pose.getX(),initOrientation,initRange,initFov);
-	Pose target = initialPose;
-	Pose previous = initialPose;
-
-	cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
-
 
 
 	//----------------- PRINT INITIAL POSITION
@@ -167,9 +171,13 @@ int main(int argc, char **argv) {
 	p.header.frame_id = "map";
 	p.header.stamp = ros::Time::now();
 	//NOTE: as before, Y in map are X in image
-	p.point.x = ( newMap.getPathPlanningNumRows() -  target.getX() ); //* costresolution;
-	p.point.y = (target.getY() ); //* costresolution;
-
+	if(resolution!= 0){
+	    p.point.x = ( newMap.getPathPlanningNumRows() -  target.getX() ) + 0.5; //* costresolution;
+	    p.point.y = (target.getY() ) + 0.5; //* costresolution;
+	}else{
+	    p.point.x = ( newMap.getPathPlanningNumRows() -  target.getX() ) * costresolution;
+	    p.point.y = (target.getY() ) * costresolution;
+	}
 	//cout << p.point.x << ","<< p.point.y << endl;
 
 	tf::Vector3 vec =  tf::Vector3(p.point.x,p.point.y,0.0);
@@ -210,7 +218,7 @@ int main(int argc, char **argv) {
 
 
 
-	while(sensedCells < precision * totalFreeCells ){
+	while(sensedCells < precision * totalFreeCells - 200){
 	    long x = target.getX();
 	    long y = target.getY();
 	    int orientation = target.getOrientation();
@@ -221,7 +229,6 @@ int main(int argc, char **argv) {
 
 	    string path = astar.pathFind(target.getX(),target.getY(),previous.getX(),previous.getY(),newMap);
 	    travelledDistance = travelledDistance + astar.lenghtPath(path);
-		cout << "alive" << endl;
 	    numOfTurning = numOfTurning + astar.getNumberOfTurning(path);
 	    string encoding = to_string(target.getX()) + to_string(target.getY());
 	    visitedCell.emplace(encoding,0);
@@ -233,7 +240,7 @@ int main(int argc, char **argv) {
 	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
 	    target.setScanAngles(ray.getSensingTime(newMap,x,y,orientation,FOV,range));
 	    newSensedCells = sensedCells + ray.performSensingOperation(newMap,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
-        newMap.updatePathPlanningGrid(x, y, range);
+	    newMap.updatePathPlanningGrid(x, y, range);
 	    totalAngle += target.getScanAngles().second - target.getScanAngles().first;
 	    ray.findCandidatePositions(newMap,x,y,orientation,FOV,range);
 	    vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
@@ -308,8 +315,18 @@ int main(int argc, char **argv) {
 		    cout << "-----------------------------------------------------------------"<<endl;
 		    cout << "I came back to the original position since i don't have any other candidate position"<< endl;
 		    cout << "Total cell visited :" << numConfiguration <<endl;
-		    cout << "FINAL: Map not completely explored!" << endl;
+		    cout << "Total travelled distance (cells): " << travelledDistance << endl;
+		    cout << "Total exploration time: " << travelledDistance / 0.25 << endl;
+		    cout << "Total number of turning: " << numOfTurning << endl;
+		    cout << "Sum of scan angles (radians): " << totalAngle << endl;
+		    cout << "Total time for scanning: " << timeOfScanning << endl;
+		    cout << "FINAL: MAP NOT EXPLORED! :(" << endl;
 		    cout << "-----------------------------------------------------------------"<<endl;
+		    auto endMCDM = chrono::high_resolution_clock::now();
+		    double totalTimeMCDM = chrono::duration<double,milli>(endMCDM -startMCDM).count();
+		    cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "ms, " << totalTimeMCDM/1000 <<" s, " <<
+			    totalTimeMCDM/60000 << " m "<< endl;		    
+		    cout << "Total time in empirical way : " << travelledDistance / 0.25 + timeOfScanning/1000 << endl;
 		    exit(0);
 		}
 
@@ -323,21 +340,21 @@ int main(int argc, char **argv) {
 		vector<pair<long,long> >::iterator it =candidatePosition.begin();
 		for(it; it != candidatePosition.end(); it++){
 		    Pose p1 = Pose((*it).first,(*it).second,0 ,range,FOV);
-            Pose p2 = Pose((*it).first,(*it).second,45 ,range,FOV);
+            //Pose p2 = Pose((*it).first,(*it).second,45 ,range,FOV);
 		    Pose p3 = Pose((*it).first,(*it).second,90,range,FOV);
 		    Pose p4 = Pose((*it).first,(*it).second,135,range,FOV);
 		    Pose p5 = Pose((*it).first,(*it).second,180,range,FOV);
-            Pose p6 = Pose((*it).first,(*it).second,225 ,range,FOV);
-            Pose p7 = Pose((*it).first,(*it).second,270 ,range,FOV);
-            Pose p8 = Pose((*it).first,(*it).second,315 ,range,FOV);
+            //Pose p6 = Pose((*it).first,(*it).second,225 ,range,FOV);
+            //Pose p7 = Pose((*it).first,(*it).second,270 ,range,FOV);
+            //Pose p8 = Pose((*it).first,(*it).second,315 ,range,FOV);
 		    frontiers.push_back(p1);
-		    frontiers.push_back(p2);
+	    //frontiers.push_back(p2);
 		    frontiers.push_back(p3);
 		    frontiers.push_back(p4);
-            frontiers.push_back(p5);
-            frontiers.push_back(p6);
-            frontiers.push_back(p7);
-            frontiers.push_back(p8);
+		    frontiers.push_back(p5);
+            //frontiers.push_back(p6);
+            //frontiers.push_back(p7);
+            //frontiers.push_back(p8);
 		}
 
 		unexploredFrontiers = frontiers;
@@ -396,18 +413,18 @@ int main(int argc, char **argv) {
 			p.header.stamp = ros::Time::now();
 			//NOTE: as before, Y in map are X in image
 
-			/*
+			
 
 			if(resolution >= 0 && resolution < 1 && resolution != costresolution){
 			    //NOTE: full resolution
 			    p.point.x = (newMap.getNumGridRows() - target.getX() ) * costresolution;
 			    p.point.y = (target.getY() ) * costresolution;
 
-			}else { */
+			}else { 
 			     //NOTE: 1mx1m
 			    p.point.x = (newMap.getPathPlanningNumRows() - target.getX() );//* costresolution;
 			    p.point.y = (target.getY() );// * costresolution;
-			//}
+			}
 
 			//cout << p.point.x << ","<< p.point.y << endl;
 
@@ -429,7 +446,9 @@ int main(int argc, char **argv) {
 			move_base_msgs::MoveBaseGoal goal;
 			double orientZ = (double)(target.getOrientation()* PI/(2*180));
 			double orientW =  (double)(target.getOrientation()* PI/(2 * 180));
-			move(p.point.x + 0.5,p.point.y + 0.5, sin(orientZ), cos(orientW));
+			if(resolution != 0){
+			    move(p.point.x + 0.5,p.point.y + 0.5, sin(orientZ), cos(orientW));
+			}else move(p.point.x ,p.point.y, sin(orientZ), cos(orientW));
 			scan = true;
 
 		    }else{
@@ -500,21 +519,35 @@ int main(int argc, char **argv) {
 	newMap.printVisitedCells(history);
 
 
-	 if (sensedCells >= precision * totalFreeCells ){
+	 if (sensedCells >= precision * totalFreeCells -200){
 	    cout << "-----------------------------------------------------------------"<<endl;
 	    cout << "Total cell visited :" << numConfiguration <<endl;
 	    cout << "Total travelled distance (cells): " << travelledDistance << endl;
+	    cout << "Total exploration time: " << travelledDistance / 0.25 << endl;
 	    cout << "Total number of turning: " << numOfTurning << endl;
 	    cout << "Sum of scan angles (radians): " << totalAngle << endl;
-		cout << "Total time for scanning: " << timeOfScanning << endl;
-	    cout << "FINAL: MAP EXPLORED!" << endl;
+	    cout << "Total time for scanning: " << timeOfScanning << endl;
+	    cout << "FINAL: MAP EXPLORED! :)" << endl;
 	    cout << "-----------------------------------------------------------------"<<endl;
 	}else{
 	    cout << "-----------------------------------------------------------------"<<endl;
+	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
 	    cout << "I came back to the original position since i don't have any other candidate position"<< endl;
 	    cout << "Total cell visited :" << numConfiguration <<endl;
+	    cout << "Total travelled distance (cells): " << travelledDistance << endl;
+	    cout << "Total exploration time: " << travelledDistance / 0.25 << endl;
+	    cout << "Total number of turning: " << numOfTurning << endl;
+	    cout << "Sum of scan angles (radians): " << totalAngle << endl;
+	    cout << "Total time for scanning: " << timeOfScanning << endl;
+	    cout << "FINAL: MAP NOT EXPLORED! :(" << endl;
 	    cout << "-----------------------------------------------------------------"<<endl;
 	}
+	auto endMCDM= chrono::high_resolution_clock::now();
+
+	double totalTimeMCDM = chrono::duration<double,milli>(endMCDM -startMCDM).count();
+	cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "ms, " << totalTimeMCDM/1000 <<" s, " <<
+		totalTimeMCDM/60000 << " m "<< endl;
+	cout << "Total time in empirical way : " << travelledDistance / 0.25 + timeOfScanning/1000 << endl;
 	return 1;
 
     }
@@ -714,7 +747,7 @@ void scanning(){
     ptu_sub = nh.subscribe<std_msgs::Int16>("/ptu_control/state",100,stateCallback);
     ros::AsyncSpinner spinner(0);
     spinner.start();
-    clock_t start = clock();
+    auto start = chrono::high_resolution_clock::now();
     gasDetection();
     while(ros::ok()){
 
@@ -722,7 +755,7 @@ void scanning(){
 	    sleep(1);
 	    //ROS_INFO("PTU status is...%d",statusPTU);
 	}
-	ROS_INFO("Scannning started!");
+	ROS_INFO("Scanning started!");
 	ros::WallDuration(5).sleep();
 	while(statusPTU!=0){
 	    sleep(1);
@@ -730,9 +763,9 @@ void scanning(){
 	}
 
 	ROS_INFO("Gas detection COMPLETED!");
-	clock_t end = clock();
-	double tmpScanning = double(end - start);
-	cout << "Time of current scan : "<< tmpScanning << endl;
+	auto end = chrono::high_resolution_clock::now();
+	double tmpScanning = chrono::duration<double,milli>(end -start).count();
+	cout << "Time of current scan : "<< tmpScanning << " ms" <<endl;
 	timeOfScanning = timeOfScanning + tmpScanning;
 	spinner.stop();
 	break;
@@ -745,21 +778,23 @@ double getPtuAngle(double mapAngle, int orientation)
     double ptuAngle = 0;
     // get the angle in degrees
     int tmp = mapAngle * 180 / PI;
-   // cout << mapAngle << " -> " << tmp << endl;
+    cout << mapAngle << " -> " << tmp << endl;
     tmp = tmp % 360 ;
-    //cout << tmp <<endl;
+    cout << tmp <<endl;
     if(orientation == 0){
 	//ATTENTION: i'm not sure about this branch...need to be tested
 	//NOTE: commented should be ok
 	//if(tmp > 0 && tmp < 90) ptuAngle = tmp * (-1);
-    }if (tmp < 90){
+	//ptuAngle = tmp * (-1);
+    }
+    if (tmp < 90){
 	ptuAngle = tmp;
     }else {
-	tmp = orientation + 360 - tmp;
-	if(tmp < 90) ptuAngle = tmp;
-	else ptuAngle = tmp- 360;
-    }
-    if(orientation < 0 || orientation >= 180) ptuAngle = ptuAngle * (-1);
+	    tmp = orientation + 360 - tmp;
+	    if(tmp < 90) ptuAngle = tmp;
+	    else ptuAngle = tmp- 360;
+	}
+    if(orientation <= 0 || orientation >= 180) ptuAngle = ptuAngle * (-1);
     //cout << ptuAngle <<endl;
     return ptuAngle;
 }
