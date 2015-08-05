@@ -237,7 +237,7 @@ int main(int argc, char **argv) {
 	    cout << "-----------------------------------------------------------------"<<endl;
 	    cout << "Round : " << count + 1<< endl;
 	    //newSensedCells = sensedCells + ray.getInformationGain(newMap,x,y,orientation,FOV,range);
-	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
+	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells -200<< endl;
 	    target.setScanAngles(ray.getSensingTime(newMap,x,y,orientation,FOV,range));
 	    newSensedCells = sensedCells + ray.performSensingOperation(newMap,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
 	    newMap.updatePathPlanningGrid(x, y, range);
@@ -289,7 +289,8 @@ int main(int argc, char **argv) {
            pushInitialPositions(newMap, x, y,orientation, 180, range,FOV, threshold, actualPose, &graph2 );
            pushInitialPositions(newMap, x, y,orientation, 270, range,FOV, threshold, actualPose, &graph2 );
         }
-
+	
+	
 	    if(candidatePosition.size() == 0) {
 
 		//NOTE: TAKE THIS BRANCH IF THERE ARE NO CANDIDATE POSITION FROM THE ACTUAL ONE
@@ -531,7 +532,7 @@ int main(int argc, char **argv) {
 	    cout << "-----------------------------------------------------------------"<<endl;
 	}else{
 	    cout << "-----------------------------------------------------------------"<<endl;
-	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
+	    cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells - 200<< endl;
 	    cout << "I came back to the original position since i don't have any other candidate position"<< endl;
 	    cout << "Total cell visited :" << numConfiguration <<endl;
 	    cout << "Total travelled distance (cells): " << travelledDistance << endl;
@@ -777,18 +778,28 @@ double getPtuAngle(double mapAngle, int orientation)
 {
     double ptuAngle = 0;
     // get the angle in degrees
+    
+   
     int tmp = mapAngle * 180 / PI;
     cout << mapAngle << " -> " << tmp << endl;
     cout << tmp <<endl;
+    /*
+    if(tmp >360){
+	ptuAngle = tmp - 360 - orientation;
+    }else ptuAngle = tmp - orientation;
+    */
     
     if (tmp < 90){
 	ptuAngle = tmp;
     }else {
 	    tmp = orientation + 360 - tmp;
 	    if(tmp < 90) ptuAngle = tmp;
-	    else ptuAngle = tmp % 360;
+	    else ptuAngle = tmp - 360;
 	}
-    
+	
+    if(ptuAngle > 360){
+	ptuAngle = ptuAngle - 360.0;
+    }
     ptuAngle = ptuAngle * (-1);
     //cout << ptuAngle <<endl;
     return ptuAngle;
