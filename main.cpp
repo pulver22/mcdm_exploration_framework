@@ -36,8 +36,9 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg);
 int getIndex(int x, int y);
 void scanning();
 double getPtuAngle(double mapAngle, int orientation);
-void pushInitialPositions(Map map, int x, int y, int orientation, int variation, int range, int FOV, double threshold,
+void pushInitialPositions(Map map, int x, int y, int orientation,  int range, int FOV, double threshold, 
 			  string actualPose, vector< pair< string, list< Pose > > > *graph2 );
+Pose createFromInitialPose(int x, int y, int orientation, int variation, int range, int FOV);
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -163,7 +164,9 @@ int main(int argc, char **argv) {
 	    previous = initialPose;
 	    cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
 	}
-
+	Pose invertedInitial = createFromInitialPose(initX,initY,initOrientation,180,initRange,initFov);
+	Pose eastInitial = createFromInitialPose(initX,initY,initOrientation,90,initRange,initFov);
+	Pose westInitial = createFromInitialPose(initX,initY,initOrientation,270,initRange,initFov);
 
 	//----------------- PRINT INITIAL POSITION
 	//ATTENTION: doesn't work! ...anyway the initial position is represented by the robot
@@ -283,12 +286,29 @@ int main(int argc, char **argv) {
 		//-------------------------------------
 	    }
 
-        if(count == 0){
-           //insert the initial position with different orientation in the graph
-           pushInitialPositions(newMap, x, y,orientation, 90, range,FOV, threshold, actualPose, &graph2 );
-           pushInitialPositions(newMap, x, y,orientation, 180, range,FOV, threshold, actualPose, &graph2 );
-           pushInitialPositions(newMap, x, y,orientation, 270, range,FOV, threshold, actualPose, &graph2 );
-        }
+	    //--------------------------------------------------
+	    /* Push in the graph the initial position with different orientations
+	     */
+	    
+	    if(count == 0){
+		string invertedPose = function.getEncodedKey(invertedInitial,0);
+		string eastPose = function.getEncodedKey(eastInitial,0);
+		string westPose = function.getEncodedKey(westInitial,0);
+		list<Pose> empty ;
+		std::pair<string,list<Pose>> pair1 = make_pair(invertedPose,empty);
+		std::pair<string,list<Pose>> pair2 = make_pair(eastPose,empty);
+		std::pair<string,list<Pose>> pair3 = make_pair(westPose,empty);
+		graph2.push_back(pair1);
+		graph2.push_back(pair2);
+		graph2.push_back(pair3);
+	    }
+	    
+	    if(count != 0 && (target.isEqual(invertedInitial) || target.isEqual(eastInitial) || target.isEqual(westInitial))){
+		graph2.pop_back();
+		actualPose = function.getEncodedKey(target,0);
+		pushInitialPositions(newMap, x, y,orientation, range,FOV, threshold, actualPose, &graph2 );
+	    }
+	    //------------------------------------------------------
 	
 	
 	    if(candidatePosition.size() == 0) {
@@ -317,7 +337,7 @@ int main(int argc, char **argv) {
 		    cout << "I came back to the original position since i don't have any other candidate position"<< endl;
 		    cout << "Total cell visited :" << numConfiguration <<endl;
 		    cout << "Total travelled distance (cells): " << travelledDistance << endl;
-		    cout << "Total exploration time: " << travelledDistance / 0.25 << endl;
+		    cout << "Total travel time: " << travelledDistance / 0.5 << endl;
 		    cout << "Total number of turning: " << numOfTurning << endl;
 		    cout << "Sum of scan angles (radians): " << totalAngle << endl;
 		    cout << "Total time for scanning: " << timeOfScanning << endl;
@@ -524,7 +544,7 @@ int main(int argc, char **argv) {
 	    cout << "-----------------------------------------------------------------"<<endl;
 	    cout << "Total cell visited :" << numConfiguration <<endl;
 	    cout << "Total travelled distance (cells): " << travelledDistance << endl;
-	    cout << "Total exploration time: " << travelledDistance / 0.25 << endl;
+	    cout << "Total travel time: " << travelledDistance / 0.5 << endl;
 	    cout << "Total number of turning: " << numOfTurning << endl;
 	    cout << "Sum of scan angles (radians): " << totalAngle << endl;
 	    cout << "Total time for scanning: " << timeOfScanning << endl;
@@ -536,7 +556,7 @@ int main(int argc, char **argv) {
 	    cout << "I came back to the original position since i don't have any other candidate position"<< endl;
 	    cout << "Total cell visited :" << numConfiguration <<endl;
 	    cout << "Total travelled distance (cells): " << travelledDistance << endl;
-	    cout << "Total exploration time: " << travelledDistance / 0.25 << endl;
+	    cout << "Total travel time: " << travelledDistance / 0.5 << endl;
 	    cout << "Total number of turning: " << numOfTurning << endl;
 	    cout << "Sum of scan angles (radians): " << totalAngle << endl;
 	    cout << "Total time for scanning: " << timeOfScanning << endl;
@@ -805,11 +825,11 @@ double getPtuAngle(double mapAngle, int orientation)
     return ptuAngle;
 }
 
-void pushInitialPositions(Map map, int x, int y, int orientation, int variation, int range, int FOV, double threshold, string actualPose, vector< pair< string, list< Pose > > >* graph2 )
+void pushInitialPositions(Map map, int x, int y, int orientation, int range, int FOV, double threshold, string actualPose, vector< pair< string, list< Pose > > >* graph2 )
 {
     NewRay ray;
     MCDMFunction function;
-    ray.findCandidatePositions(map,x,y,(orientation + variation)%360,FOV,range);
+    ray.findCandidatePositions(map,x,y,orientation ,FOV,range);
     vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
     ray.emptyCandidatePositions();
     list<Pose> frontiers;
@@ -828,4 +848,10 @@ void pushInitialPositions(Map map, int x, int y, int orientation, int variation,
     list<Pose>nearCandidates = record->getFrontiers();
     std::pair<string,list<Pose>> pair = make_pair(actualPose,nearCandidates);
     graph2->push_back(pair);
+}
+
+
+Pose createFromInitialPose(int x, int y, int orientation, int variation, int range, int FOV){
+    Pose tmp = Pose(x,y,(orientation + variation)%360,FOV,range);
+    return tmp;
 }
