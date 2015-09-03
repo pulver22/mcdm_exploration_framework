@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
 	//----------------------------------------
 
 
-	long numConfiguration =0;
+	long numConfiguration = 1;
 	vector<pair<string,list<Pose>>> graph2;
 	NewRay ray;
 	ray.setGridToPathGridScale(gridToPathGridScale);
