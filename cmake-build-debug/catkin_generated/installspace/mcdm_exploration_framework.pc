@@ -1,8 +1,0 @@
-prefix=/usr/local
-
-Name: mcdm_exploration_framework
-Description: Description of mcdm_exploration_framework
-Version: 0.0.0
-Cflags: -I/usr/local/include
-Libs: -L/usr/local/lib -lmcdm_exploration_framework
-Requires: move_base_msgs actionlib nav_msgs roscpp
