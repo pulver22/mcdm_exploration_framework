@@ -1,0 +1,8 @@
+prefix=/home/pulver/mcdm_ws/src/mcdm_exploration_ros_node/cmake-build-debug/devel
+
+Name: mcdm_exploration_framework
+Description: Description of mcdm_exploration_framework
+Version: 0.0.0
+Cflags: -I/home/pulver/mcdm_ws/src/mcdm_exploration_ros_node/include
+Libs: -L/home/pulver/mcdm_ws/src/mcdm_exploration_ros_node/cmake-build-debug/devel/lib -lmcdm_exploration_framework
+Requires: move_base_msgs actionlib nav_msgs roscpp

@@ -2,11 +2,18 @@ cmake_minimum_required(VERSION 2.8.3)
 project(mcdm_exploration_framework)
 
 find_package(catkin REQUIRED COMPONENTS
+  ptu_control
+  amtec
   actionlib
   nav_msgs
   roscpp
   tf
   costmap_2d
+  grid_map_core
+  grid_map_ros
+  grid_map_msgs
+  grid_map_cv
+  cv_bridge
 )
 
 
@@ -32,10 +39,13 @@ add_library(mcdm_exploration_framework pose.cpp map.cpp newray.cpp mcdmfunction.
 map.cpp evaluationrecords.cpp Criteria/sensingtimecriterion.cpp
 Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp 
 Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cpp 
-PathFinding/astar.cpp PathFinding/node.cpp)
+PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp)
 
 add_executable(mcdm_online_exploration_ros main.cpp ) 
 target_link_libraries(mcdm_online_exploration_ros mcdm_exploration_framework ${catkin_LIBRARIES})
+
+add_executable(pure_navigation pure_navigation.cpp )
+target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRARIES})
 
 list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -O3 -g  -ftest-coverage -fprofile-arcs")
 

@@ -14,7 +14,7 @@ NewRay::NewRay()
 
 
 //Check if a cell is candidate position: return 1 if the cell is adjacent to at least one free cell, 0 otherwise
-int NewRay::isCandidate(const Map &map, long i,long  j)
+int NewRay::isCandidate(const dummy::Map &map, long i,long  j)
 {
   int candidate = 0;
   long r = i;
@@ -37,7 +37,7 @@ int NewRay::isCandidate(const Map &map, long i,long  j)
   
 }
 
-int NewRay::isCandidate2(const Map &map, long i, long j)
+int NewRay::isCandidate2(const dummy::Map &map, long i, long j)
 {
   int candidate = 0;
   long r = i;
@@ -68,7 +68,7 @@ int NewRay::isCandidate2(const Map &map, long i, long j)
 
 
 //finds the candidate positions: cells already scanned in range of the robot which are adjacent to at least one free cell
-void NewRay::findCandidatePositions(Map &map, long posX, long posY, int orientation, double FOV, int range)
+void NewRay::findCandidatePositions(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range)
 {
   NewRay::numGridRows = map.getNumGridRows();
   NewRay::numPathPlanningGridCols = map.getPathPlanningNumCols();
@@ -175,7 +175,7 @@ void NewRay::findCandidatePositions(Map &map, long posX, long posY, int orientat
 }
 
 //finds the candidate positions: cells already scanned in range of the robot which are adjacent to at least one free cell
-void NewRay::findCandidatePositions2(Map &map, long posX, long posY, int orientation, double FOV, int range)
+void NewRay::findCandidatePositions2(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range)
 {
   NewRay::numGridRows = map.getNumGridRows();
   NewRay::numPathPlanningGridCols = map.getPathPlanningNumCols();
@@ -296,7 +296,7 @@ void NewRay::emptyCandidatePositions()
 //calculate the sensing time of a possible scanning operation, returns the minimum FOV required to scan all the free cells from the considered pose
 //ATTENTION: the FOV is always centered in the orientation of the robot
 //ATTENTION: in order to optimize the computing time, this method should be fused with the information gain one
-std::pair<double,double> NewRay::getSensingTime(const Map &map, long posX,long posY, int orientation, double FOV, int range)
+std::pair<double,double> NewRay::getSensingTime(const dummy::Map &map, long posX,long posY, int orientation, double FOV, int range)
 {
     
   NewRay::numGridRows = map.getNumGridRows();

@@ -29,7 +29,7 @@ bool operator<(const Node & a,const Node & b){
 // A-star algorithm.
 // The route returned is a string of direction digits.
 string Astar::pathFind( const int & xStart, const int & yStart, const int & xFinish, const int & yFinish,
-		    Map& originalMap )
+		    dummy::Map& originalMap )
 {
     const int m = originalMap.getPathPlanningNumCols();
     const int n = originalMap.getPathPlanningNumRows();

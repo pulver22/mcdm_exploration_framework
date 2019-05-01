@@ -9,6 +9,7 @@
 #include "pose.h"
 #include <unordered_map>
 #include <nav_msgs/OccupancyGrid.h>
+#include "RFIDGridmap.h"
 
 using namespace std;
 namespace dummy{
@@ -38,12 +39,13 @@ public:
   std::vector<vector<long> > getMap2D();
   std::vector<long> grid;			//vector containing the map as grid of cells sized 1 square metre
   std::vector<int> pathPlanningGrid;
+  std::vector<int> RFIDGrid;
   long numGridRows;
   long numGridCols;
   Pose getRobotPosition();
   long getTotalFreeCells();
   void setCurrentPose(Pose &p);
-  void drawVisitedCells(unordered_map<string,int> &visitedCells,int resolution);
+  void drawVisitedCells();
   void printVisitedCells(vector<string> &history);
   int getPathPlanningGridValue(long i,long j) const;
   void setPathPlanningGridValue(int value, int i, int j);
@@ -51,7 +53,15 @@ public:
   int getPathPlanningNumRows() const;
   int getGridToPathGridScale() const;
   int gridToPathGridScale;
-  void updatePathPlanningGrid(int x, int y, int rangeInMeters);
+  void updatePathPlanningGrid(int x, int y, int rangeInMeters, double power);
+  std::pair<int, int> getRelativeTagCoord(int absTagX, int absTagY, int antennaX, int antennaY);
+  void setRFIDGridValue(float power, int i, int j);
+  void drawRFIDScan();
+  void drawRFIDGridScan(RFIDGridmap grid);
+  int getRFIDGridValue(long i,long j) const;
+  void updateRFIDGrid(double power, double phase, int antennaX, int antennaY);
+  std::pair<int,int> findTag();
+  std::pair<int,int> findTagfromGridMap(RFIDGridmap grid);
   
 	//nav_msgs::OccupancyGrid toROSMsg();
 protected:
