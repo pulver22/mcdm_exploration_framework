@@ -77,18 +77,34 @@ int main ( int argc, char **argv )
   while (!ac.waitForServer(ros::Duration(5.0))) {
       ROS_INFO("Waiting for the move_base action server to come up");
   }
-  ros::Rate r(10);
 
-  while (ros::ok())
+
+  ros::Rate freq(1);
+  bool disConnected=true;
+  while (disConnected)
   {
     if (map_service_client_.call(srv_map))
     {
       costmap_sub = nh.subscribe<nav_msgs::OccupancyGrid>("move_base/global_costmap/costmap", 100, grid_callback);
       costmap_update_sub = nh.subscribe<map_msgs::OccupancyGridUpdate>("move_base/global_costmap/costmap_updates", 10, update_callback);
+      disConnected=false;
+    }
+    else
+    {
+      ROS_INFO("Waiting for static_map service to respond...");
+      freq.sleep();
+    }
+
+  }
+
+  ros::Rate r(1);
+
+  while (ros::ok())
+  {
 
       if (costmapReceived == 0)
       {
-        ROS_INFO_STREAM("waiting for costmap" << std::endl);
+        ROS_INFO_STREAM_THROTTLE(60,"waiting for costmap" << std::endl);
         //cout << "Waiting for costmap" << endl;
       }
       if (costmapReceived == 1)
@@ -739,16 +755,14 @@ int main ( int argc, char **argv )
        		totalTimeMCDM/60000 << " m "<< endl;
         cout << "Spinning at the end" << endl;
         sleep(1);
-        //with rate
-        ros::spinOnce();
-        r.sleep();
-        //without rate
-        //ros::spin();
         }
-    }
 
-  }
-}
+    ros::spinOnce();
+    r.sleep();
+
+
+  }// end while ros::ok
+}// end main
 
 bool contains ( std::list<Pose>& list, Pose& p )
 {
@@ -943,10 +957,10 @@ geometry_msgs::PoseStamped getCurrentPose()
 
 void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
-  //cout << "alive" << endl;
+  //ROS_INFO("RECEIVED A MAP!");
   if(costmapReceived == 0)
   {
-    std::cout << "CALLBACK FIRST" << std::endl;
+    ROS_INFO("CALLBACK FIRST!");
     //costmap_grid = msg.get();
     costresolution = msg->info.resolution;
     costwidth = msg->info.width;
@@ -957,7 +971,7 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
       occdata.push_back(msg->data.at(i));
     }
     std::cout << "size of occdata " << occdata.size() << " size of message data " << msg->data.size() << std::endl;
-    std::cout << "height" << msg->info.height << " width " << msg->info.width << " resolution " << msg->info.resolution << std::endl;
+    std::cout << "height " << msg->info.height << " width " << msg->info.width << " resolution " << msg->info.resolution << std::endl;
     costmapReceived = 1;
   }
 
