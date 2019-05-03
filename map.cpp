@@ -61,8 +61,11 @@ namespace dummy{
 
             //int tmpRes = resolution * 100;
             Map::createGrid(resolution);
+            ROS_DEBUG("[Map.cpp@map] Grid created");
             Map::createPathPlanningGrid(costresolution);
+            ROS_DEBUG("[Map.cpp@map] Planning Grid created");
             Map::createNewMap();
+            ROS_DEBUG("[Map.cpp@map] Map created");
 
         }else if(resolution == 0){
 
@@ -683,5 +686,3 @@ namespace dummy{
 
 
 }
-
-
