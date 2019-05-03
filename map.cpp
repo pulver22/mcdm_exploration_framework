@@ -304,7 +304,7 @@ namespace dummy{
                 }
                 if(countScanned == gridToPathGridScale*gridToPathGridScale)
                 {
-                    cout << "Setting as scanned cell (" << row << "," << col << ")" << endl;
+//                    cout << "Setting as scanned cell (" << row << "," << col << ")" << endl;
                     setPathPlanningGridValue(2, row, col);
 //                    setRFIDGridValue(power, row, col);
                 }

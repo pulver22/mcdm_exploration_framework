@@ -74,16 +74,19 @@ int main ( int argc, char **argv )
   MoveBaseClient ac("move_base", true);
   ros::Subscriber costmap_sub;
   ros::Subscriber costmap_update_sub;
+  ros::Rate r(1);
 
+
+
+  ROS_INFO("Waiting for move_base action server to come up");
   while (!ac.waitForServer(ros::Duration(5.0))) {
-      ROS_INFO("Waiting for the move_base action server to come up");
+    ROS_INFO("... waiting ...");
   }
 
-
-  ros::Rate freq(1);
-  bool disConnected=true;
+  bool disConnected = true;
   while (disConnected)
   {
+    ROS_INFO("Waiting for static_map service to respond...");
     if (map_service_client_.call(srv_map))
     {
       costmap_sub = nh.subscribe<nav_msgs::OccupancyGrid>("move_base/global_costmap/costmap", 100, grid_callback);
@@ -92,13 +95,12 @@ int main ( int argc, char **argv )
     }
     else
     {
-      ROS_INFO("Waiting for static_map service to respond...");
-      freq.sleep();
+      r.sleep();
     }
 
   }
 
-  ros::Rate r(1);
+
 
   while (ros::ok())
   {
@@ -137,6 +139,7 @@ int main ( int argc, char **argv )
             costresolution = (1 / resolution) * costresolution;
         }
 
+        cout << "Resolution: " << resolution << ", costresolution: " << costresolution << endl;
 
         dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
         cout << "Map created correctly" << endl;
@@ -179,23 +182,22 @@ int main ( int argc, char **argv )
         if (resolution >= 0 && resolution < 1 && resolution != costresolution)
         {
           //full resolution and scaling
-          cout << "Full resolution and scaling" << endl;
+          cout << endl << "Full resolution and scaling" << endl;
           pose = pose / costresolution;
-          //cout << "[BEFORE]Initial position in the image frame: " << pose.getX() * costresolution<< "," << (map.getPathPlanningNumRows() - (long)pose.getY())*costresolution << endl;
-          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY(), (long) pose.getX(),
+          cout << "[BEFORE]Initial position in the image frame: " << pose.getX() * costresolution<< "," << (long)pose.getY() * costresolution << endl;
+          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y / costresolution, (long) pose.getX() - costorigin.position.x / costresolution,
                                   initOrientation, initRange, initFov);
           target = initialPose;
           previous = initialPose;
-          cout << "[AFTER]Initial position in the image frame: " << target.getY() * costresolution << ","
-               << target.getX() * costresolution << endl;
+          cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
         }
         else
         {
           //1mx1m
-          cout << "1mx1m" << endl;
+          cout << endl << "1mx1m" << endl;
           //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << map.getPathPlanningNumRows() - (long)pose.getY() << endl;
           //NOTE: Y in map are X in image
-          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY() - 30, (long) pose.getX() + 30,
+          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y, (long) pose.getX() - costorigin.position.x,
                                   initOrientation, initRange, initFov);
           target = initialPose;
           previous = initialPose;
@@ -216,18 +218,18 @@ int main ( int argc, char **argv )
         if (resolution != 0)
         {
           p.point.x = (map.getPathPlanningNumRows() - target.getX()) + 0.5; //* costresolution;
-          p.point.y = (target.getY()) + 0.5; //* costresolution;
+          p.point.y = (target.getY()) + 0.5;  //* costresolution;
         } else
         {
-          p.point.x = (map.getPathPlanningNumRows() - target.getX()) * costresolution;
-          p.point.y = (target.getY()) * costresolution;
+          p.point.x = (map.getPathPlanningNumRows() - target.getX()) * costresolution ;
+          p.point.y = (target.getY()) * costresolution ;
         }
 //        cout << p.point.x << ","<< p.point.y << endl;
         tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
         //vec = transform.operator*(vec);
-        p.point.x = vec.getY();
-        p.point.y = vec.getX();
-//        cout << p.point.x << ","<< p.point.y << endl;
+        p.point.x = vec.getY() + costorigin.position.x;
+        p.point.y = vec.getX() + costorigin.position.y;
+        cout << "Marker: (" << p.point.x << ","<< p.point.y << ")" << endl;
         marker_pub.publish(p);
         //----------------------------------------
 
@@ -467,18 +469,25 @@ int main ( int argc, char **argv )
                   //NOTE: as before, Y in map are X in image
                   if (resolution >= 0 && resolution < 1 && resolution != costresolution) {
                       //NOTE: full resolution
-                      p.point.x = (map.getNumGridRows() - target.getX()) * costresolution;
-                      p.point.y = (target.getY()) * costresolution;
+                      cout << "[Marker] Full resolution" << endl;
+                      p.point.y = target.getX() ;
+                      p.point.x = target.getY();
+
                   } else {
                       //NOTE: 1mx1m
+                    cout << "[Marker] 1mx1m" << endl;
                       p.point.x = (map.getPathPlanningNumRows() - target.getX());//* costresolution;
                       p.point.y = (target.getY());// * costresolution;
                   }
-                  //cout << p.point.x << ","<< p.point.y << endl;
-                  tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
-                  //vec = transform.operator*(vec);
-                  p.point.x = vec.getY();
-                  p.point.y = vec.getX();
+                  cout << " (" << p.point.x << "," << p.point.y << ")" << endl;
+
+                  if (resolution == costresolution)
+                  {
+                    tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
+                    //vec = transform.operator*(vec);
+                    p.point.x = vec.getY() + costorigin.position.x;
+                    p.point.y = vec.getX() + costorigin.position.y;
+                  }
                   cout << "New goal in map: X = " << p.point.x << ", Y = " << p.point.y << endl;
                   //NOTE: not requested for testing purpose
                   //usleep(microseconds);
@@ -487,9 +496,17 @@ int main ( int argc, char **argv )
                   move_base_msgs::MoveBaseGoal goal;
                   double orientZ = (double) (target.getOrientation() * PI / (2 * 180));
                   double orientW = (double) (target.getOrientation() * PI / (2 * 180));
-                  if (resolution != 0) {
-                      move(p.point.x + 0.5, p.point.y + 0.5, sin(orientZ), cos(orientW));
-                  } else move(p.point.x, p.point.y, sin(orientZ), cos(orientW));
+
+                  if (resolution != 0)
+                  {
+                    cout << "[map] 1mx1m or similar clustered map " << endl;
+                    move(p.point.x + 0.5 - costorigin.position.x, p.point.y + 0.5 - costorigin.position.y, sin(orientZ), cos(orientW));
+                  } else
+                  {
+                    cout << "[map] Full resolution" << endl;
+                    move(p.point.x - costorigin.position.x, p.point.y - costorigin.position.x, sin(orientZ), cos(orientW));  // full resolution
+                  }
+
                   scan = true;
                 }
                 // ...otherwise, if the selected cell has already been visited
@@ -875,7 +892,7 @@ void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPo
 {
   // Add it to the list of visited cells as first-view
   history->push_back ( function->getEncodedKey ( *target, encodedKeyValue ) );
-  cout << function->getEncodedKey ( *target,1 ) << endl;
+//  cout << function->getEncodedKey ( *target,1 ) << endl;
   // Add it to the list of visited cells from which acting
   tabuList->push_back ( *target );
   // Remove it from the list of candidate position
@@ -886,10 +903,10 @@ void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPo
   graph2->push_back ( pair );
   // Calculate the path from the previous robot pose to the current one
   string path = astar->pathFind ( target->getX(), target->getY(), previous->getX(), previous->getY(), *map );
-  cout << "1: " << *travelledDistance << endl;
+//  cout << "1: " << *travelledDistance << endl;
   // Update the distance counting
   *travelledDistance = *travelledDistance + astar->lenghtPath(path);
-  cout << "2: " << *travelledDistance << endl;
+//  cout << "2: " << *travelledDistance << endl;
   // Update the turning counting
   *numOfTurning = *numOfTurning + astar->getNumberOfTurning(path);
   // Update the scanning angle
@@ -1022,12 +1039,17 @@ void move(int x, int y, double orZ, double orW){
   goal.target_pose.header.frame_id = "map";
   goal.target_pose.header.stamp = ros::Time::now();
 
-  goal.target_pose.pose.position.x = x;
-  goal.target_pose.pose.position.y = y;
+  // Full resolution
+//  goal.target_pose.pose.position.x = x  * costresolution + costorigin.position.x;
+//  goal.target_pose.pose.position.y = y  * costresolution + costorigin.position.y;
+  // Clustered map
+  goal.target_pose.pose.position.x = x + costorigin.position.x;
+  goal.target_pose.pose.position.y = y + costorigin.position.y;
   goal.target_pose.pose.orientation.z = orZ;
   goal.target_pose.pose.orientation.w = orW;
 
   ROS_INFO("Sending goal");
+  cout << "   [map]goal: (" << goal.target_pose.pose.position.x << "," << goal.target_pose.pose.position.x << ")" << endl;
   ac.sendGoal(goal);
 
   ac.waitForResult();
