@@ -20,6 +20,9 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetMap.h>
 #include <costmap_2d/costmap_2d_ros.h>
+//mfc ...
+#include <ros/console.h>
+//mfc ...
 
 
 
@@ -64,6 +67,26 @@ bool btMode = false;
 // resolution x y orientation range centralAngle precision threshold
 int main ( int argc, char **argv )
 {
+
+  //mfc ...........................
+  // some param control ...
+  if (argc<6)
+  {
+    ROS_FATAL("Missing input arguments: Got (%d) and should be (%d) [Field of View, Sensing Range, Precision, Threshold,Resolution]",argc-1,6-1);
+    return 1;
+  }
+  else
+  {
+    ROS_INFO("Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n-Threshold (%3.3f)\n- Resolution: (%3.3f)",
+                atof(argv[1]),atoi(argv[2]),atof(argv[3]),atof(argv[4]),atof(argv[5]));
+  }
+  // sets console output to debug mode...
+  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) )
+  {
+   ros::console::notifyLoggerLevelsChanged();
+  }
+  //mfc ...........................
+
   auto startMCDM = chrono::high_resolution_clock::now();
   ros::init(argc, argv, "mcdm_exploration_framework_node");
   ros::NodeHandle nh;
@@ -142,11 +165,13 @@ int main ( int argc, char **argv )
         cout << "Resolution: " << resolution << ", costresolution: " << costresolution << endl;
 
         dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
-        cout << "Map created correctly" << endl;
+        ROS_DEBUG(""Map created correctly");
 //        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
 //        cout << "RFIDgrid created correctly" << endl;
         ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
+        ROS_DEBUG("[pure_navigation.cpp@main] publisher created ...");
         int gridToPathGridScale = map.getGridToPathGridScale();
+        ROS_DEBUG("[pure_navigation.cpp@main] grid To Path Grid Scale obtained");
 
         /*NOTE: Transform between map and image, to be enabled if not present in the launch file
         //tf::Transform tranMapToImage;
