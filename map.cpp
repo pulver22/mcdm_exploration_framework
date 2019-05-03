@@ -18,7 +18,7 @@ namespace dummy{
 
     }
 
-    Map::Map(float resolution, float costresolution, int width,int height,vector<int> data,geometry_msgs::Pose origin){
+    Map::Map(float resolution, float costresolution, int width,int height,vector<int> data, geometry_msgs::Pose origin){
 
         if(resolution > 0 && resolution <= 1){
             //NOTE: to be used with 1mx1m cells
@@ -249,10 +249,12 @@ namespace dummy{
                 if(resolution == 1.0){
                     if(getGridValue(row,col) == 1)
                         pathPlanningGrid[(long)(row/clusterSize)*numPathPlanningGridCols + (long)(col/clusterSize)] = 1;
+//                    cout << "Empty cell in pathPlanningGrid: " << row << ":" << col << endl;
 
 
                 }else if(getMapValue(row,col) == 1){
                     pathPlanningGrid[(long)(row/clusterSize)*numPathPlanningGridCols + (long)(col/clusterSize)] = 1;
+//                    cout << "Empty cell in pathPlanningGrid: " << row << ":" << col << endl;
                     //NOTE: i don't remember when it should be used
                     //map[(long)(row/clusterSize)*numGridCols + (long)(col/clusterSize)] = 1;
                 }
@@ -302,8 +304,9 @@ namespace dummy{
                 }
                 if(countScanned == gridToPathGridScale*gridToPathGridScale)
                 {
+                    cout << "Setting as scanned cell (" << row << "," << col << ")" << endl;
                     setPathPlanningGridValue(2, row, col);
-                    setRFIDGridValue(power, row, col);
+//                    setRFIDGridValue(power, row, col);
                 }
                 if(setToOne == 1) setPathPlanningGridValue(1, row, col);
             }

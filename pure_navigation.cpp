@@ -16,6 +16,7 @@
 #include "movebasegoal.h"
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetMap.h>
 #include <costmap_2d/costmap_2d_ros.h>
@@ -122,6 +123,13 @@ int main ( int argc, char **argv )
          * resolution = X -> X%(full resolution)
          *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
         double resolution = atof(argv[5]);
+        cout << "Config: " << endl;
+        cout << "   InitFov: " << initFov << endl;
+        cout << "   InitRange: " << initRange << endl;
+        cout << "   precision: " << precision << endl;
+        cout << "   threshold: " << threshold << endl;
+
+
 
         if(resolution == 1){
             resolution = costresolution;
@@ -131,7 +139,9 @@ int main ( int argc, char **argv )
 
 
         dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
-        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
+        cout << "Map created correctly" << endl;
+//        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
+//        cout << "RFIDgrid created correctly" << endl;
         ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
         int gridToPathGridScale = map.getGridToPathGridScale();
 
@@ -153,7 +163,7 @@ int main ( int argc, char **argv )
 
         tfScalar angle = 2 * atan2(quat[2], quat[3]);
 
-        cout << "Initial position in the map frame:" << initX << "," << initY << " with orientation :" << angle
+        cout << endl << "Initial position in the map frame:" << initX << "," << initY << " with orientation :" << angle
              << endl;
 
         int initOrientation = angle * 180 / PI;
@@ -169,6 +179,7 @@ int main ( int argc, char **argv )
         if (resolution >= 0 && resolution < 1 && resolution != costresolution)
         {
           //full resolution and scaling
+          cout << "Full resolution and scaling" << endl;
           pose = pose / costresolution;
           //cout << "[BEFORE]Initial position in the image frame: " << pose.getX() * costresolution<< "," << (map.getPathPlanningNumRows() - (long)pose.getY())*costresolution << endl;
           Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY(), (long) pose.getX(),
@@ -181,15 +192,17 @@ int main ( int argc, char **argv )
         else
         {
           //1mx1m
+          cout << "1mx1m" << endl;
           //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << map.getPathPlanningNumRows() - (long)pose.getY() << endl;
           //NOTE: Y in map are X in image
-          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY(), (long) pose.getX(),
+          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY() - 30, (long) pose.getX() + 30,
                                   initOrientation, initRange, initFov);
           target = initialPose;
           previous = initialPose;
           cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
                << endl;
         }
+
         Pose invertedInitial = createFromInitialPose(initX, initY, initOrientation, 180, initRange, initFov);
         Pose eastInitial = createFromInitialPose(initX, initY, initOrientation, 90, initRange, initFov);
         Pose westInitial = createFromInitialPose(initX, initY, initOrientation, 270, initRange, initFov);
@@ -209,12 +222,12 @@ int main ( int argc, char **argv )
           p.point.x = (map.getPathPlanningNumRows() - target.getX()) * costresolution;
           p.point.y = (target.getY()) * costresolution;
         }
-        //cout << p.point.x << ","<< p.point.y << endl;
+//        cout << p.point.x << ","<< p.point.y << endl;
         tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
         //vec = transform.operator*(vec);
         p.point.x = vec.getY();
         p.point.y = vec.getX();
-        //cout << p.point.x << ","<< p.point.y << endl;
+//        cout << p.point.x << ","<< p.point.y << endl;
         marker_pub.publish(p);
         //----------------------------------------
 
@@ -247,10 +260,10 @@ int main ( int argc, char **argv )
         int encodedKeyValue = 0;
 
         // RFID
-        double absTagX =  std::stod(argv[12]); // m.
-        double absTagY =  std::stod(argv[11]); // m.
-        double freq = std::stod(argv[13]); // Hertzs
-        double txtPower= std::stod(argv[14]); // dBs
+        double absTagX = 0; //std::stod(argv[12]); // m.
+        double absTagY = 0; //std::stod(argv[11]); // m.
+        double freq = 0; //std::stod(argv[13]); // Hertzs
+        double txtPower = 0; // std::stod(argv[14]); // dBs
         std::pair<int, int> relTagCoord;
 
         do
@@ -282,10 +295,11 @@ int main ( int argc, char **argv )
             double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
             // Update the path planning and RFID map
             map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY);
-            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
+//            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
             // Search for new candidate position
-            ray.findCandidatePositions ( map,x,y,orientation,FOV,range );
+            ray.findCandidatePositions ( map, x, y, orientation, FOV, range );
             vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
+            cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
             ray.emptyCandidatePositions();
 
             if (scan)
@@ -311,7 +325,7 @@ int main ( int argc, char **argv )
             // If the exploration just started
             if ( count == 0 )
             {
-              // Calculate other three pose given the strating one
+              // Calculate other three pose given the starting one
               string invertedPose = function.getEncodedKey ( invertedInitial,0 );
               string eastPose = function.getEncodedKey ( eastInitial,0 );
               string westPose = function.getEncodedKey ( westInitial,0 );
@@ -333,7 +347,7 @@ int main ( int argc, char **argv )
               graph2.pop_back();
               actualPose = function.getEncodedKey ( target,0 );
               // Add to the graph the initial positions and the candidates from there (calculated inside the function)
-              pushInitialPositions ( map, x, y,orientation, range,FOV, threshold, actualPose, &graph2 );
+              pushInitialPositions ( map, x, y, orientation, range, FOV, threshold, actualPose, &graph2 );
             }
 
 
@@ -628,7 +642,7 @@ int main ( int argc, char **argv )
             double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
             double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
             map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY );
-            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(), target.getY(), target.getOrientation(), -0.5, 7.0);
+//            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(), target.getY(), target.getOrientation(), -0.5, 7.0);
             // Remove the current pose from the list of possible candidate cells
             cleanPossibleDestination2 ( nearCandidates,target );
             // Get the list of the candidate cells with their evaluation
@@ -719,8 +733,8 @@ int main ( int argc, char **argv )
         map.drawVisitedCells ();
         map.printVisitedCells ( history );
         map.drawRFIDScan();
-        map.drawRFIDGridScan(myGrid);
-        myGrid.saveAs(("/home/pulver/Desktop/MCDM/rfid_result_gridmap.pgm"));
+//        map.drawRFIDGridScan(myGrid);
+//        myGrid.saveAs(("/home/pulver/Desktop/MCDM/rfid_result_gridmap.pgm"));
 
         cout << "Num configuration: " << numConfiguration << endl;
         cout << "Travelled distance calculated during the algorithm: " << travelledDistance << endl;
@@ -745,7 +759,7 @@ int main ( int argc, char **argv )
         // Find the tag
         std::pair<int,int> tag = map.findTag();
         cout << "RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
-        tag = map.findTagfromGridMap(myGrid);
+//        tag = map.findTagfromGridMap(myGrid);
         cout << "[Grid]RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
         cout << "-----------------------------------------------------------------"<<endl;
         auto endMCDM= chrono::high_resolution_clock::now();
@@ -817,6 +831,7 @@ void pushInitialPositions ( dummy::Map map, int x, int y, int orientation, int r
   }
   EvaluationRecords *record = function.evaluateFrontiers ( frontiers,map,threshold );
   list<Pose>nearCandidates = record->getFrontiers();
+  cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string,list<Pose>> pair = make_pair ( actualPose,nearCandidates );
   graph2->push_back ( pair );
 }
@@ -991,6 +1006,7 @@ void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg)
               }
       }*/
 }
+
 
 int getIndex(int x, int y){
   int sx = costmap_grid.info.width;
