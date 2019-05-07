@@ -43,7 +43,7 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
                  int numOfTurning, double totalAngle, double totalScanTime);
 
 // ROS varies
-void move(int x, int y, double orW, double orZ);
+void move(float x, float y, float orW, float orZ);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
 geometry_msgs::PoseStamped getCurrentPose();
@@ -77,14 +77,14 @@ int main ( int argc, char **argv )
   }
   else
   {
-    ROS_INFO("Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n-Threshold (%3.3f)\n- Resolution: (%3.3f)",
+    ROS_INFO("Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n- Threshold (%3.3f)\n- Resolution: (%3.3f)\n- CostResolution: (%3.3f)",
                 atof(argv[1]),atoi(argv[2]),atof(argv[3]),atof(argv[4]),atof(argv[5]));
   }
   // sets console output to debug mode...
-  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) )
-  {
-   ros::console::notifyLoggerLevelsChanged();
-  }
+//  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) )
+//  {
+//   ros::console::notifyLoggerLevelsChanged();
+//  }
   //mfc ...........................
 
   auto startMCDM = chrono::high_resolution_clock::now();
@@ -162,15 +162,16 @@ int main ( int argc, char **argv )
             costresolution = (1 / resolution) * costresolution;
         }
 
-        cout << "Resolution: " << resolution << ", costresolution: " << costresolution << endl;
+        cout << "   Resolution: " << resolution << "\n   Costresolution: " << costresolution << endl;
 
         dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
-        ROS_DEBUG(""Map created correctly");
+        ROS_DEBUG("Map created correctly");
 //        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
 //        cout << "RFIDgrid created correctly" << endl;
         ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
         ROS_DEBUG("[pure_navigation.cpp@main] publisher created ...");
         int gridToPathGridScale = map.getGridToPathGridScale();
+        cout << "gridToPathGridScale: " << gridToPathGridScale << endl;
         ROS_DEBUG("[pure_navigation.cpp@main] grid To Path Grid Scale obtained");
 
         /*NOTE: Transform between map and image, to be enabled if not present in the launch file
@@ -209,7 +210,7 @@ int main ( int argc, char **argv )
           //full resolution and scaling
           cout << endl << "Full resolution and scaling" << endl;
           pose = pose / costresolution;
-          cout << "[BEFORE]Initial position in the image frame: " << pose.getX() * costresolution<< "," << (long)pose.getY() * costresolution << endl;
+          cout << "[BEFORE]Initial position in the Gazebo frame: " << pose.getX() * costresolution<< "," << pose.getY() * costresolution << endl;
           Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y / costresolution, (long) pose.getX() - costorigin.position.x / costresolution,
                                   initOrientation, initRange, initFov);
           target = initialPose;
@@ -328,6 +329,7 @@ int main ( int argc, char **argv )
             vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
             cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
             ray.emptyCandidatePositions();
+            cout << " Candidate cleaned!" << endl;
 
             if (scan)
             {
@@ -492,28 +494,29 @@ int main ( int argc, char **argv )
                   p.header.frame_id = "map";
                   p.header.stamp = ros::Time::now();
                   //NOTE: as before, Y in map are X in image
-                  if (resolution >= 0 && resolution < 1 && resolution != costresolution) {
+                  if (resolution >= 0 && resolution < 1){// && resolution != costresolution) {
                       //NOTE: full resolution
-                      cout << "[Marker] Full resolution" << endl;
-                      p.point.y = target.getX() ;
-                      p.point.x = target.getY();
+                      cout << " [Marker] Full resolution" << endl;
+                      p.point.y = - float(target.getX() + costorigin.position.y / costresolution) * costresolution;
+                      p.point.x = - float(map.getPathPlanningNumRows() - target.getY() + costorigin.position.x / costresolution) * costresolution;
 
                   } else {
                       //NOTE: 1mx1m
-                    cout << "[Marker] 1mx1m" << endl;
+                    cout << " [Marker] 1mx1m" << endl;
                       p.point.x = (map.getPathPlanningNumRows() - target.getX());//* costresolution;
                       p.point.y = (target.getY());// * costresolution;
                   }
-                  cout << " (" << p.point.x << "," << p.point.y << ")" << endl;
+                  cout << "   (" << p.point.x << "," << p.point.y << ")" << endl;
 
                   if (resolution == costresolution)
                   {
+                    cout << "   resolution = costresolution" << endl;
                     tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
                     //vec = transform.operator*(vec);
                     p.point.x = vec.getY() + costorigin.position.x;
                     p.point.y = vec.getX() + costorigin.position.y;
                   }
-                  cout << "New goal in map: X = " << p.point.x << ", Y = " << p.point.y << endl;
+                  cout << "   New goal in map: X = " << p.point.x << ", Y = " << p.point.y << endl;
                   //NOTE: not requested for testing purpose
                   //usleep(microseconds);
                   marker_pub.publish(p);
@@ -529,7 +532,7 @@ int main ( int argc, char **argv )
                   } else
                   {
                     cout << "[map] Full resolution" << endl;
-                    move(p.point.x - costorigin.position.x, p.point.y - costorigin.position.x, sin(orientZ), cos(orientW));  // full resolution
+                    move(p.point.x, p.point.y, sin(orientZ), cos(orientW));  // full resolution
                   }
 
                   scan = true;
@@ -640,7 +643,9 @@ int main ( int argc, char **argv )
               //usleep(microseconds);
               sensedCells = newSensedCells;
               frontiers.clear();
+              cout << "[end] clear frontiers" << endl;
               candidatePosition.clear();
+              cout << "[end] clear candidate" << endl;
               delete record;
             }
 
@@ -1056,7 +1061,7 @@ int getIndex(int x, int y){
 }
 
 
-void move(int x, int y, double orZ, double orW){
+void move(float x, float y, float orZ, float orW){
   move_base_msgs::MoveBaseGoal goal;
 
   MoveBaseClient ac ("move_base", true);
@@ -1065,22 +1070,24 @@ void move(int x, int y, double orZ, double orW){
   goal.target_pose.header.stamp = ros::Time::now();
 
   // Full resolution
-//  goal.target_pose.pose.position.x = x  * costresolution + costorigin.position.x;
-//  goal.target_pose.pose.position.y = y  * costresolution + costorigin.position.y;
+  goal.target_pose.pose.position.x = x;//  * costresolution + costorigin.position.x;
+  goal.target_pose.pose.position.y = y; // * costresolution + costorigin.position.y;
   // Clustered map
-  goal.target_pose.pose.position.x = x + costorigin.position.x;
-  goal.target_pose.pose.position.y = y + costorigin.position.y;
+//  goal.target_pose.pose.position.x = x + costorigin.position.x;
+//  goal.target_pose.pose.position.y = y + costorigin.position.y;
   goal.target_pose.pose.orientation.z = orZ;
   goal.target_pose.pose.orientation.w = orW;
 
   ROS_INFO("Sending goal");
-  cout << "   [map]goal: (" << goal.target_pose.pose.position.x << "," << goal.target_pose.pose.position.x << ")" << endl;
+  cout << "   [map]goal: (" << float(x) << "," << float(y) << ")" << endl;
   ac.sendGoal(goal);
 
-  ac.waitForResult();
+  ac.waitForResult(ros::Duration(30.0));
 
   if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
     ROS_INFO("I'm moving...");
   else
     ROS_INFO("The base failed to move");
+
+  cout << endl;
 }
