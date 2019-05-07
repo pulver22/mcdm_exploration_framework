@@ -43,7 +43,7 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
                  int numOfTurning, double totalAngle, double totalScanTime);
 
 // ROS varies
-void move(float x, float y, float orW, float orZ);
+void move(float x, float y, float orW, float orZ, int resolution, int costresolution);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
 geometry_msgs::PoseStamped getCurrentPose();
@@ -494,7 +494,7 @@ int main ( int argc, char **argv )
                   p.header.frame_id = "map";
                   p.header.stamp = ros::Time::now();
                   //NOTE: as before, Y in map are X in image
-                  if (resolution >= 0 && resolution < 1){// && resolution != costresolution) {
+                  if (resolution != costresolution){// && resolution != costresolution) {
                       //NOTE: full resolution
                       cout << " [Marker] Full resolution" << endl;
                       p.point.y = - float(target.getX() + costorigin.position.y / costresolution) * costresolution;
@@ -528,11 +528,11 @@ int main ( int argc, char **argv )
                   if (resolution != 0)
                   {
                     cout << "[map] 1mx1m or similar clustered map " << endl;
-                    move(p.point.x + 0.5 - costorigin.position.x, p.point.y + 0.5 - costorigin.position.y, sin(orientZ), cos(orientW));
+                    move(p.point.x, p.point.y , sin(orientZ), cos(orientW), resolution, costresolution);
                   } else
                   {
                     cout << "[map] Full resolution" << endl;
-                    move(p.point.x, p.point.y, sin(orientZ), cos(orientW));  // full resolution
+                    move(p.point.x, p.point.y, sin(orientZ), cos(orientW), resolution, costresolution);  // full resolution
                   }
 
                   scan = true;
@@ -1061,7 +1061,7 @@ int getIndex(int x, int y){
 }
 
 
-void move(float x, float y, float orZ, float orW){
+void move(float x, float y, float orZ, float orW, int resolution, int costresolution){
   move_base_msgs::MoveBaseGoal goal;
 
   MoveBaseClient ac ("move_base", true);
@@ -1069,12 +1069,19 @@ void move(float x, float y, float orZ, float orW){
   goal.target_pose.header.frame_id = "map";
   goal.target_pose.header.stamp = ros::Time::now();
 
-  // Full resolution
-  goal.target_pose.pose.position.x = x;//  * costresolution + costorigin.position.x;
-  goal.target_pose.pose.position.y = y; // * costresolution + costorigin.position.y;
+
   // Clustered map
-//  goal.target_pose.pose.position.x = x + costorigin.position.x;
-//  goal.target_pose.pose.position.y = y + costorigin.position.y;
+  if (resolution == costresolution)
+  {
+    goal.target_pose.pose.position.x = x ;//+ costorigin.position.x;
+    goal.target_pose.pose.position.y = y ;//+ costorigin.position.y;
+  } else
+  {
+    // Full resolution
+    goal.target_pose.pose.position.x = x;//  * costresolution + costorigin.position.x;
+    goal.target_pose.pose.position.y = y; // * costresolution + costorigin.position.y;
+  }
+
   goal.target_pose.pose.orientation.z = orZ;
   goal.target_pose.pose.orientation.w = orW;
 
@@ -1082,7 +1089,7 @@ void move(float x, float y, float orZ, float orW){
   cout << "   [map]goal: (" << float(x) << "," << float(y) << ")" << endl;
   ac.sendGoal(goal);
 
-  ac.waitForResult(ros::Duration(30.0));
+  ac.waitForResult(ros::Duration(90.0));
 
   if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
     ROS_INFO("I'm moving...");
