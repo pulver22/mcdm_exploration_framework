@@ -34,7 +34,7 @@ void pushInitialPositions ( dummy::Map map, int x, int y, int orientation,  int 
                             string actualPose, vector< pair< string, list< Pose > > > *graph2 );
 double calculateScanTime ( double scanAngle );
 void calculateDistance(list<Pose> list, dummy::Map& map, Astar* astar);
-Pose createFromInitialPose ( int x, int y, int orientation, int variation, int range, int FOV );
+Pose createFromInitialPose ( Pose pose, int variation, int range, int FOV );
 void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPose, list<Pose>* nearCandidates, vector<pair<string,list<Pose>>>* graph2,
                        dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int encodedKeyValue, Astar* astar , long* numConfiguration,
                        double* totalAngle, double * travelledDistance, int* numOfTurning , double scanAngle);
@@ -46,7 +46,7 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
 void move(float x, float y, float orW, float orZ, int resolution, int costresolution);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
-geometry_msgs::PoseStamped getCurrentPose();
+Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, double initFov, int initRange);
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 vector<int> occdata;
 int costmapReceived = 0;
@@ -181,83 +181,14 @@ int main ( int argc, char **argv )
         */
 
         // Get the initial pose in map frame
-        geometry_msgs::PoseStamped start_pose;
-        start_pose = getCurrentPose();
-        double initX = start_pose.pose.position.x;
-        double initY = start_pose.pose.position.y;
-        tf::Quaternion quat = tf::Quaternion(start_pose.pose.orientation.x, start_pose.pose.orientation.y,
-                                             start_pose.pose.orientation.z, start_pose.pose.orientation.w);
-
-        //cout <<start_pose.pose.orientation.x <<","<< start_pose.pose.orientation.y <<","<< start_pose.pose.orientation.z<< ","<< start_pose.pose.orientation.w <<endl;
-
-        tfScalar angle = 2 * atan2(quat[2], quat[3]);
-
-        cout << endl << "Initial position in the map frame:" << initX << "," << initY << " with orientation :" << angle
+        Pose start_pose = getCurrentPose( resolution, costresolution, &map, initFov, initRange);
+        Pose target = start_pose;
+        Pose previous = target;
+        cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
              << endl;
-
-        int initOrientation = angle * 180 / PI;
-        cout << "Orientation after casting: " << initOrientation << endl;
-
-
-        //ATTENTION: should be adapted for cells different from 1mx1m
-        //convert from map frame to image
-        tf::Vector3 pose = tf::Vector3(initX, initY, 0.0);
-        //pose = tranMapToImage.operator*(pose);
-
-        Pose target, previous;
-        if (resolution >= 0 && resolution < 1 && resolution != costresolution)
-        {
-          //full resolution and scaling
-          cout << endl << "Full resolution and scaling" << endl;
-          pose = pose / costresolution;
-          cout << "[BEFORE]Initial position in the Gazebo frame: " << pose.getX() * costresolution<< "," << pose.getY() * costresolution << endl;
-          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y / costresolution, (long) pose.getX() - costorigin.position.x / costresolution,
-                                  initOrientation, initRange, initFov);
-          target = initialPose;
-          previous = initialPose;
-          cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX() << endl;
-        }
-        else
-        {
-          //1mx1m
-          cout << endl << "1mx1m" << endl;
-          //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << map.getPathPlanningNumRows() - (long)pose.getY() << endl;
-          //NOTE: Y in map are X in image
-          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y, (long) pose.getX() - costorigin.position.x,
-                                  initOrientation, initRange, initFov);
-          target = initialPose;
-          previous = initialPose;
-          cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
-               << endl;
-        }
-
-        Pose invertedInitial = createFromInitialPose(initX, initY, initOrientation, 180, initRange, initFov);
-        Pose eastInitial = createFromInitialPose(initX, initY, initOrientation, 90, initRange, initFov);
-        Pose westInitial = createFromInitialPose(initX, initY, initOrientation, 270, initRange, initFov);
-
-        //----------------- PRINT INITIAL POSITION
-        //ATTENTION: doesn't work! ...anyway the initial position is represented by the robot
-        geometry_msgs::PointStamped p;
-        p.header.frame_id = "map";
-        p.header.stamp = ros::Time::now();
-        //NOTE: as before, Y in map are X in image
-        if (resolution != 0)
-        {
-          p.point.x = (map.getPathPlanningNumRows() - target.getX()) + 0.5; //* costresolution;
-          p.point.y = (target.getY()) + 0.5;  //* costresolution;
-        } else
-        {
-          p.point.x = (map.getPathPlanningNumRows() - target.getX()) * costresolution ;
-          p.point.y = (target.getY()) * costresolution ;
-        }
-//        cout << p.point.x << ","<< p.point.y << endl;
-        tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
-        //vec = transform.operator*(vec);
-        p.point.x = vec.getY() + costorigin.position.x;
-        p.point.y = vec.getX() + costorigin.position.y;
-        cout << "Marker: (" << p.point.x << ","<< p.point.y << ")" << endl;
-        marker_pub.publish(p);
-        //----------------------------------------
+        Pose invertedInitial = createFromInitialPose(start_pose, 180, initRange, initFov);
+        Pose eastInitial = createFromInitialPose(start_pose, 90, initRange, initFov);
+        Pose westInitial = createFromInitialPose(start_pose, 270, initRange, initFov);
 
         long numConfiguration = 1;
         vector<pair<string, list<Pose>>> graph2;
@@ -292,6 +223,7 @@ int main ( int argc, char **argv )
         double absTagY = 0; //std::stod(argv[11]); // m.
         double freq = 0; //std::stod(argv[13]); // Hertzs
         double txtPower = 0; // std::stod(argv[14]); // dBs
+        double rxPower = 0;
         std::pair<int, int> relTagCoord;
 
         do
@@ -299,6 +231,11 @@ int main ( int argc, char **argv )
           // If we are doing "forward" navigation towards cells never visited before
           if ( btMode == false )
           {
+            // At every iteration, the current pose of the robot is taken from the TF-tree
+            target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+            cout << "[AFTER]Current position in the image frame: " << target.getY() << "," << target.getX()
+                 << endl;
+
             long x = target.getX();
             long y = target.getY();
             int orientation = target.getOrientation();
@@ -317,10 +254,10 @@ int main ( int argc, char **argv )
             // Update the overall scanning time
             totalScanTime += calculateScanTime ( scanAngle*180/PI );
             // Calculare the relative RFID tag position to the robot position
-            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
+//            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
             // Calculate the received power and phase
-            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
-            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
+//            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
+//            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
             // Update the path planning and RFID map
             map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY);
 //            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
@@ -643,9 +580,7 @@ int main ( int argc, char **argv )
               //usleep(microseconds);
               sensedCells = newSensedCells;
               frontiers.clear();
-              cout << "[end] clear frontiers" << endl;
               candidatePosition.clear();
-              cout << "[end] clear candidate" << endl;
               delete record;
             }
 
@@ -684,10 +619,10 @@ int main ( int argc, char **argv )
             // ...and the overall scan time
             totalScanTime += calculateScanTime ( scanAngle*180/PI );
             // Calculate the relative coordinate to the robot of the RFID tag
-            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
+//            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
             // Calculate received power and phase
-            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
-            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
+//            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
+//            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
             map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY );
 //            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(), target.getY(), target.getOrientation(), -0.5, 7.0);
             // Remove the current pose from the list of possible candidate cells
@@ -779,7 +714,7 @@ int main ( int argc, char **argv )
         // Plotting utilities
         map.drawVisitedCells ();
         map.printVisitedCells ( history );
-        map.drawRFIDScan();
+//        map.drawRFIDScan();
 //        map.drawRFIDGridScan(myGrid);
 //        myGrid.saveAs(("/home/pulver/Desktop/MCDM/rfid_result_gridmap.pgm"));
 
@@ -804,10 +739,10 @@ int main ( int argc, char **argv )
         printResult(newSensedCells, totalFreeCells, precision, numConfiguration, travelledDistance, numOfTurning,
             totalAngle, totalScanTime);
         // Find the tag
-        std::pair<int,int> tag = map.findTag();
-        cout << "RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
+//        std::pair<int,int> tag = map.findTag();
+//        cout << "RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
 //        tag = map.findTagfromGridMap(myGrid);
-        cout << "[Grid]RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
+//        cout << "[Grid]RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
         cout << "-----------------------------------------------------------------"<<endl;
         auto endMCDM= chrono::high_resolution_clock::now();
 
@@ -816,6 +751,7 @@ int main ( int argc, char **argv )
        		totalTimeMCDM/60000 << " m "<< endl;
         cout << "Spinning at the end" << endl;
         sleep(1);
+        exit ( 0 );
         }
 
     ros::spinOnce();
@@ -888,9 +824,9 @@ double calculateScanTime ( double scanAngle )
   return ( -7.2847174296449998e-006*scanAngle*scanAngle*scanAngle + 2.2131847908245512e-003*scanAngle*scanAngle + 1.5987873410233613e-001*scanAngle + 10 );
 }
 
-Pose createFromInitialPose ( int x, int y, int orientation, int variation, int range, int FOV )
+Pose createFromInitialPose ( Pose pose, int variation, int range, int FOV )
 {
-  Pose tmp = Pose ( x,y, ( orientation + variation ) %360,FOV,range );
+  Pose tmp = Pose ( pose.getX(), pose.getY(), ( pose.getOrientation() + variation ) %360,FOV,range );
   return tmp;
 }
 
@@ -987,7 +923,7 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
 }
 
 
-geometry_msgs::PoseStamped getCurrentPose()
+Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, double initFov, int initRange)
 {
   ros::Time _now_stamp_ = ros::Time(0);
 
@@ -1014,7 +950,43 @@ geometry_msgs::PoseStamped getCurrentPose()
   tf::pointTFToMsg(start_position, start_pose.pose.position);
   tf::quaternionTFToMsg(start_orientation, start_pose.pose.orientation);
 
-  return start_pose;
+  double initX = start_pose.pose.position.x;
+  double initY = start_pose.pose.position.y;
+  tf::Quaternion quat = tf::Quaternion(start_pose.pose.orientation.x, start_pose.pose.orientation.y,
+                                       start_pose.pose.orientation.z, start_pose.pose.orientation.w);
+  tfScalar angle = 2 * atan2(quat[2], quat[3]);
+
+  cout << endl << "Current position in the map frame:" << initX << "," << initY << " with orientation :" << angle
+       << endl;
+
+  int initOrientation = angle * 180 / PI;
+  cout << "Orientation after casting: " << initOrientation << endl;
+
+
+  //ATTENTION: should be adapted for cells different from 1mx1m
+  //convert from map frame to image
+  tf::Vector3 pose = tf::Vector3(initX, initY, 0.0);
+  if (resolution >= 0 && resolution < 1 && resolution != costresolution)
+  {
+    //full resolution and scaling
+    cout << "Full resolution and scaling" << endl;
+    pose = pose / costresolution;
+//    cout << "[BEFORE]Initial position in the Gazebo frame: " << pose.getX() * costresolution<< "," << pose.getY() * costresolution << endl;
+    Pose initialPose = Pose(map->getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y / costresolution, (long) pose.getX() - costorigin.position.x / costresolution,
+                            initOrientation, initRange, initFov);
+    return initialPose;
+  }
+  else
+  {
+    //1mx1m
+    cout << endl << "1mx1m" << endl;
+    //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << map.getPathPlanningNumRows() - (long)pose.getY() << endl;
+    //NOTE: Y in map are X in image
+    Pose initialPose = Pose(map->getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y, (long) pose.getX() - costorigin.position.x,
+                            initOrientation, initRange, initFov);
+    return initialPose;
+  }
+
 }
 
 void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
