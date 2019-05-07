@@ -165,7 +165,7 @@ int main ( int argc, char **argv )
         cout << "Resolution: " << resolution << ", costresolution: " << costresolution << endl;
 
         dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
-        ROS_DEBUG(""Map created correctly");
+        ROS_DEBUG("Map created correctly");
 //        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
 //        cout << "RFIDgrid created correctly" << endl;
         ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
