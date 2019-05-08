@@ -279,138 +279,138 @@ namespace dummy{
     // Getter shortcuts ........................................................
     int Map::getPathPlanningGridValue(long i,long j) const
     {
-        return getValue(i,j, planning_grid_);
+        return getValue(i,j, &planning_grid_);
     }
 
     int  Map::getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const
     {
-      return getValue(ps, planning_grid_);
+      return getValue(ps, &planning_grid_);
     }
 
     int Map::getPathPlanningGridValue(long i) const
     {
-        return getValue(i, planning_grid_);
+        return getValue(i, &planning_grid_);
     }
 
     int Map::getPathPlanningNumCols() const
     {
-        return getGridNumCols(planning_grid_);
+        return getGridNumCols(&planning_grid_);
     }
 
     int Map::getPathPlanningNumRows() const
     {
-        return getGridNumRows(planning_grid_);
+        return getGridNumRows(&planning_grid_);
     }
 
     int Map::getGridValue(long i,long j) const
     {
-      return getValue(i,j, nav_grid_);
+      return getValue(i,j, &nav_grid_);
     }
 
     int  Map::getGridValue(geometry_msgs::PoseStamped ps) const
     {
-      return getValue(ps, nav_grid_);
+      return getValue(ps, &nav_grid_);
     }
 
     int Map::getGridValue(long i) const
     {
-        return getValue(i, nav_grid_);
+        return getValue(i, &nav_grid_);
     }
 
     long Map::getNumGridCols() const
     {
-        return getGridNumCols(nav_grid_);
+        return getGridNumCols(&nav_grid_);
     }
 
     long Map::getNumGridRows() const
     {
-        return getGridNumRows(nav_grid_);
+        return getGridNumRows(&nav_grid_);
     }
 
     int Map::getMapValue(long i, long j)
     {
-      return getValue(i,j, map_grid_);
+      return getValue(i,j, &map_grid_);
     }
 
     int  Map::getMapValue(geometry_msgs::PoseStamped ps) const
     {
-      return getValue(ps, map_grid_);
+      return getValue(ps, &map_grid_);
     }
 
     int Map::getMapValue(long i) const
     {
-        return getValue(i, map_grid_);
+        return getValue(i, &map_grid_);
     }
 
     long Map::getNumCols()
     {
-        return getGridNumCols(map_grid_);
+        return getGridNumCols(&map_grid_);
     }
 
     long Map::getNumRows()
     {
-        return getGridNumRows(map_grid_);
+        return getGridNumRows(&map_grid_);
     }
 
     int Map::getRFIDGridValue(long i, long j) const
     {
-      return getValue(i,j, rfid_grid_);
+      return getValue(i,j, &rfid_grid_);
     }
 
     int Map::getRFIDGridValue(geometry_msgs::PoseStamped ps) const
     {
-      return getValue(ps, rfid_grid_);
+      return getValue(ps, &rfid_grid_);
     }
 
     int Map::getRFIDGridValue(long i) const
     {
-        return getValue(i, rfid_grid_);
+        return getValue(i, &rfid_grid_);
     }
 
     long Map::getRFIDGridNumCols()
     {
-        return getGridNumCols(rfid_grid_);
+        return getGridNumCols(&rfid_grid_);
     }
 
     long Map::getRFIDGridNumRows()
     {
-        return getGridNumRows(map_grid_);
+        return getGridNumRows(&map_grid_);
     }
 
     // Generic (internal) getters ..............................................
-    int  Map::getValue(long i,long j, grid_map::GridMap gm) const
+    int  Map::getValue(long i,long j, grid_map::GridMap *gm) const
     {
       int val;
       grid_map::Index index(i,j);
       Position position;
 
-      if (gm.getPosition(index, position))
+      if (gm->getPosition(index, position))
       {
-        val = (int) gm.at("layer", index);
+        val = (int) gm->at("layer", index);
       }
       else
       {
-        ROS_ERROR("Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm.getSize()(0)-1,gm.getSize()(1)-1);
+        ROS_ERROR("Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
         val = -1;
       }
       return val;
     }
 
-    int  Map::getValue(geometry_msgs::PoseStamped ps, grid_map::GridMap gm) const
+    int  Map::getValue(geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) const
     {
         double val;
-        if (ps.header.frame_id!=gm.getFrameId())
+        if (ps.header.frame_id!=gm->getFrameId())
         {
-          ROS_ERROR("Pose given in different frame id: grid==[%s], point ==[%s]",ps.header.frame_id.c_str(),gm.getFrameId().c_str() );
+          ROS_ERROR("Pose given in different frame id: grid==[%s], point ==[%s]",ps.header.frame_id.c_str(),gm->getFrameId().c_str() );
           val= -1;
         }
         else
         {
           grid_map::Position point(ps.pose.position.x,ps.pose.position.y);
 
-          if (gm.isInside(point))
+          if (gm->isInside(point))
           {
-            val = gm.atPosition("layer", point);
+            val = gm->atPosition("layer", point);
           }
           else
           {
@@ -422,7 +422,7 @@ namespace dummy{
         return (int) val;
     }
 
-    int Map::getValue(long i, grid_map::GridMap gm) const
+    int Map::getValue(long i, grid_map::GridMap *gm) const
     {
       long rows = getGridNumRows(gm);
       std::ldiv_t result = std::div(i , rows);
@@ -432,47 +432,47 @@ namespace dummy{
       return getValue(rows,cols, gm);
     }
 
-    int Map::getGridNumCols(grid_map::GridMap gm) const
+    int Map::getGridNumCols(grid_map::GridMap *gm) const
     {
-      return gm.getSize()(1);
+      return gm->getSize()(1);
     }
 
-    int Map::getGridNumRows(grid_map::GridMap gm) const
+    int Map::getGridNumRows(grid_map::GridMap *gm) const
     {
-      return gm.getSize()(0);
+      return gm->getSize()(0);
     }
     // E.O. Generic (internal) getters .........................................
 
 
     // Generic (internal) setters ..............................................
-    void Map::setValue(int value, long i,long j, grid_map::GridMap gm) const
+    void Map::setValue(int value, long i,long j, grid_map::GridMap *gm) const
     {
       grid_map::Index index(i,j);
       Position position;
-      
-      if (gm.getPosition(index, position))
+
+      if (gm->getPosition(index, position))
       {
-        gm.at("layer", index)= value;
+        gm->at("layer", index)= value;
       }
       else
       {
-        ROS_ERROR("Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm.getSize()(0)-1,gm.getSize()(1)-1);
+        ROS_ERROR("Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
       }
     }
 
-    void  Map::setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap gm) const
+    void  Map::setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) const
     {
-        if (ps.header.frame_id!=gm.getFrameId())
+        if (ps.header.frame_id!=gm->getFrameId())
         {
-          ROS_ERROR("Pose given in different frame id: grid==[%s], point ==[%s]",ps.header.frame_id.c_str(),gm.getFrameId().c_str() );
+          ROS_ERROR("Pose given in different frame id: grid==[%s], point ==[%s]",ps.header.frame_id.c_str(),gm->getFrameId().c_str() );
         }
         else
         {
           grid_map::Position point(ps.pose.position.x,ps.pose.position.y);
 
-          if (gm.isInside(point))
+          if (gm->isInside(point))
           {
-            gm.atPosition("layer", point)=value;
+            gm->atPosition("layer", point)=value;
           }
           else
           {
@@ -481,7 +481,7 @@ namespace dummy{
         }
     }
 
-    void Map::setValue(int value, long i, grid_map::GridMap gm) const
+    void Map::setValue(int value, long i, grid_map::GridMap *gm) const
     {
       long rows = getGridNumRows(gm);
       std::ldiv_t result = std::div(i , rows);
@@ -496,47 +496,47 @@ namespace dummy{
 
     void Map::setPathPlanningGridValue(int value, int i, int j)
     {
-      setValue( value,  i, j, planning_grid_);
+      setValue( value,  i, j, &planning_grid_);
     }
 
     void Map::setPathPlanningGridValue(int value, geometry_msgs::PoseStamped ps)
     {
-      setValue( value, ps, planning_grid_);
+      setValue( value, ps, &planning_grid_);
     }
 
     void Map::setPathPlanningGridValue(int value,long i)
     {
-      setValue( value, i, planning_grid_);
+      setValue( value, i, &planning_grid_);
     }
 
     void Map::setGridValue(int value, long i, long j)
     {
-      setValue( value,  i, j, nav_grid_);
+      setValue( value,  i, j, &nav_grid_);
     }
 
     void Map::setGridValue(int value, geometry_msgs::PoseStamped ps)
     {
-      setValue( value, ps, nav_grid_);
+      setValue( value, ps, &nav_grid_);
     }
 
     void Map::setGridValue(int value,long i)
     {
-      setValue( value, i, nav_grid_);
+      setValue( value, i, &nav_grid_);
     }
 
     void Map::setRFIDGridValue(float power, int i, int j)
     {
-       setValue( getValue(i,j, rfid_grid_) + power,  i, j, rfid_grid_);
+       setValue( getValue(i,j, &rfid_grid_) + power,  i, j, &rfid_grid_);
     }
 
     void Map::setRFIDGridValue(float power, geometry_msgs::PoseStamped ps)
     {
-      setValue( getValue(ps, rfid_grid_) + power,  ps, rfid_grid_);
+      setValue( getValue(ps, &rfid_grid_) + power,  ps, &rfid_grid_);
     }
 
     void Map::setRFIDGridValue(float power,long i)
     {
-      setValue( getValue(i, rfid_grid_) + power,  i, rfid_grid_);
+      setValue( getValue(i, &rfid_grid_) + power,  i, &rfid_grid_);
     }
 
 
@@ -778,20 +778,20 @@ namespace dummy{
        return tag;
     }
 
-    void Map::printErrorReason(grid_map::Position point, grid_map::GridMap gm) const
+    void Map::printErrorReason(grid_map::Position point, grid_map::GridMap *gm) const
     {
-      int maxRow = gm.getSize()(0)-1;
-      int maxCol = gm.getSize()(1)-1;
+      int maxRow = gm->getSize()(0)-1;
+      int maxCol = gm->getSize()(1)-1;
       grid_map::Index topLeftI(0,0);
       grid_map::Index topRightI(0,maxCol);
       grid_map::Index bottomRightI(maxRow,maxCol);
       grid_map::Index bottomLeftI(maxRow,0);
 
       grid_map::Position topLeftP,topRightP,bottomRightP,bottomLeftP;
-      gm.getPosition(topLeftI, topLeftP);
-      gm.getPosition(topRightI, topRightP);
-      gm.getPosition(bottomRightI, bottomRightP);
-      gm.getPosition(bottomLeftI, bottomLeftP);
+      gm->getPosition(topLeftI, topLeftP);
+      gm->getPosition(topRightI, topRightP);
+      gm->getPosition(bottomRightI, bottomRightP);
+      gm->getPosition(bottomLeftI, bottomLeftP);
       ROS_ERROR("Point [%3.3f, %3.3f] is outside grid boundaries: grid: [%3.3f, %3.3f], [%3.3f, %3.3f], [%3.3f, %3.3f], [%3.3f, %3.3f]",point.x(),point.y(), topLeftP.x(),topLeftP.y(),  topRightP.x(),topRightP.y(),  bottomRightP.x(),bottomRightP.y(),  bottomLeftP.x(),bottomLeftP.y()  );
     }
 
