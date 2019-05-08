@@ -278,10 +278,11 @@ protected:
    * creates map grid from data vector
    * @param width          data vector width (== numRows)
    * @param height         data vector height (== numCols)
+   * @param resolution     data vector height data resolution  
    * @param data           data vector containing map data
    * @param origin         position for grid center*
    */
-  void createMap(int width,int height,vector<int> data, geometry_msgs::Pose origin);
+  void createMap(int width,int height, double resolution, vector<int> data, geometry_msgs::Pose origin);
 
  /**
  * Creates an  opencv matrix from data vector

@@ -18,13 +18,13 @@ namespace dummy{
 
     Map::Map(float resolution, float costresolution, int width, int height, vector<int> data, geometry_msgs::Pose origin):map_grid_(vector<string>({"layer"})), nav_grid_(vector<string>({"layer"})), planning_grid_(vector<string>({"layer"})), rfid_grid_(vector<string>({"layer"}))
     {
-      Map::createMap(width, height, data, origin);
+      Map::createMap(width, height, costresolution, data, origin);
       Map::createGrid(resolution);
       Map::createNewMap();
       Map::createPathPlanningGrid(costresolution);
       // once both are created, we can obtain the ratio
       gridToPathGridScale = planning_grid_.getResolution()/nav_grid_.getResolution();
-      ROS_ASSERT_MSG(gridToPathGridScale > 0, "[Map.cpp@map] Planning resolution lower than navigation resolution = %d", gridToPathGridScale);
+      ROS_ASSERT_MSG(gridToPathGridScale >= 1, "[Map.cpp@map] Planning resolution lower than navigation resolution = %d", gridToPathGridScale);
 
 
       Map::createRFIDGrid(costresolution);
@@ -44,6 +44,7 @@ namespace dummy{
       // harcoded values!!!!
       std::string map_frame_id="map";
       double map_resolution = 0.1;
+      ROS_WARNING("[Map.cpp@createMap] MAP RESOLUTION MUST BE 0.1 m/cell !!!.");
 
       createMap(imageCV,origin,map_frame_id,map_resolution);
     }
@@ -86,7 +87,8 @@ namespace dummy{
       ROS_DEBUG("[Map.cpp@createMap] Creating empty grid");
 
       grid_map::GridMap tempMap(vector<string>({"layer"}));
-      tempMap.setGeometry(Length(numRows, numCols), map_resolution, Position(orig_x, orig_y));
+      // map lenth MUST be given in meters!
+      tempMap.setGeometry(Length(numRows*map_resolution, numCols*map_resolution), map_resolution, Position(orig_x, orig_y));
       tempMap.setFrameId(map_frame_id);
       tempMap.clearAll();
 
@@ -125,7 +127,7 @@ namespace dummy{
 
     }
 
-    void Map::createMap(int width,int height,vector<int> data, geometry_msgs::Pose origin)
+    void Map::createMap(int width,int height, double resolution , vector<int> data, geometry_msgs::Pose origin)
     {
       // load an image from vector
       ROS_DEBUG("[Map.cpp@createMap] Loading vector into cv mat.");
@@ -134,9 +136,8 @@ namespace dummy{
       //TODO : CHECK THIS!!!
       // harcoded values!!!!
       std::string map_frame_id="map";
-      double map_resolution = 0.1;
 
-      createMap(imageCV,origin,map_frame_id,map_resolution);
+      createMap(imageCV,origin,map_frame_id, resolution);
     }
 
     cv::Mat Map::MreadImage(int width,int height,vector<int> data)
