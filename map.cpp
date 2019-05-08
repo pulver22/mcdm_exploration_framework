@@ -382,8 +382,9 @@ namespace dummy{
     {
       int val;
       grid_map::Index index(i,j);
+      Position position;
 
-      if (gm.isValid(index))
+      if (gm.getPosition(index, position))
       {
         val = (int) gm.at("layer", index);
       }
@@ -447,7 +448,9 @@ namespace dummy{
     void Map::setValue(int value, long i,long j, grid_map::GridMap gm) const
     {
       grid_map::Index index(i,j);
-      if (gm.isValid(index))
+      Position position;
+      
+      if (gm.getPosition(index, position))
       {
         gm.at("layer", index)= value;
       }
