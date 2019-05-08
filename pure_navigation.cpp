@@ -43,10 +43,11 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
                  int numOfTurning, double totalAngle, double totalScanTime);
 
 // ROS varies
-void move(float x, float y, float orW, float orZ, int resolution, int costresolution);
+void move(float x, float y, float orW, float orZ, int resolution, int costresolution, float time_travel);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
 Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, double initFov, int initRange);
+
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 vector<int> occdata;
 int costmapReceived = 0;
@@ -61,6 +62,7 @@ double sensing_range, offsetY_base_rmld, FoV;
 int statusPTU, prevStatusPTU;
 double timeOfScanning = 0;
 bool btMode = false;
+double min_robot_speed = 0.1;
 
 
 // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm 100 75 5 0 15 180 0.95 0.12
@@ -232,13 +234,13 @@ int main ( int argc, char **argv )
           if ( btMode == false )
           {
             // At every iteration, the current pose of the robot is taken from the TF-tree
-            target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
-            cout << "[AFTER]Current position in the image frame: " << target.getY() << "," << target.getX()
-                 << endl;
+            Pose target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+            cout << "[Target]: " << target.getY() << ", " << target.getX() << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
+//            cout << "[Tmp]: " << tmp_target.getY() << ", " << tmp_target.getX() << ", " << (tmp_target.getOrientation() + 360 ) % 360 << ", " << tmp_target.getFOV() <<", " << tmp_target.getRange() << endl;
 
             long x = target.getX();
             long y = target.getY();
-            int orientation = target.getOrientation();
+            int orientation = (target.getOrientation() + 360) % 360;  // cast orientation in [0, 360]
             int range = target.getRange();
             double FOV = target.getFOV();
             string actualPose = function.getEncodedKey ( target,0 );
@@ -462,14 +464,28 @@ int main ( int argc, char **argv )
                   double orientZ = (double) (target.getOrientation() * PI / (2 * 180));
                   double orientW = (double) (target.getOrientation() * PI / (2 * 180));
 
+                  string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(),map );
+                  float travel_distance = astar.lenghtPath(path);
+                  cout << "Target is at " << astar.lenghtPath(path) << " cells from the robot" << endl;
+                  cout << "Resolution : " << resolution << endl;
+                  float time_travel = travel_distance / min_robot_speed;
+                  if (resolution == 0)
+                  {
+                    travel_distance = travel_distance * costresolution;
+                    time_travel = travel_distance / min_robot_speed;
+                  }
+                  cout << "Target is at " << travel_distance << " cells from the robot" << endl;
+
+
+
                   if (resolution != 0)
                   {
                     cout << "[map] 1mx1m or similar clustered map " << endl;
-                    move(p.point.x, p.point.y , sin(orientZ), cos(orientW), resolution, costresolution);
+                    move(p.point.x, p.point.y , sin(orientZ), cos(orientW), resolution, costresolution, time_travel);
                   } else
                   {
                     cout << "[map] Full resolution" << endl;
-                    move(p.point.x, p.point.y, sin(orientZ), cos(orientW), resolution, costresolution);  // full resolution
+                    move(p.point.x, p.point.y, sin(orientZ), cos(orientW), resolution, costresolution, time_travel);  // full resolution
                   }
 
                   scan = true;
@@ -1033,7 +1049,7 @@ int getIndex(int x, int y){
 }
 
 
-void move(float x, float y, float orZ, float orW, int resolution, int costresolution){
+void move(float x, float y, float orZ, float orW, int resolution, int costresolution, float time_travel){
   move_base_msgs::MoveBaseGoal goal;
 
   MoveBaseClient ac ("move_base", true);
@@ -1042,6 +1058,7 @@ void move(float x, float y, float orZ, float orW, int resolution, int costresolu
   goal.target_pose.header.stamp = ros::Time::now();
 
 
+  // TODO: merge
   // Clustered map
   if (resolution == costresolution)
   {
@@ -1061,7 +1078,8 @@ void move(float x, float y, float orZ, float orW, int resolution, int costresolu
   cout << "   [map]goal: (" << float(x) << "," << float(y) << ")" << endl;
   ac.sendGoal(goal);
 
-  ac.waitForResult(ros::Duration(90.0));
+  cout << "     Waiting for " << time_travel << " seconds" << endl;
+  ac.waitForResult(ros::Duration(time_travel));
 
   if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
     ROS_INFO("I'm moving...");
