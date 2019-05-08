@@ -45,6 +45,16 @@ void RFIDGridmap::setPosition(double val, double x, double y){
   setPosition(RFIDGridmap_, layer_name_, val, x,y, debug_);
 };
 
+long RFIDGridmap::getNumCols()
+{
+    return RFIDGridmap_.getSize()(1);
+}
+
+long RFIDGridmap::getNumRows()
+{
+    return RFIDGridmap_.getSize()(0);
+}
+
 // Internal functions to handle gridmap. .......................................
 
 void RFIDGridmap::createGrid(grid_map::GridMap&  map_, std::string layerName, std::string fileURI, double mapResolution, double gridResolution, bool debug, std::string global_frame, std::string format){

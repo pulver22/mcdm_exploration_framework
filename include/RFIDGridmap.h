@@ -132,6 +132,19 @@ class RFIDGridmap {
      */
     void setPosition(double val, double x, double y);
 
+
+    /**
+     * Get number of cols (width) in the grid
+     * @return number of cols
+     */
+    long getNumCols();
+
+    /**
+     * Get number of rows (height) in the grid
+     * @return number of rows
+     */
+    long getNumRows();
+
     // controls debug prints..
     bool debug_;
 

@@ -11,6 +11,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include "RFIDGridmap.h"
 
+
 using namespace std;
 namespace dummy{
 
@@ -18,67 +19,360 @@ class Map
 {
 
 public:
-  
-  Map(std::ifstream& infile, int resolution);	//constructor, takes in binary map file .pgm
-	//Map(nav_msgs::OccupancyGrid ros_msg);
- // ~Map();					//destructor
+
+
+   /**
+   * Default constructor
+   */
   Map();
+
+   /**
+   * Creates Map using provided file
+   * @param infile     Map file (binary pgm)
+   * @param resolution Map resolution [m./cell]
+   */
+  Map(std::ifstream& infile, float resolution);
+
+   /**
+   *  Creates Map using provided data vector and parameters
+   * @param resolution     navigation grid resolution [m./cell]
+   * @param costresolution path planning grid resolution [m./cell] (should be greater than nav resolution)
+   * @param width          data vector width (== numRows)
+   * @param height         data vector height (== numCols)
+   * @param data           data vector containing map data
+   * @param origin         Where to place 0,0 in map frame_id.
+   */
   Map(float resolution, float costresolution, int width, int height, vector< int > data, geometry_msgs::Pose origin);
-  void setGridValue(int value, long i, long j);	//setter for value in position ij of the grid
-  int getGridValue(long i, long j) const;		//getter for value in position ij of the grid
-  int getGridValue(long i) const;			//getter for value in position i of the grid vector
-  int getMapValue(long i, long j);		//getter for value in position ij of the map
+
+   /**
+   * Set a navigation grid cell value
+   * @param  i row index
+   * @param  j col index
+   * @param  value  navigation grid value
+   */
+  void setGridValue(int value, long i, long j);
+
+  /**
+   * Return navigation grid cell value
+   * @param  i row index
+   * @param  j col index
+   * @return   navigation grid value
+   */
+  int getGridValue(long i, long j) const;
+
+  /**
+   * Return navigation grid cell value
+   * @param  i ith element (as vector)
+   * @return   navigation grid value
+   */
+  int getGridValue(long i) const;
+
+  /**
+   * Return map grid cell value
+   * @param  i row index
+   * @param  j col index
+   * @return   map grid value
+   */
+  int getMapValue(long i, long j);
+
+  /**
+   * Get number of Rows (height) in navigation grid
+   * @return number of rows
+   */
   long getNumGridRows() const;
+
+  /**
+   * Get number of Cols (width) in navigation grid
+   * @return number of cols
+   */
   long getNumGridCols() const;
+
+  /**
+   * Get number of Rows (height) in map grid
+   * @return number of rows
+   */
   long getNumRows();
+
+  /**
+   * Get number of Cols (width) in map grid
+   * @return number of cols
+   */
   long getNumCols();
-  void findFreeEdges(int cX, int cY);
+
+  //TODO: not implemented
+  //void findFreeEdges(int cX, int cY);
+
+ /**
+ * TODO:Meaningful description here
+ * @param x [description]
+ * @param y [description]
+ */
   void addEdgePoint(int x, int y);
-  //std::vector<int> getMap();
-  //std::vector<int> getGrid();
+
+  /**
+  * TODO:Meaningful description here
+  */
   std::vector<vector<long> > getMap2D();
-  std::vector<long> grid;			//vector containing the map as grid of cells sized 1 square metre
-  std::vector<int> pathPlanningGrid;
-  std::vector<int> RFIDGrid;
-  long numGridRows;
-  long numGridCols;
+
+  /**
+   * Returns robot pose
+   * @return last stored robot pose
+   */
   Pose getRobotPosition();
-  long getTotalFreeCells();
+
+  /**
+   * Stores current robot pose
+   * @param p robot pose
+   */
   void setCurrentPose(Pose &p);
+
+  /**
+   * Number of cells in navigation grid that are not == 1
+   * @return number of cells with val != 1
+   */
+  long getTotalFreeCells();
+
+  /**
+   * Stores navigation grid map in temporary binary file at
+   * /tmp/result.pgm
+   */
   void drawVisitedCells();
+
+  /**
+   * Stores navigation grid map in temporary binary file at specified location
+   * @param fileURI full path and filename for file
+   */
+  void storeBinary(std::string fileURI);
+
+  /**
+   * Stores navigation grid map in temporary acii file (only 0 indexes) at specified location
+   * @param fileURI full path and filename for file
+   */
+  void storeAscii(std::string fileURI);
+
+  /**
+ * Stores visited cells in history at file /tmp/finalResult.txt
+ * @param history list of strings describing past robot poses
+ */
   void printVisitedCells(vector<string> &history);
+
+  /**
+   * Return path planning grid cell value
+   * @param  i row index
+   * @param  j col index
+   * @return   path planning grid value
+   */
   int getPathPlanningGridValue(long i,long j) const;
+
+  /**
+   * Set a path planning grid cell value
+   * @param  i row index
+   * @param  j col index
+   * @param  value  path planning grid value
+   */
   void setPathPlanningGridValue(int value, int i, int j);
+
+  /**
+   * Get number of Cols (width) in path planning grid
+   * @return number of cols
+   */
   int getPathPlanningNumCols() const;
+
+  /**
+   * Get number of rows (height) in path planning grid
+   * @return number of rows
+   */
   int getPathPlanningNumRows() const;
+
+  /**
+   * Return planning_grid to nav_grid resolution ratio
+   * @return ratio
+   */
   int getGridToPathGridScale() const;
-  int gridToPathGridScale;
-  void updatePathPlanningGrid(int x, int y, int rangeInMeters, double power);
+
+  /**
+  * Iterates over pathplanning-grid in a square and updates according to values in navigation grid
+  * @param cellX          Center of the update box, in pathplanning grid cells, x coord
+  * @param cellY          Center of the update box, in pathplanning grid cells, y coord
+  * @param rangeInCells   Half length of the square (radius?) in pathplanning grid cells
+  * @param power          Unused...
+  */
+  void updatePathPlanningGrid(int cellX, int cellY, int rangeInCells, double power);
+
+  /**
+  * @brief Map::getRelativeTagCoord calculate the relative position of the RFID tag wrt the antenna
+  * @param absTagX: absolute x-position of the RFID tag
+  * @param absTagY: absolute x-position of the RFID tag
+  * @param antennaX: absolute x-position of the antenna
+  * @param antennaY: absolute y-position of the antenna
+  * @return a pair containing the relative position of the tag to the antenna
+  */
   std::pair<int, int> getRelativeTagCoord(int absTagX, int absTagY, int antennaX, int antennaY);
+
+  /**
+  * update the grid cell summing the current value with a new reading
+  * @param power: the sensed power by the antenna
+  * @param i: the x-position in the grid
+  * @param j: the y-position in the grid
+  */
   void setRFIDGridValue(float power, int i, int j);
+
+  /**
+   * Stores rfid grid map in temporary binary file at /tmp/rfid_result.pgm
+   * also saturates values to be between 0 and 255.
+   * Like drawRFIDGridScan(RFIDGridmap grid) but using internal rfid structure
+   */
   void drawRFIDScan();
+
+  /**
+  * Save on disk an image representing the scanned environment.
+  * Lighter zone represents higher probability for the presence of the RFID tag
+  * file is save at /tmp/rfid_result_gridmap.pgm
+  *
+  * @param grid RFIDGridmap containing the data
+  */
   void drawRFIDGridScan(RFIDGridmap grid);
+
+  /**
+   * Return RFID grid cell value
+   * @param  i row index
+   * @param  j col index
+   * @return   RFID grid value
+   */
   int getRFIDGridValue(long i,long j) const;
-  void updateRFIDGrid(double power, double phase, int antennaX, int antennaY);
+
+  //TODO: not implemented...
+  //void updateRFIDGrid(double power, double phase, int antennaX, int antennaY);
+
+  /**
+   * Returns tag pose in rfid grid cell indexs
+   * Like drawRFIDGridScan(RFIDGridmap grid) but using internal rfid structure
+   * @return [row,col] in rfid grid coordinates
+   */
   std::pair<int,int> findTag();
+
+  /**
+   * Returns tag pose in rfid grid cell indexs
+   * @param grid RFIDGridmap containing the data
+   */
   std::pair<int,int> findTagfromGridMap(RFIDGridmap grid);
-  
+
 	//nav_msgs::OccupancyGrid toROSMsg();
 protected:
-  std::vector<long> map;				//vector containing the original map as binary matrix (0 -> free, 1 -> obstacle)
+ /**
+ * creates map grid from input stream
+ * @param infile input stream
+ */
   void createMap(std::ifstream& infile);
+
+ /**
+ * creates map grid from opencv matrix
+ * @param imageCV        opencv mat
+ * @param origin         position for grid center
+ * @param map_frame_id   map frame id (usually "map")
+ * @param map_resolution map resolution in m./cell (usually 0.1)
+ */
+  void createMap(cv::Mat imageCV,geometry_msgs::Pose origin, std::string map_frame_id, double map_resolution);
+
+   /**
+   * creates map grid from data vector
+   * @param width          data vector width (== numRows)
+   * @param height         data vector height (== numCols)
+   * @param resolution     data vector height data resolution  
+   * @param data           data vector containing map data
+   * @param origin         position for grid center*
+   */
+  void createMap(int width,int height, double resolution, vector<int> data, geometry_msgs::Pose origin);
+
+ /**
+ * Creates an  opencv matrix from data vector
+ * @param width          data vector width (== numRows)
+ * @param height         data vector height (== numCols)
+ * @param data           data vector containing map data
+ * @return              opencv matrix with data vector
+ */
+  cv::Mat MreadImage(int width,int height,vector<int> data);
+
+  /**
+  * Creates an  opencv matrix from  input stream
+  * @param infile input stream
+  */
+  cv::Mat MreadImage(std::ifstream& input);
+
+  /**
+   * creates navigation grid with given resolution (a rescalling of map grid)
+   * @param resolution nav_grid resolution (m./cell)
+   */
   void createGrid(float resolution);
+
+  /**
+   * Creates path planning grid with given resolution (a rescalling of map grid)
+   * This should be bigger than nav_grid resolution
+   * @param resolution planning_grid resolution (m./cell)
+   */
   void createPathPlanningGrid(float resolution);
+
+  /**
+   * Creates RFID grid with given resolution (a rescalling of map grid)
+   * @param resolution RFID grid resolution (m./cell)
+   */
+  void createRFIDGrid(float resolution);
+  /**
+   * Stores navigation grid map in temporary (ascii/binary) files at
+   * /tmp/test.pgm
+   * /tmp/freeCell.txt
+   */
   void createNewMap();
-  long numRows;
-  long numCols;
-  int numPathPlanningGridRows;
-  int numPathPlanningGridCols;
-  std::vector<std::pair<int, int> > edgePoints;
-  long totalFreeCells;
+
+  /**
+   * Reduces free cells count in navigation grid by 1
+   * Free means val!=1
+   */
   void decreaseFreeCells();
+
+  // number of rows of the map grid
+  long numRows;
+
+  // number of cols of the map grid
+  long numCols;
+
+  // number of rows of the path planning grid
+  int numPathPlanningGridRows;
+
+  // number of cols of the  path planning grid
+  int numPathPlanningGridCols;
+
+  // TODO: meaningful description here
+  std::vector<std::pair<int, int> > edgePoints;
+
+  // Number of cells in navigation grid that are not == 1
+  long totalFreeCells;
+
+  // last stored robot pose
   Pose currentPose;
-  
+
+  // GRIDS! Each one has just 1 layer, named "layer"
+  // "map"      original input map
+  grid_map::GridMap  map_grid_;
+  // "nav"	    reescaled input map for navigation
+  grid_map::GridMap  nav_grid_;
+  // "planning" reescaled input map for path planning
+  grid_map::GridMap  planning_grid_;
+  // "RFID"     reescaled input map for sensors
+  grid_map::GridMap  rfid_grid_;
+
+  // planning_grid to nav_grid resolution ratio
+  int gridToPathGridScale;
+
+  // number of rows of the navigation grid
+  long numGridRows;
+
+  // number of cols of the navigation grid
+  long numGridCols;
+
+  // aux function ...
+  string type2str(int type) ;
+
 };
 }
 
