@@ -9,6 +9,7 @@
 #include "pose.h"
 #include <unordered_map>
 #include <nav_msgs/OccupancyGrid.h>
+#include "geometry_msgs/PoseStamped.h"
 #include "RFIDGridmap.h"
 
 
@@ -53,6 +54,20 @@ public:
   void setGridValue(int value, long i, long j);
 
   /**
+   * Set a navigation grid cell value
+   * @param  ps point in "map" frame_id
+   * @param  value  navigation grid value
+   */
+  void setGridValue(int value, geometry_msgs::PoseStamped ps);
+
+  /**
+   * Set a navigation grid cell value
+   * @param  i ith element (as vector)
+   * @param  value  navigation grid value
+   */
+  void setGridValue(int value, long i);
+
+  /**
    * Return navigation grid cell value
    * @param  i row index
    * @param  j col index
@@ -67,6 +82,8 @@ public:
    */
   int getGridValue(long i) const;
 
+  int getGridValue(geometry_msgs::PoseStamped ps) const;
+
   /**
    * Return map grid cell value
    * @param  i row index
@@ -74,6 +91,10 @@ public:
    * @return   map grid value
    */
   int getMapValue(long i, long j);
+
+  int getMapValue(long i) const;
+
+  int getMapValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Get number of Rows (height) in navigation grid
@@ -165,12 +186,40 @@ public:
   int getPathPlanningGridValue(long i,long j) const;
 
   /**
+   * Return path planning grid cell value at given position
+   * @param  ps point in "map" frame_id
+   * @return   path planning grid value
+   */
+  int getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const;
+
+  /**
+   * Return path planning grid cell value at given position
+   * @param  i ith element (as vector)
+   * @return   path planning grid value
+   */
+  int getPathPlanningGridValue(long i) const;
+
+  /**
    * Set a path planning grid cell value
    * @param  i row index
    * @param  j col index
    * @param  value  path planning grid value
    */
   void setPathPlanningGridValue(int value, int i, int j);
+
+  /**
+  * Set a path planning grid cell value
+  * @param  ps point in "map" frame_id
+  * @param  value  path planning grid value
+  */
+  void setPathPlanningGridValue(int value, geometry_msgs::PoseStamped ps);
+
+  /**
+  * Set a path planning grid cell value
+  * @param  i ith element (as vector)
+  * @param  value  path planning grid value
+  */
+  void setPathPlanningGridValue(int value, long i);
 
   /**
    * Get number of Cols (width) in path planning grid
@@ -218,6 +267,19 @@ public:
   void setRFIDGridValue(float power, int i, int j);
 
   /**
+  * update the grid cell summing the current value with a new reading
+  * @param  ps point in "map" frame_id
+  * @param  value  the sensed power by the antenna
+  */
+  void setRFIDGridValue(float value, geometry_msgs::PoseStamped ps);
+
+  /**
+  * update the grid cell summing the current value with a new reading
+  * @param  i ith element (as vector)
+  * @param  value  the sensed power by the antenna
+  */
+  void setRFIDGridValue(float value, long i);
+  /**
    * Stores rfid grid map in temporary binary file at /tmp/rfid_result.pgm
    * also saturates values to be between 0 and 255.
    * Like drawRFIDGridScan(RFIDGridmap grid) but using internal rfid structure
@@ -241,6 +303,33 @@ public:
    */
   int getRFIDGridValue(long i,long j) const;
 
+
+  /**
+   * Return RFID grid cell value
+   * @param  i ith element (as vector)
+   * @return   RFID grid value
+   */
+  int getRFIDGridValue(long i) const;
+
+  /**
+   * Return RFID grid cell value
+   * @param  ps point in "map" frame_id
+   * @return   RFID grid value
+   */
+  int getRFIDGridValue(geometry_msgs::PoseStamped ps) const;
+
+  /**
+   * Get number of Cols (width) in  RFID grid cell
+   * @return number of cols
+   */
+  long getRFIDGridNumCols();
+
+  /**
+  * Get number of rows (height) in  RFID grid cell
+  * @return number of rows
+  */
+  long getRFIDGridNumRows();
+
   //TODO: not implemented...
   //void updateRFIDGrid(double power, double phase, int antennaX, int antennaY);
 
@@ -257,40 +346,40 @@ public:
    */
   std::pair<int,int> findTagfromGridMap(RFIDGridmap grid);
 
-	//nav_msgs::OccupancyGrid toROSMsg();
 protected:
- /**
- * creates map grid from input stream
- * @param infile input stream
- */
+
+  /**
+  * creates map grid from input stream
+  * @param infile input stream
+  */
   void createMap(std::ifstream& infile);
 
- /**
- * creates map grid from opencv matrix
- * @param imageCV        opencv mat
- * @param origin         position for grid center
- * @param map_frame_id   map frame id (usually "map")
- * @param map_resolution map resolution in m./cell (usually 0.1)
- */
+  /**
+  * creates map grid from opencv matrix
+  * @param imageCV        opencv mat
+  * @param origin         position for grid center
+  * @param map_frame_id   map frame id (usually "map")
+  * @param map_resolution map resolution in m./cell (usually 0.1)
+  */
   void createMap(cv::Mat imageCV,geometry_msgs::Pose origin, std::string map_frame_id, double map_resolution);
 
-   /**
-   * creates map grid from data vector
-   * @param width          data vector width (== numRows)
-   * @param height         data vector height (== numCols)
-   * @param resolution     data vector height data resolution  
-   * @param data           data vector containing map data
-   * @param origin         position for grid center*
-   */
+  /**
+  * creates map grid from data vector
+  * @param width          data vector width (== numRows)
+  * @param height         data vector height (== numCols)
+  * @param resolution     data vector height data resolution
+  * @param data           data vector containing map data
+  * @param origin         position for grid center*
+  */
   void createMap(int width,int height, double resolution, vector<int> data, geometry_msgs::Pose origin);
 
- /**
- * Creates an  opencv matrix from data vector
- * @param width          data vector width (== numRows)
- * @param height         data vector height (== numCols)
- * @param data           data vector containing map data
- * @return              opencv matrix with data vector
- */
+  /**
+  * Creates an  opencv matrix from data vector
+  * @param width          data vector width (== numRows)
+  * @param height         data vector height (== numCols)
+  * @param data           data vector containing map data
+  * @return              opencv matrix with data vector
+  */
   cv::Mat MreadImage(int width,int height,vector<int> data);
 
   /**
@@ -318,10 +407,10 @@ protected:
    */
   void createRFIDGrid(float resolution);
   /**
-   * Stores navigation grid map in temporary (ascii/binary) files at
-   * /tmp/test.pgm
-   * /tmp/freeCell.txt
-   */
+  * Stores navigation grid map in temporary (ascii/binary) files at
+  * /tmp/test.pgm
+  * /tmp/freeCell.txt
+  */
   void createNewMap();
 
   /**
@@ -329,6 +418,8 @@ protected:
    * Free means val!=1
    */
   void decreaseFreeCells();
+
+
 
   // number of rows of the map grid
   long numRows;
@@ -370,8 +461,78 @@ protected:
   // number of cols of the navigation grid
   long numGridCols;
 
+private:
+  /**
+  * Get a grid cell value
+  * @param  i row index
+  * @param  j col index
+  * @param  gm  grid_map to retrieve
+  * @return     grid value at indexes
+  */
+  int  getValue(long i,long j, grid_map::GridMap gm) const;
+
+  /**
+  * Get a grid cell value
+  * @param  ps  Pose stamped in "map" frame_id
+  * @param  gm  grid_map to retrieve
+  * @return     grid value at pose stamped
+  */
+  int  getValue(geometry_msgs::PoseStamped ps, grid_map::GridMap gm) const;
+
+  /**
+  * Get a grid cell value
+  * @param  i ith element (as vector)
+  * @return   navigation grid value
+  */
+  int getValue(long i, grid_map::GridMap gm) const;
+
+  /**
+  * Set a grid cell value
+  * @param  value value to store
+  * @param  i row index
+  * @param  j col index
+  * @param  gm  grid_map to retrieve
+  */
+  void setValue(int value, long i,long j, grid_map::GridMap gm) const;
+
+  /**
+  * Set a grid cell value
+  * @param  value value to store
+  * @param  ps  Pose stamped in "map" frame_id
+  * @param  gm  grid_map to retrieve
+  */
+  void setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap gm) const;
+
+  /**
+  * Set a grid cell value
+  * @param  value value to store
+  * @param  i ith element (as vector)
+  */
+  void setValue(int value, long i, grid_map::GridMap gm) const;
+
+  /**
+   * Get number of Cols (width) in grid_map
+   * @param  gm  grid_map to retrieve
+   * @return number of cols
+   */
+  int getGridNumCols(grid_map::GridMap gm) const;
+
+  /**
+  * Get number of rows (height) in grid_map
+  * @param  gm  grid_map to retrieve
+  * @return number of rows
+  */
+  int getGridNumRows(grid_map::GridMap gm) const;
+
   // aux function ...
   string type2str(int type) ;
+
+  /**
+   * Prints grid boundaries and point pose
+   * @param point point to print
+   * @param gm    grid_map
+   */
+  void printErrorReason(grid_map::Position point, grid_map::GridMap gm) const;
 
 };
 }

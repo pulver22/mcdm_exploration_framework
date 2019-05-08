@@ -6,6 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   amtec
   actionlib
   nav_msgs
+  geometry_msgs
   roscpp
   tf
   costmap_2d
@@ -20,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mcdm_exploration_framework
-  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp
+  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs
 #  DEPENDS system_lib
 )
 
@@ -35,17 +36,28 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(mcdm_exploration_framework pose.cpp map.cpp newray.cpp mcdmfunction.cpp 
+add_library(mcdm_exploration_framework pose.cpp map.cpp newray.cpp mcdmfunction.cpp
 map.cpp evaluationrecords.cpp Criteria/sensingtimecriterion.cpp
-Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp 
-Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cpp 
+Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp
+Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cpp
 PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp)
 
-add_executable(mcdm_online_exploration_ros main.cpp ) 
+add_executable(mcdm_online_exploration_ros main.cpp )
 target_link_libraries(mcdm_online_exploration_ros mcdm_exploration_framework ${catkin_LIBRARIES})
 
 add_executable(pure_navigation pure_navigation.cpp )
 target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRARIES})
+
+## Declare a C++ executable
+add_executable(
+   path_len_node
+   path_len.cpp
+   )
+
+ target_link_libraries(
+   path_len_node
+   ${catkin_LIBRARIES}
+ )
 
 list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -O3 -g  -ftest-coverage -fprofile-arcs")
 
