@@ -2,10 +2,10 @@
 #include "RFIDGridmap.h"
 
 RFIDGridmap::RFIDGridmap(std::string fileURI, double mapResolution, double gridResolution, bool debug): global_frame_("world"), layer_name_("rfid"), format_("mono8"){
-
+  ROS_DEBUG("[RFIDGridmap.cpp@main] Creating RFIDGridmap");
   debug_=debug;
   createGrid(RFIDGridmap_, layer_name_, fileURI, mapResolution,  gridResolution,debug_, global_frame_,format_);
-
+  ROS_DEBUG("[RFIDGridmap.cpp@main] grid created");
 };
 
 RFIDGridmap::RFIDGridmap(std::string fileURI, double mapResolution, double gridResolution): RFIDGridmap::RFIDGridmap(fileURI,  mapResolution, gridResolution, true){};

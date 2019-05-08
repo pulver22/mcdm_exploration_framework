@@ -16,9 +16,13 @@
 #include "movebasegoal.h"
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetMap.h>
 #include <costmap_2d/costmap_2d_ros.h>
+//mfc ...
+#include <ros/console.h>
+//mfc ...
 
 
 
@@ -30,7 +34,7 @@ void pushInitialPositions ( dummy::Map map, int x, int y, int orientation,  int 
                             string actualPose, vector< pair< string, list< Pose > > > *graph2 );
 double calculateScanTime ( double scanAngle );
 void calculateDistance(list<Pose> list, dummy::Map& map, Astar* astar);
-Pose createFromInitialPose ( int x, int y, int orientation, int variation, int range, int FOV );
+Pose createFromInitialPose ( Pose pose, int variation, int range, int FOV );
 void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPose, list<Pose>* nearCandidates, vector<pair<string,list<Pose>>>* graph2,
                        dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int encodedKeyValue, Astar* astar , long* numConfiguration,
                        double* totalAngle, double * travelledDistance, int* numOfTurning , double scanAngle);
@@ -39,10 +43,11 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
                  int numOfTurning, double totalAngle, double totalScanTime);
 
 // ROS varies
-void move(int x, int y, double orW, double orZ);
+void move(float x, float y, float orW, float orZ, int resolution, int costresolution, float time_travel);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
-geometry_msgs::PoseStamped getCurrentPose();
+Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, double initFov, int initRange);
+
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 vector<int> occdata;
 int costmapReceived = 0;
@@ -57,12 +62,33 @@ double sensing_range, offsetY_base_rmld, FoV;
 int statusPTU, prevStatusPTU;
 double timeOfScanning = 0;
 bool btMode = false;
+double min_robot_speed = 0.1;
 
 
 // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm 100 75 5 0 15 180 0.95 0.12
 // resolution x y orientation range centralAngle precision threshold
 int main ( int argc, char **argv )
 {
+
+  //mfc ...........................
+  // some param control ...
+  if (argc<6)
+  {
+    ROS_FATAL("Missing input arguments: Got (%d) and should be (%d) [Field of View, Sensing Range, Precision, Threshold,Resolution]",argc-1,6-1);
+    return 1;
+  }
+  else
+  {
+    ROS_INFO("Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n- Threshold (%3.3f)\n- Resolution: (%3.3f)\n- CostResolution: (%3.3f)",
+                atof(argv[1]),atoi(argv[2]),atof(argv[3]),atof(argv[4]),atof(argv[5]));
+  }
+  // sets console output to debug mode...
+//  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) )
+//  {
+//   ros::console::notifyLoggerLevelsChanged();
+//  }
+  //mfc ...........................
+
   auto startMCDM = chrono::high_resolution_clock::now();
   ros::init(argc, argv, "mcdm_exploration_framework_node");
   ros::NodeHandle nh;
@@ -73,22 +99,40 @@ int main ( int argc, char **argv )
   MoveBaseClient ac("move_base", true);
   ros::Subscriber costmap_sub;
   ros::Subscriber costmap_update_sub;
+  ros::Rate r(1);
 
+
+
+  ROS_INFO("Waiting for move_base action server to come up");
   while (!ac.waitForServer(ros::Duration(5.0))) {
-      ROS_INFO("Waiting for the move_base action server to come up");
+    ROS_INFO("... waiting ...");
   }
-  ros::Rate r(10);
 
-  while (ros::ok())
+  bool disConnected = true;
+  while (disConnected)
   {
+    ROS_INFO("Waiting for static_map service to respond...");
     if (map_service_client_.call(srv_map))
     {
       costmap_sub = nh.subscribe<nav_msgs::OccupancyGrid>("move_base/global_costmap/costmap", 100, grid_callback);
       costmap_update_sub = nh.subscribe<map_msgs::OccupancyGridUpdate>("move_base/global_costmap/costmap_updates", 10, update_callback);
+      disConnected=false;
+    }
+    else
+    {
+      r.sleep();
+    }
+
+  }
+
+
+
+  while (ros::ok())
+  {
 
       if (costmapReceived == 0)
       {
-        ROS_INFO_STREAM("waiting for costmap" << std::endl);
+        ROS_INFO_STREAM_THROTTLE(60,"waiting for costmap" << std::endl);
         //cout << "Waiting for costmap" << endl;
       }
       if (costmapReceived == 1)
@@ -106,6 +150,13 @@ int main ( int argc, char **argv )
          * resolution = X -> X%(full resolution)
          *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
         double resolution = atof(argv[5]);
+        cout << "Config: " << endl;
+        cout << "   InitFov: " << initFov << endl;
+        cout << "   InitRange: " << initRange << endl;
+        cout << "   precision: " << precision << endl;
+        cout << "   threshold: " << threshold << endl;
+
+
 
         if(resolution == 1){
             resolution = costresolution;
@@ -113,11 +164,17 @@ int main ( int argc, char **argv )
             costresolution = (1 / resolution) * costresolution;
         }
 
+        cout << "   Resolution: " << resolution << "\n   Costresolution: " << costresolution << endl;
 
         dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
-        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
+        ROS_DEBUG("Map created correctly");
+//        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
+//        cout << "RFIDgrid created correctly" << endl;
         ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
+        ROS_DEBUG("[pure_navigation.cpp@main] publisher created ...");
         int gridToPathGridScale = map.getGridToPathGridScale();
+        cout << "gridToPathGridScale: " << gridToPathGridScale << endl;
+        ROS_DEBUG("[pure_navigation.cpp@main] grid To Path Grid Scale obtained");
 
         /*NOTE: Transform between map and image, to be enabled if not present in the launch file
         //tf::Transform tranMapToImage;
@@ -126,81 +183,14 @@ int main ( int argc, char **argv )
         */
 
         // Get the initial pose in map frame
-        geometry_msgs::PoseStamped start_pose;
-        start_pose = getCurrentPose();
-        double initX = start_pose.pose.position.x;
-        double initY = start_pose.pose.position.y;
-        tf::Quaternion quat = tf::Quaternion(start_pose.pose.orientation.x, start_pose.pose.orientation.y,
-                                             start_pose.pose.orientation.z, start_pose.pose.orientation.w);
-
-        //cout <<start_pose.pose.orientation.x <<","<< start_pose.pose.orientation.y <<","<< start_pose.pose.orientation.z<< ","<< start_pose.pose.orientation.w <<endl;
-
-        tfScalar angle = 2 * atan2(quat[2], quat[3]);
-
-        cout << "Initial position in the map frame:" << initX << "," << initY << " with orientation :" << angle
+        Pose start_pose = getCurrentPose( resolution, costresolution, &map, initFov, initRange);
+        Pose target = start_pose;
+        Pose previous = target;
+        cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
              << endl;
-
-        int initOrientation = angle * 180 / PI;
-        cout << "Orientation after casting: " << initOrientation << endl;
-
-
-        //ATTENTION: should be adapted for cells different from 1mx1m
-        //convert from map frame to image
-        tf::Vector3 pose = tf::Vector3(initX, initY, 0.0);
-        //pose = tranMapToImage.operator*(pose);
-
-        Pose target, previous;
-        if (resolution >= 0 && resolution < 1 && resolution != costresolution)
-        {
-          //full resolution and scaling
-          pose = pose / costresolution;
-          //cout << "[BEFORE]Initial position in the image frame: " << pose.getX() * costresolution<< "," << (map.getPathPlanningNumRows() - (long)pose.getY())*costresolution << endl;
-          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY(), (long) pose.getX(),
-                                  initOrientation, initRange, initFov);
-          target = initialPose;
-          previous = initialPose;
-          cout << "[AFTER]Initial position in the image frame: " << target.getY() * costresolution << ","
-               << target.getX() * costresolution << endl;
-        }
-        else
-        {
-          //1mx1m
-          //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << map.getPathPlanningNumRows() - (long)pose.getY() << endl;
-          //NOTE: Y in map are X in image
-          Pose initialPose = Pose(map.getPathPlanningNumRows() - (long) pose.getY(), (long) pose.getX(),
-                                  initOrientation, initRange, initFov);
-          target = initialPose;
-          previous = initialPose;
-          cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
-               << endl;
-        }
-        Pose invertedInitial = createFromInitialPose(initX, initY, initOrientation, 180, initRange, initFov);
-        Pose eastInitial = createFromInitialPose(initX, initY, initOrientation, 90, initRange, initFov);
-        Pose westInitial = createFromInitialPose(initX, initY, initOrientation, 270, initRange, initFov);
-
-        //----------------- PRINT INITIAL POSITION
-        //ATTENTION: doesn't work! ...anyway the initial position is represented by the robot
-        geometry_msgs::PointStamped p;
-        p.header.frame_id = "map";
-        p.header.stamp = ros::Time::now();
-        //NOTE: as before, Y in map are X in image
-        if (resolution != 0)
-        {
-          p.point.x = (map.getPathPlanningNumRows() - target.getX()) + 0.5; //* costresolution;
-          p.point.y = (target.getY()) + 0.5; //* costresolution;
-        } else
-        {
-          p.point.x = (map.getPathPlanningNumRows() - target.getX()) * costresolution;
-          p.point.y = (target.getY()) * costresolution;
-        }
-        //cout << p.point.x << ","<< p.point.y << endl;
-        tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
-        //vec = transform.operator*(vec);
-        p.point.x = vec.getY();
-        p.point.y = vec.getX();
-        //cout << p.point.x << ","<< p.point.y << endl;
-        marker_pub.publish(p);
-        //----------------------------------------
+        Pose invertedInitial = createFromInitialPose(start_pose, 180, initRange, initFov);
+        Pose eastInitial = createFromInitialPose(start_pose, 90, initRange, initFov);
+        Pose westInitial = createFromInitialPose(start_pose, 270, initRange, initFov);
 
         long numConfiguration = 1;
         vector<pair<string, list<Pose>>> graph2;
@@ -231,10 +221,11 @@ int main ( int argc, char **argv )
         int encodedKeyValue = 0;
 
         // RFID
-        double absTagX =  std::stod(argv[12]); // m.
-        double absTagY =  std::stod(argv[11]); // m.
-        double freq = std::stod(argv[13]); // Hertzs
-        double txtPower= std::stod(argv[14]); // dBs
+        double absTagX = 0; //std::stod(argv[12]); // m.
+        double absTagY = 0; //std::stod(argv[11]); // m.
+        double freq = 0; //std::stod(argv[13]); // Hertzs
+        double txtPower = 0; // std::stod(argv[14]); // dBs
+        double rxPower = 0;
         std::pair<int, int> relTagCoord;
 
         do
@@ -242,9 +233,14 @@ int main ( int argc, char **argv )
           // If we are doing "forward" navigation towards cells never visited before
           if ( btMode == false )
           {
+            // At every iteration, the current pose of the robot is taken from the TF-tree
+            Pose target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+            cout << "[Target]: " << target.getY() << ", " << target.getX() << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
+//            cout << "[Tmp]: " << tmp_target.getY() << ", " << tmp_target.getX() << ", " << (tmp_target.getOrientation() + 360 ) % 360 << ", " << tmp_target.getFOV() <<", " << tmp_target.getRange() << endl;
+
             long x = target.getX();
             long y = target.getY();
-            int orientation = target.getOrientation();
+            int orientation = (target.getOrientation() + 360) % 360;  // cast orientation in [0, 360]
             int range = target.getRange();
             double FOV = target.getFOV();
             string actualPose = function.getEncodedKey ( target,0 );
@@ -260,17 +256,19 @@ int main ( int argc, char **argv )
             // Update the overall scanning time
             totalScanTime += calculateScanTime ( scanAngle*180/PI );
             // Calculare the relative RFID tag position to the robot position
-            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
+//            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
             // Calculate the received power and phase
-            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
-            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
+//            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
+//            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
             // Update the path planning and RFID map
             map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY);
-            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
+//            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
             // Search for new candidate position
-            ray.findCandidatePositions ( map,x,y,orientation,FOV,range );
+            ray.findCandidatePositions ( map, x, y, orientation, FOV, range );
             vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
+            cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
             ray.emptyCandidatePositions();
+            cout << " Candidate cleaned!" << endl;
 
             if (scan)
             {
@@ -295,7 +293,7 @@ int main ( int argc, char **argv )
             // If the exploration just started
             if ( count == 0 )
             {
-              // Calculate other three pose given the strating one
+              // Calculate other three pose given the starting one
               string invertedPose = function.getEncodedKey ( invertedInitial,0 );
               string eastPose = function.getEncodedKey ( eastInitial,0 );
               string westPose = function.getEncodedKey ( westInitial,0 );
@@ -317,7 +315,7 @@ int main ( int argc, char **argv )
               graph2.pop_back();
               actualPose = function.getEncodedKey ( target,0 );
               // Add to the graph the initial positions and the candidates from there (calculated inside the function)
-              pushInitialPositions ( map, x, y,orientation, range,FOV, threshold, actualPose, &graph2 );
+              pushInitialPositions ( map, x, y, orientation, range, FOV, threshold, actualPose, &graph2 );
             }
 
 
@@ -435,21 +433,29 @@ int main ( int argc, char **argv )
                   p.header.frame_id = "map";
                   p.header.stamp = ros::Time::now();
                   //NOTE: as before, Y in map are X in image
-                  if (resolution >= 0 && resolution < 1 && resolution != costresolution) {
+                  if (resolution != costresolution){// && resolution != costresolution) {
                       //NOTE: full resolution
-                      p.point.x = (map.getNumGridRows() - target.getX()) * costresolution;
-                      p.point.y = (target.getY()) * costresolution;
+                      cout << " [Marker] Full resolution" << endl;
+                      p.point.y = - float(target.getX() + costorigin.position.y / costresolution) * costresolution;
+                      p.point.x = - float(map.getPathPlanningNumRows() - target.getY() + costorigin.position.x / costresolution) * costresolution;
+
                   } else {
                       //NOTE: 1mx1m
+                    cout << " [Marker] 1mx1m" << endl;
                       p.point.x = (map.getPathPlanningNumRows() - target.getX());//* costresolution;
                       p.point.y = (target.getY());// * costresolution;
                   }
-                  //cout << p.point.x << ","<< p.point.y << endl;
-                  tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
-                  //vec = transform.operator*(vec);
-                  p.point.x = vec.getY();
-                  p.point.y = vec.getX();
-                  cout << "New goal in map: X = " << p.point.x << ", Y = " << p.point.y << endl;
+                  cout << "   (" << p.point.x << "," << p.point.y << ")" << endl;
+
+                  if (resolution == costresolution)
+                  {
+                    cout << "   resolution = costresolution" << endl;
+                    tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
+                    //vec = transform.operator*(vec);
+                    p.point.x = vec.getY() + costorigin.position.x;
+                    p.point.y = vec.getX() + costorigin.position.y;
+                  }
+                  cout << "   New goal in map: X = " << p.point.x << ", Y = " << p.point.y << endl;
                   //NOTE: not requested for testing purpose
                   //usleep(microseconds);
                   marker_pub.publish(p);
@@ -457,9 +463,31 @@ int main ( int argc, char **argv )
                   move_base_msgs::MoveBaseGoal goal;
                   double orientZ = (double) (target.getOrientation() * PI / (2 * 180));
                   double orientW = (double) (target.getOrientation() * PI / (2 * 180));
-                  if (resolution != 0) {
-                      move(p.point.x + 0.5, p.point.y + 0.5, sin(orientZ), cos(orientW));
-                  } else move(p.point.x, p.point.y, sin(orientZ), cos(orientW));
+
+                  string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(),map );
+                  float travel_distance = astar.lenghtPath(path);
+                  cout << "Target is at " << astar.lenghtPath(path) << " cells from the robot" << endl;
+                  cout << "Resolution : " << resolution << endl;
+                  float time_travel = travel_distance / min_robot_speed;
+                  if (resolution == 0)
+                  {
+                    travel_distance = travel_distance * costresolution;
+                    time_travel = travel_distance / min_robot_speed;
+                  }
+                  cout << "Target is at " << travel_distance << " cells from the robot" << endl;
+
+
+
+                  if (resolution != 0)
+                  {
+                    cout << "[map] 1mx1m or similar clustered map " << endl;
+                    move(p.point.x, p.point.y , sin(orientZ), cos(orientW), resolution, costresolution, time_travel);
+                  } else
+                  {
+                    cout << "[map] Full resolution" << endl;
+                    move(p.point.x, p.point.y, sin(orientZ), cos(orientW), resolution, costresolution, time_travel);  // full resolution
+                  }
+
                   scan = true;
                 }
                 // ...otherwise, if the selected cell has already been visited
@@ -607,12 +635,12 @@ int main ( int argc, char **argv )
             // ...and the overall scan time
             totalScanTime += calculateScanTime ( scanAngle*180/PI );
             // Calculate the relative coordinate to the robot of the RFID tag
-            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
+//            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
             // Calculate received power and phase
-            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
-            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
+//            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
+//            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
             map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY );
-            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(), target.getY(), target.getOrientation(), -0.5, 7.0);
+//            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(), target.getY(), target.getOrientation(), -0.5, 7.0);
             // Remove the current pose from the list of possible candidate cells
             cleanPossibleDestination2 ( nearCandidates,target );
             // Get the list of the candidate cells with their evaluation
@@ -702,9 +730,9 @@ int main ( int argc, char **argv )
         // Plotting utilities
         map.drawVisitedCells ();
         map.printVisitedCells ( history );
-        map.drawRFIDScan();
-        map.drawRFIDGridScan(myGrid);
-        myGrid.saveAs(("/home/pulver/Desktop/MCDM/rfid_result_gridmap.pgm"));
+//        map.drawRFIDScan();
+//        map.drawRFIDGridScan(myGrid);
+//        myGrid.saveAs(("/home/pulver/Desktop/MCDM/rfid_result_gridmap.pgm"));
 
         cout << "Num configuration: " << numConfiguration << endl;
         cout << "Travelled distance calculated during the algorithm: " << travelledDistance << endl;
@@ -727,10 +755,10 @@ int main ( int argc, char **argv )
         printResult(newSensedCells, totalFreeCells, precision, numConfiguration, travelledDistance, numOfTurning,
             totalAngle, totalScanTime);
         // Find the tag
-        std::pair<int,int> tag = map.findTag();
-        cout << "RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
-        tag = map.findTagfromGridMap(myGrid);
-        cout << "[Grid]RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
+//        std::pair<int,int> tag = map.findTag();
+//        cout << "RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
+//        tag = map.findTagfromGridMap(myGrid);
+//        cout << "[Grid]RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
         cout << "-----------------------------------------------------------------"<<endl;
         auto endMCDM= chrono::high_resolution_clock::now();
 
@@ -739,16 +767,15 @@ int main ( int argc, char **argv )
        		totalTimeMCDM/60000 << " m "<< endl;
         cout << "Spinning at the end" << endl;
         sleep(1);
-        //with rate
-        ros::spinOnce();
-        r.sleep();
-        //without rate
-        //ros::spin();
+        exit ( 0 );
         }
-    }
 
-  }
-}
+    ros::spinOnce();
+    r.sleep();
+
+
+  }// end while ros::ok
+}// end main
 
 bool contains ( std::list<Pose>& list, Pose& p )
 {
@@ -803,6 +830,7 @@ void pushInitialPositions ( dummy::Map map, int x, int y, int orientation, int r
   }
   EvaluationRecords *record = function.evaluateFrontiers ( frontiers,map,threshold );
   list<Pose>nearCandidates = record->getFrontiers();
+  cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string,list<Pose>> pair = make_pair ( actualPose,nearCandidates );
   graph2->push_back ( pair );
 }
@@ -812,9 +840,9 @@ double calculateScanTime ( double scanAngle )
   return ( -7.2847174296449998e-006*scanAngle*scanAngle*scanAngle + 2.2131847908245512e-003*scanAngle*scanAngle + 1.5987873410233613e-001*scanAngle + 10 );
 }
 
-Pose createFromInitialPose ( int x, int y, int orientation, int variation, int range, int FOV )
+Pose createFromInitialPose ( Pose pose, int variation, int range, int FOV )
 {
-  Pose tmp = Pose ( x,y, ( orientation + variation ) %360,FOV,range );
+  Pose tmp = Pose ( pose.getX(), pose.getY(), ( pose.getOrientation() + variation ) %360,FOV,range );
   return tmp;
 }
 
@@ -846,7 +874,7 @@ void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPo
 {
   // Add it to the list of visited cells as first-view
   history->push_back ( function->getEncodedKey ( *target, encodedKeyValue ) );
-  cout << function->getEncodedKey ( *target,1 ) << endl;
+//  cout << function->getEncodedKey ( *target,1 ) << endl;
   // Add it to the list of visited cells from which acting
   tabuList->push_back ( *target );
   // Remove it from the list of candidate position
@@ -857,10 +885,10 @@ void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPo
   graph2->push_back ( pair );
   // Calculate the path from the previous robot pose to the current one
   string path = astar->pathFind ( target->getX(), target->getY(), previous->getX(), previous->getY(), *map );
-  cout << "1: " << *travelledDistance << endl;
+//  cout << "1: " << *travelledDistance << endl;
   // Update the distance counting
   *travelledDistance = *travelledDistance + astar->lenghtPath(path);
-  cout << "2: " << *travelledDistance << endl;
+//  cout << "2: " << *travelledDistance << endl;
   // Update the turning counting
   *numOfTurning = *numOfTurning + astar->getNumberOfTurning(path);
   // Update the scanning angle
@@ -911,7 +939,7 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
 }
 
 
-geometry_msgs::PoseStamped getCurrentPose()
+Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, double initFov, int initRange)
 {
   ros::Time _now_stamp_ = ros::Time(0);
 
@@ -938,15 +966,51 @@ geometry_msgs::PoseStamped getCurrentPose()
   tf::pointTFToMsg(start_position, start_pose.pose.position);
   tf::quaternionTFToMsg(start_orientation, start_pose.pose.orientation);
 
-  return start_pose;
+  double initX = start_pose.pose.position.x;
+  double initY = start_pose.pose.position.y;
+  tf::Quaternion quat = tf::Quaternion(start_pose.pose.orientation.x, start_pose.pose.orientation.y,
+                                       start_pose.pose.orientation.z, start_pose.pose.orientation.w);
+  tfScalar angle = 2 * atan2(quat[2], quat[3]);
+
+  cout << endl << "Current position in the map frame:" << initX << "," << initY << " with orientation :" << angle
+       << endl;
+
+  int initOrientation = angle * 180 / PI;
+  cout << "Orientation after casting: " << initOrientation << endl;
+
+
+  //ATTENTION: should be adapted for cells different from 1mx1m
+  //convert from map frame to image
+  tf::Vector3 pose = tf::Vector3(initX, initY, 0.0);
+  if (resolution >= 0 && resolution < 1 && resolution != costresolution)
+  {
+    //full resolution and scaling
+    cout << "Full resolution and scaling" << endl;
+    pose = pose / costresolution;
+//    cout << "[BEFORE]Initial position in the Gazebo frame: " << pose.getX() * costresolution<< "," << pose.getY() * costresolution << endl;
+    Pose initialPose = Pose(map->getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y / costresolution, (long) pose.getX() - costorigin.position.x / costresolution,
+                            initOrientation, initRange, initFov);
+    return initialPose;
+  }
+  else
+  {
+    //1mx1m
+    cout << endl << "1mx1m" << endl;
+    //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << map.getPathPlanningNumRows() - (long)pose.getY() << endl;
+    //NOTE: Y in map are X in image
+    Pose initialPose = Pose(map->getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y, (long) pose.getX() - costorigin.position.x,
+                            initOrientation, initRange, initFov);
+    return initialPose;
+  }
+
 }
 
 void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
-  //cout << "alive" << endl;
+  //ROS_INFO("RECEIVED A MAP!");
   if(costmapReceived == 0)
   {
-    std::cout << "CALLBACK FIRST" << std::endl;
+    ROS_INFO("CALLBACK FIRST!");
     //costmap_grid = msg.get();
     costresolution = msg->info.resolution;
     costwidth = msg->info.width;
@@ -957,7 +1021,7 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
       occdata.push_back(msg->data.at(i));
     }
     std::cout << "size of occdata " << occdata.size() << " size of message data " << msg->data.size() << std::endl;
-    std::cout << "height" << msg->info.height << " width " << msg->info.width << " resolution " << msg->info.resolution << std::endl;
+    std::cout << "height " << msg->info.height << " width " << msg->info.width << " resolution " << msg->info.resolution << std::endl;
     costmapReceived = 1;
   }
 
@@ -978,13 +1042,14 @@ void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg)
       }*/
 }
 
+
 int getIndex(int x, int y){
   int sx = costmap_grid.info.width;
   return y * sx + x;
 }
 
 
-void move(int x, int y, double orZ, double orW){
+void move(float x, float y, float orZ, float orW, int resolution, int costresolution, float time_travel){
   move_base_msgs::MoveBaseGoal goal;
 
   MoveBaseClient ac ("move_base", true);
@@ -992,18 +1057,34 @@ void move(int x, int y, double orZ, double orW){
   goal.target_pose.header.frame_id = "map";
   goal.target_pose.header.stamp = ros::Time::now();
 
-  goal.target_pose.pose.position.x = x;
-  goal.target_pose.pose.position.y = y;
+
+  // TODO: merge
+  // Clustered map
+  if (resolution == costresolution)
+  {
+    goal.target_pose.pose.position.x = x ;//+ costorigin.position.x;
+    goal.target_pose.pose.position.y = y ;//+ costorigin.position.y;
+  } else
+  {
+    // Full resolution
+    goal.target_pose.pose.position.x = x;//  * costresolution + costorigin.position.x;
+    goal.target_pose.pose.position.y = y; // * costresolution + costorigin.position.y;
+  }
+
   goal.target_pose.pose.orientation.z = orZ;
   goal.target_pose.pose.orientation.w = orW;
 
   ROS_INFO("Sending goal");
+  cout << "   [map]goal: (" << float(x) << "," << float(y) << ")" << endl;
   ac.sendGoal(goal);
 
-  ac.waitForResult();
+  cout << "     Waiting for " << time_travel << " seconds" << endl;
+  ac.waitForResult(ros::Duration(time_travel));
 
   if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
     ROS_INFO("I'm moving...");
   else
     ROS_INFO("The base failed to move");
+
+  cout << endl;
 }
