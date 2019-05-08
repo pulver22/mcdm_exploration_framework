@@ -80,7 +80,7 @@ int main ( int argc, char **argv )
   else
   {
     ROS_INFO("Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n- Threshold (%3.3f)\n- Resolution: (%3.3f)\n- CostResolution: (%3.3f)",
-                atof(argv[1]),atoi(argv[2]),atof(argv[3]),atof(argv[4]),atof(argv[5]));
+             atof(argv[1]),atoi(argv[2]),atof(argv[3]),atof(argv[4]),atof(argv[5]));
   }
   // sets console output to debug mode...
 //  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) )
@@ -130,149 +130,149 @@ int main ( int argc, char **argv )
   while (ros::ok())
   {
 
-      if (costmapReceived == 0)
-      {
-        ROS_INFO_STREAM_THROTTLE(60,"waiting for costmap" << std::endl);
-        //cout << "Waiting for costmap" << endl;
+    if (costmapReceived == 0)
+    {
+      ROS_INFO_STREAM_THROTTLE(60,"waiting for costmap" << std::endl);
+      //cout << "Waiting for costmap" << endl;
+    }
+    if (costmapReceived == 1)
+    {
+      double initFov = atoi(argv[1]);
+      initFov = initFov * PI / 180;
+      FoV = initFov;
+      int initRange = atoi(argv[2]);
+      sensing_range = initRange;
+      double precision = atof(argv[3]);
+      double threshold = atof(argv[4]);
+
+      /* resolution = 0 -> full resolution
+       * resolution = 1 -> 1mx1m
+       * resolution = X -> X%(full resolution)
+       *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
+      double resolution = atof(argv[5]);
+      cout << "Config: " << endl;
+      cout << "   InitFov: " << initFov << endl;
+      cout << "   InitRange: " << initRange << endl;
+      cout << "   precision: " << precision << endl;
+      cout << "   threshold: " << threshold << endl;
+
+
+
+      if(resolution == 1){
+        resolution = costresolution;
+      }else if(resolution > 0 && resolution < 1){
+        costresolution = (1 / resolution) * costresolution;
       }
-      if (costmapReceived == 1)
-      {
-        double initFov = atoi(argv[1]);
-        initFov = initFov * PI / 180;
-        FoV = initFov;
-        int initRange = atoi(argv[2]);
-        sensing_range = initRange;
-        double precision = atof(argv[3]);
-        double threshold = atof(argv[4]);
 
-        /* resolution = 0 -> full resolution
-         * resolution = 1 -> 1mx1m
-         * resolution = X -> X%(full resolution)
-         *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
-        double resolution = atof(argv[5]);
-        cout << "Config: " << endl;
-        cout << "   InitFov: " << initFov << endl;
-        cout << "   InitRange: " << initRange << endl;
-        cout << "   precision: " << precision << endl;
-        cout << "   threshold: " << threshold << endl;
+      cout << "   Resolution: " << resolution << "\n   Costresolution: " << costresolution << endl;
 
-
-
-        if(resolution == 1){
-            resolution = costresolution;
-        }else if(resolution > 0 && resolution < 1){
-            costresolution = (1 / resolution) * costresolution;
-        }
-
-        cout << "   Resolution: " << resolution << "\n   Costresolution: " << costresolution << endl;
-
-        dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
-        ROS_DEBUG("Map created correctly");
+      dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
+      ROS_DEBUG("Map created correctly");
 //        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
 //        cout << "RFIDgrid created correctly" << endl;
-        ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
-        ROS_DEBUG("[pure_navigation.cpp@main] publisher created ...");
-        int gridToPathGridScale = map.getGridToPathGridScale();
-        cout << "gridToPathGridScale: " << gridToPathGridScale << endl;
-        ROS_DEBUG("[pure_navigation.cpp@main] grid To Path Grid Scale obtained");
+      ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
+      ROS_DEBUG("[pure_navigation.cpp@main] publisher created ...");
+      int gridToPathGridScale = map.getGridToPathGridScale();
+      cout << "gridToPathGridScale: " << gridToPathGridScale << endl;
+      ROS_DEBUG("[pure_navigation.cpp@main] grid To Path Grid Scale obtained");
 
-        /*NOTE: Transform between map and image, to be enabled if not present in the launch file
-        //tf::Transform tranMapToImage;
-        //tranMapToImage.setOrigin(tf::Vector3(0, 30, 0.0));
-        //tf::Vector3 vecImageToMap = tf::Vector3(0, 30,0.0);
-        */
+      /*NOTE: Transform between map and image, to be enabled if not present in the launch file
+      //tf::Transform tranMapToImage;
+      //tranMapToImage.setOrigin(tf::Vector3(0, 30, 0.0));
+      //tf::Vector3 vecImageToMap = tf::Vector3(0, 30,0.0);
+      */
 
-        // Get the initial pose in map frame
-        Pose start_pose = getCurrentPose( resolution, costresolution, &map, initFov, initRange);
-        Pose target = start_pose;
-        Pose previous = target;
-        cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
-             << endl;
-        Pose invertedInitial = createFromInitialPose(start_pose, 180, initRange, initFov);
-        Pose eastInitial = createFromInitialPose(start_pose, 90, initRange, initFov);
-        Pose westInitial = createFromInitialPose(start_pose, 270, initRange, initFov);
+      // Get the initial pose in map frame
+      Pose start_pose = getCurrentPose( resolution, costresolution, &map, initFov, initRange);
+      Pose target = start_pose;
+      Pose previous = target;
+      cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
+           << endl;
+      Pose invertedInitial = createFromInitialPose(start_pose, 180, initRange, initFov);
+      Pose eastInitial = createFromInitialPose(start_pose, 90, initRange, initFov);
+      Pose westInitial = createFromInitialPose(start_pose, 270, initRange, initFov);
 
-        long numConfiguration = 1;
-        vector<pair<string, list<Pose>>> graph2;
-        NewRay ray;
-        ray.setGridToPathGridScale(gridToPathGridScale);
-        MCDMFunction function;
-        long sensedCells = 0;
-        long newSensedCells = 0;
-        long totalFreeCells = map.getTotalFreeCells();
-        int count = 0;
-        int countBT;
-        double travelledDistance = 0;
-        int numOfTurning = 0;
-        double totalAngle = 0;
-        unordered_map<string, int> visitedCell;
-        vector<string> history;
-        history.push_back(function.getEncodedKey(target, 1));
-        //amount of time the robot should do nothing for scanning the environment ( final value expressed in second)
-        unsigned int microseconds = 5 * 1000 * 1000;
-        //cout << "total free cells in the main: " << totalFreeCells << endl;
-        list<Pose> unexploredFrontiers;
-        list<Pose> tabuList;
-        list<Pose> nearCandidates;
-        EvaluationRecords record;
-        Astar astar;
-        bool scan = true;
-        double totalScanTime = 0;
-        int encodedKeyValue = 0;
+      long numConfiguration = 1;
+      vector<pair<string, list<Pose>>> graph2;
+      NewRay ray;
+      ray.setGridToPathGridScale(gridToPathGridScale);
+      MCDMFunction function;
+      long sensedCells = 0;
+      long newSensedCells = 0;
+      long totalFreeCells = map.getTotalFreeCells();
+      int count = 0;
+      int countBT;
+      double travelledDistance = 0;
+      int numOfTurning = 0;
+      double totalAngle = 0;
+      unordered_map<string, int> visitedCell;
+      vector<string> history;
+      history.push_back(function.getEncodedKey(target, 1));
+      //amount of time the robot should do nothing for scanning the environment ( final value expressed in second)
+      unsigned int microseconds = 5 * 1000 * 1000;
+      //cout << "total free cells in the main: " << totalFreeCells << endl;
+      list<Pose> unexploredFrontiers;
+      list<Pose> tabuList;
+      list<Pose> nearCandidates;
+      EvaluationRecords record;
+      Astar astar;
+      bool scan = true;
+      double totalScanTime = 0;
+      int encodedKeyValue = 0;
 
-        // RFID
-        double absTagX = 0; //std::stod(argv[12]); // m.
-        double absTagY = 0; //std::stod(argv[11]); // m.
-        double freq = 0; //std::stod(argv[13]); // Hertzs
-        double txtPower = 0; // std::stod(argv[14]); // dBs
-        double rxPower = 0;
-        std::pair<int, int> relTagCoord;
+      // RFID
+      double absTagX = 0; //std::stod(argv[12]); // m.
+      double absTagY = 0; //std::stod(argv[11]); // m.
+      double freq = 0; //std::stod(argv[13]); // Hertzs
+      double txtPower = 0; // std::stod(argv[14]); // dBs
+      double rxPower = 0;
+      std::pair<int, int> relTagCoord;
 
-        do
+      do
+      {
+        // If we are doing "forward" navigation towards cells never visited before
+        if ( btMode == false )
         {
-          // If we are doing "forward" navigation towards cells never visited before
-          if ( btMode == false )
-          {
-            // At every iteration, the current pose of the robot is taken from the TF-tree
-            Pose target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
-            cout << "[Target]: " << target.getY() << ", " << target.getX() << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
+          // At every iteration, the current pose of the robot is taken from the TF-tree
+          Pose target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+          cout << "[Target]: " << target.getY() << ", " << target.getX() << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
 //            cout << "[Tmp]: " << tmp_target.getY() << ", " << tmp_target.getX() << ", " << (tmp_target.getOrientation() + 360 ) % 360 << ", " << tmp_target.getFOV() <<", " << tmp_target.getRange() << endl;
 
-            long x = target.getX();
-            long y = target.getY();
-            int orientation = (target.getOrientation() + 360) % 360;  // cast orientation in [0, 360]
-            int range = target.getRange();
-            double FOV = target.getFOV();
-            string actualPose = function.getEncodedKey ( target,0 );
-            map.setCurrentPose ( target );
-            string encoding = to_string ( target.getX() ) + to_string ( target.getY() );
-            visitedCell.emplace ( encoding,0 );
-            // Get the sensing time required for scanning
-            target.setScanAngles ( ray.getSensingTime ( map,x,y,orientation,FOV,range ) );
-            // Perform a scanning operation
-            newSensedCells = sensedCells + ray.performSensingOperation ( map,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second );
-            // Calculate the scanning angle
-            double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
-            // Update the overall scanning time
-            totalScanTime += calculateScanTime ( scanAngle*180/PI );
-            // Calculare the relative RFID tag position to the robot position
+          long x = target.getX();
+          long y = target.getY();
+          int orientation = (target.getOrientation() + 360) % 360;  // cast orientation in [0, 360]
+          int range = target.getRange();
+          double FOV = target.getFOV();
+          string actualPose = function.getEncodedKey ( target,0 );
+          map.setCurrentPose ( target );
+          string encoding = to_string ( target.getX() ) + to_string ( target.getY() );
+          visitedCell.emplace ( encoding,0 );
+          // Get the sensing time required for scanning
+          target.setScanAngles ( ray.getSensingTime ( map,x,y,orientation,FOV,range ) );
+          // Perform a scanning operation
+          newSensedCells = sensedCells + ray.performSensingOperation ( map,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second );
+          // Calculate the scanning angle
+          double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
+          // Update the overall scanning time
+          totalScanTime += calculateScanTime ( scanAngle*180/PI );
+          // Calculare the relative RFID tag position to the robot position
 //            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
-            // Calculate the received power and phase
+          // Calculate the received power and phase
 //            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
 //            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
-            // Update the path planning and RFID map
-            map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY);
+          // Update the path planning and RFID map
+          map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY);
 //            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
-            // Search for new candidate position
-            ray.findCandidatePositions ( map, x, y, orientation, FOV, range );
-            vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
-            cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
-            ray.emptyCandidatePositions();
-            cout << " Candidate cleaned!" << endl;
+          // Search for new candidate position
+          ray.findCandidatePositions ( map, x, y, orientation, FOV, range );
+          vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
+          cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
+          ray.emptyCandidatePositions();
+          cout << " Candidate cleaned!" << endl;
 
-            if (scan)
-            {
-              //NOTE: perform gas sensing------------
+          if (scan)
+          {
+            //NOTE: perform gas sensing------------
 //              offsetY_base_rmld = 0.904;
 //              tilt_angle = (atan(sensing_range / offsetY_base_rmld) * (180 / PI)) - 90;
 //              //tilt_angle = -10;
@@ -288,487 +288,487 @@ int main ( int argc, char **argv )
 //              mythread.join();
 //              min_pan_angle = 0;
 //              max_pan_angle = 0;
-              //-------------------------------------
-            }
-            // If the exploration just started
-            if ( count == 0 )
-            {
-              // Calculate other three pose given the starting one
-              string invertedPose = function.getEncodedKey ( invertedInitial,0 );
-              string eastPose = function.getEncodedKey ( eastInitial,0 );
-              string westPose = function.getEncodedKey ( westInitial,0 );
-              list<Pose> empty ;
-              std::pair<string,list<Pose>> pair1 = make_pair ( invertedPose,empty );
-              std::pair<string,list<Pose>> pair2 = make_pair ( eastPose,empty );
-              std::pair<string,list<Pose>> pair3 = make_pair ( westPose,empty );
-              // And add them (with empty candidates) to the graph structure
-              graph2.push_back ( pair1 );
-              graph2.push_back ( pair2 );
-              graph2.push_back ( pair3 );
-            }
+            //-------------------------------------
+          }
+          // If the exploration just started
+          if ( count == 0 )
+          {
+            // Calculate other three pose given the starting one
+            string invertedPose = function.getEncodedKey ( invertedInitial,0 );
+            string eastPose = function.getEncodedKey ( eastInitial,0 );
+            string westPose = function.getEncodedKey ( westInitial,0 );
+            list<Pose> empty ;
+            std::pair<string,list<Pose>> pair1 = make_pair ( invertedPose,empty );
+            std::pair<string,list<Pose>> pair2 = make_pair ( eastPose,empty );
+            std::pair<string,list<Pose>> pair3 = make_pair ( westPose,empty );
+            // And add them (with empty candidates) to the graph structure
+            graph2.push_back ( pair1 );
+            graph2.push_back ( pair2 );
+            graph2.push_back ( pair3 );
+          }
 
-            // If it's not the first step but we are in one of the initial position (we come back here with backtracking)
-            if ( count != 0 && ( target.isEqual ( invertedInitial ) || target.isEqual ( eastInitial ) || target.isEqual ( westInitial ) ) )
+          // If it's not the first step but we are in one of the initial position (we come back here with backtracking)
+          if ( count != 0 && ( target.isEqual ( invertedInitial ) || target.isEqual ( eastInitial ) || target.isEqual ( westInitial ) ) )
+          {
+            // If there are no more destination in the graph, terminates the navigation
+            if ( graph2.size() == 0 ) break;
+            graph2.pop_back();
+            actualPose = function.getEncodedKey ( target,0 );
+            // Add to the graph the initial positions and the candidates from there (calculated inside the function)
+            pushInitialPositions ( map, x, y, orientation, range, FOV, threshold, actualPose, &graph2 );
+          }
+
+
+          // If there are no new candidate positions from the current pose of the robot
+          if ( candidatePosition.size() == 0 )
+          {
+            // Find candidates
+            ray.findCandidatePositions2 ( map,x,y,orientation,FOV,range );
+            candidatePosition = ray.getCandidatePositions();
+            ray.emptyCandidatePositions();
+
+            cout << "No other candidate position" << endl;
+            cout << "----- BACKTRACKING -----" << endl;
+            // If the graph contains cells that can be explored
+            if ( graph2.size() > 1 )
             {
-              // If there are no more destination in the graph, terminates the navigation
-              if ( graph2.size() == 0 ) break;
+              // Get the last position in the graph and then remove it
+              string targetString = graph2.at ( graph2.size()-1 ).first;
               graph2.pop_back();
-              actualPose = function.getEncodedKey ( target,0 );
-              // Add to the graph the initial positions and the candidates from there (calculated inside the function)
-              pushInitialPositions ( map, x, y, orientation, range, FOV, threshold, actualPose, &graph2 );
+              //          EvaluationRecords record;
+              target = record.getPoseFromEncoding ( targetString );
+              // Add it to the history as cell visited more than once
+              history.push_back ( function.getEncodedKey ( target,2 ) );
+              cout << "[BT]No significative position reachable. Come back to previous position" << endl;
+              count = count + 1;
+              scan = false;
             }
-
-
-            // If there are no new candidate positions from the current pose of the robot
-            if ( candidatePosition.size() == 0 )
-            {
-              // Find candidates
-              ray.findCandidatePositions2 ( map,x,y,orientation,FOV,range );
-              candidatePosition = ray.getCandidatePositions();
-              ray.emptyCandidatePositions();
-
-              cout << "No other candidate position" << endl;
-              cout << "----- BACKTRACKING -----" << endl;
-              // If the graph contains cells that can be explored
-              if ( graph2.size() > 1 )
-              {
-                // Get the last position in the graph and then remove it
-                string targetString = graph2.at ( graph2.size()-1 ).first;
-                graph2.pop_back();
-      //          EvaluationRecords record;
-                target = record.getPoseFromEncoding ( targetString );
-                // Add it to the history as cell visited more than once
-                history.push_back ( function.getEncodedKey ( target,2 ) );
-                cout << "[BT]No significative position reachable. Come back to previous position" << endl;
-                count = count + 1;
-                scan = false;
-              }
               //...otherwise, if the graph does not contain cells that can be explored
               // The navigation is finished!
-              else
-              {
-                cout << "Num configuration: " << numConfiguration << endl;
-                cout << "Travelled distance calculated during the algorithm: " << travelledDistance << endl;
-                cout << "------------------ HISTORY -----------------" << endl;
-                // Retrieve the cell visited only the first time
-                list<Pose> tmp_history = cleanHistory(&history, &record);
-                calculateDistance(tmp_history, map, &astar );
-
-                cout << "------------------ TABULIST -----------------" << endl;
-                // Calculate the path connecting the cells in the tabulist, namely the cells that are visited one time and couldn't be visite again
-                calculateDistance(tabuList, map, &astar );
-
-                // Normalise the travel distance in meter
-                // NOTE: assuming that the robot is moving at 0.5m/s and the resolution of the map is 0.5m per cell)
-                if ( resolution == 1.0 )
-                {
-                  travelledDistance = travelledDistance/2;
-                }
-                printResult(newSensedCells, totalFreeCells, precision, numConfiguration, travelledDistance, numOfTurning,
-                    totalAngle, totalScanTime);
-                auto endMCDM = chrono::high_resolution_clock::now();
-                double totalTimeMCDM = chrono::duration<double, milli>(endMCDM - startMCDM).count();
-                cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "ms, "
-                     << totalTimeMCDM / 1000 << " s, " <<
-                     totalTimeMCDM / 60000 << " m " << endl;
-                cout << "Total time in empirical way : " << travelledDistance / 0.25 + timeOfScanning / 1000
-                                   << endl;
-                exit ( 0 );
-              }
-
-              sensedCells = newSensedCells;
-
-            }
-            //... otherwise, if there are further candidate new position from the current pose of the robot
             else
             {
-              // need to convert from a <int,int pair> to a Pose with also orientation,laser range and angle
-              list<Pose> frontiers;
-              // For every candidate positio, create 8 pose with a different orientation each and consider them as frontiers
-              vector<pair<long,long> >::iterator it =candidatePosition.begin();
-              for ( it; it != candidatePosition.end(); it++ )
+              cout << "Num configuration: " << numConfiguration << endl;
+              cout << "Travelled distance calculated during the algorithm: " << travelledDistance << endl;
+              cout << "------------------ HISTORY -----------------" << endl;
+              // Retrieve the cell visited only the first time
+              list<Pose> tmp_history = cleanHistory(&history, &record);
+              calculateDistance(tmp_history, map, &astar );
+
+              cout << "------------------ TABULIST -----------------" << endl;
+              // Calculate the path connecting the cells in the tabulist, namely the cells that are visited one time and couldn't be visite again
+              calculateDistance(tabuList, map, &astar );
+
+              // Normalise the travel distance in meter
+              // NOTE: assuming that the robot is moving at 0.5m/s and the resolution of the map is 0.5m per cell)
+              if ( resolution == 1.0 )
               {
-                Pose p1 = Pose ( ( *it ).first, ( *it ).second,0 ,range,FOV );
-                Pose p2 = Pose ( ( *it ).first, ( *it ).second,45,range,FOV );
-                Pose p3 = Pose ( ( *it ).first, ( *it ).second,90,range,FOV );
-                Pose p4 = Pose ( ( *it ).first, ( *it ).second,135,range,FOV );
-                Pose p5 = Pose ( ( *it ).first, ( *it ).second,180,range,FOV );
-                Pose p6 = Pose ( ( *it ).first, ( *it ).second,225,range,FOV );
-                Pose p7 = Pose ( ( *it ).first, ( *it ).second,270,range,FOV );
-                Pose p8 = Pose ( ( *it ).first, ( *it ).second,315,range,FOV );
-                frontiers.push_back ( p1 );
-                frontiers.push_back(p2);
-                frontiers.push_back ( p3 );
-                frontiers.push_back(p4);
-                frontiers.push_back ( p5 );
-                frontiers.push_back(p6);
-                frontiers.push_back ( p7 );
-                frontiers.push_back(p8);
-
+                travelledDistance = travelledDistance/2;
               }
-
-              unexploredFrontiers = frontiers;
-
-              // Evaluate the frontiers and return a list of <frontier, evaluation> pairs
-              EvaluationRecords *record = function.evaluateFrontiers ( frontiers,map,threshold );
-              nearCandidates = record->getFrontiers();
-
-              // If there are candidate positions
-              if ( record->size() != 0 )
-              {
-                // Set the previous pose equal to the current one (represented by target)
-                previous = target;
-                // Select the new robot destination from the list of candidates
-                std::pair<Pose,double> result = function.selectNewPose ( record );
-                target = result.first;
-                // If the selected destination does not appear among the cells already visited
-                if ( ! contains ( tabuList,target ))
-                {
-                  // Add it to the list of visited cells as first-view
-                  encodedKeyValue = 1;
-                  updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                      &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
-                  //---------------------------PRINT GOAL POSITION
-                  geometry_msgs::PointStamped p;
-                  p.header.frame_id = "map";
-                  p.header.stamp = ros::Time::now();
-                  //NOTE: as before, Y in map are X in image
-                  if (resolution != costresolution){// && resolution != costresolution) {
-                      //NOTE: full resolution
-                      cout << " [Marker] Full resolution" << endl;
-                      p.point.y = - float(target.getX() + costorigin.position.y / costresolution) * costresolution;
-                      p.point.x = - float(map.getPathPlanningNumRows() - target.getY() + costorigin.position.x / costresolution) * costresolution;
-
-                  } else {
-                      //NOTE: 1mx1m
-                    cout << " [Marker] 1mx1m" << endl;
-                      p.point.x = (map.getPathPlanningNumRows() - target.getX());//* costresolution;
-                      p.point.y = (target.getY());// * costresolution;
-                  }
-                  cout << "   (" << p.point.x << "," << p.point.y << ")" << endl;
-
-                  if (resolution == costresolution)
-                  {
-                    cout << "   resolution = costresolution" << endl;
-                    tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
-                    //vec = transform.operator*(vec);
-                    p.point.x = vec.getY() + costorigin.position.x;
-                    p.point.y = vec.getX() + costorigin.position.y;
-                  }
-                  cout << "   New goal in map: X = " << p.point.x << ", Y = " << p.point.y << endl;
-                  //NOTE: not requested for testing purpose
-                  //usleep(microseconds);
-                  marker_pub.publish(p);
-                  //----------------------------------------------
-                  move_base_msgs::MoveBaseGoal goal;
-                  double orientZ = (double) (target.getOrientation() * PI / (2 * 180));
-                  double orientW = (double) (target.getOrientation() * PI / (2 * 180));
-
-                  string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(),map );
-                  float travel_distance = astar.lenghtPath(path);
-                  cout << "Target is at " << astar.lenghtPath(path) << " cells from the robot" << endl;
-                  cout << "Resolution : " << resolution << endl;
-                  float time_travel = travel_distance / min_robot_speed;
-                  if (resolution == 0)
-                  {
-                    travel_distance = travel_distance * costresolution;
-                    time_travel = travel_distance / min_robot_speed;
-                  }
-                  cout << "Target is at " << travel_distance << " cells from the robot" << endl;
-
-
-
-                  if (resolution != 0)
-                  {
-                    cout << "[map] 1mx1m or similar clustered map " << endl;
-                    move(p.point.x, p.point.y , sin(orientZ), cos(orientW), resolution, costresolution, time_travel);
-                  } else
-                  {
-                    cout << "[map] Full resolution" << endl;
-                    move(p.point.x, p.point.y, sin(orientZ), cos(orientW), resolution, costresolution, time_travel);  // full resolution
-                  }
-
-                  scan = true;
-                }
-                // ...otherwise, if the selected cell has already been visited
-                else
-                {
-                  // If the graph is empty, stop the navigation
-                  if ( graph2.size() == 0 ) break;
-                  // If there still are more candidates to explore from the last pose in the graph
-                  if ( graph2.at ( graph2.size()-1 ).second.size() != 0 )
-                  {
-                    cout << "[BT1 - Tabulist]There are visible cells but the selected one is already explored!Come back to second best position from the previous position"<< endl;
-                    // Remove the current position from possible candidates
-                    cleanPossibleDestination2 ( nearCandidates,target );
-                    // Get the list of new candidate position with associated evaluation
-                    record = function.evaluateFrontiers ( nearCandidates,map,threshold );
-                    // If there are candidate positions
-                    if ( record->size() != 0 )
-                    {
-                      // Select the new pose of the robot
-                      std::pair<Pose,double> result = function.selectNewPose ( record );
-                      target = result.first;
-                      encodedKeyValue = 1;
-                      updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                        &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
-                      scan = false;
-                      // Set that we are now in backtracking
-                      btMode = true;
-                    }
-                    // If there are no more candidate position from the last position in the graph
-                    else
-                    {
-                      // if the graph is now empty, stop the navigation
-                      if ( graph2.size() == 0 ) break;
-                      // Otherwise, select as new position the last cell in the graph and then remove it from there
-                      string targetString = graph2.at ( graph2.size()-1 ).first;
-                      graph2.pop_back();
-                      target = record->getPoseFromEncoding ( targetString );
-                      scan = false;
-                    }
-                  }
-                  // ... if the graph still does not present anymore candidate positions for its last pose
-                  else
-                  {
-                    // Remove the last element (cell and associated candidate from there) from the graph
-                    graph2.pop_back();
-                    // Select as new target, the new last element of the graph
-                    string targetString = graph2.at ( graph2.size()-1 ).first;
-                    target = record->getPoseFromEncoding ( targetString );
-                    // Save it history as cell visited more than once
-                    history.push_back ( function.getEncodedKey ( target,2 ) );
-                    cout << "[BT2 - Tabulist]There are visible cells but the selected one is already explored!Come back to two position ago"<< endl;
-                    count = count + 1;
-                    scan = false;
-                  }
-
-                }
-              }
-              // ... otherwise, if there are no candidate positions
-              else
-              {
-                // If the graph is empty, stop the navigation
-                if ( graph2.size() == 0 ) break;
-                // Select as new target the last one in the graph structure
-                string targetString = graph2.at ( graph2.size()-1 ).first;
-                // Remove it from the graph
-                graph2.pop_back();
-                target = record->getPoseFromEncoding ( targetString );
-                // Check if the selected cell in the graph is the previous robot position
-                if ( !target.isEqual ( previous ) )
-                {
-                  // if it's not, set the old position as the current one
-                  previous = target;  //TODO: WHY?
-                  cout << "[BT3]There are no visible cells so come back to previous position in the graph structure" << endl;
-                  // Save the new target in the history as cell visited more than once
-                  history.push_back ( function.getEncodedKey ( target,2 ) );
-                  count = count + 1;
-                }
-                // If the selected cell is the old robot position
-                else
-                {
-                  // If there are no more cells in the graph, just finish the navigation
-                  if ( graph2.size() == 0 )
-                  {
-                    cout << "[BT4]No other possibilities to do backtracking on previous positions" << endl;
-                    break;
-                  }
-                  // Select the last position in the graph
-                  string targetString = graph2.at ( graph2.size()-1 ).first;
-                  // and remove it from the graph
-                  graph2.pop_back();
-                  target = record->getPoseFromEncoding ( targetString );
-                  // Set the previous pose as the current one
-                  previous = target;
-                  cout << "[BT5]There are no visible cells so come back to previous position" << endl;
-                  cout << "[BT5]Cell already explored!Come back to previous position"<< endl;
-                  // Add it in history as cell visited more than once
-                  history.push_back ( function.getEncodedKey ( target,2 ) );
-                  count = count + 1;
-                }
-
-              }
-
-
-
-              //NOTE: not requested for testing purpose
-              //usleep(microseconds);
-              sensedCells = newSensedCells;
-              frontiers.clear();
-              candidatePosition.clear();
-              delete record;
+              printResult(newSensedCells, totalFreeCells, precision, numConfiguration, travelledDistance, numOfTurning,
+                          totalAngle, totalScanTime);
+              auto endMCDM = chrono::high_resolution_clock::now();
+              double totalTimeMCDM = chrono::duration<double, milli>(endMCDM - startMCDM).count();
+              cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "ms, "
+                   << totalTimeMCDM / 1000 << " s, " <<
+                   totalTimeMCDM / 60000 << " m " << endl;
+              cout << "Total time in empirical way : " << travelledDistance / 0.25 + timeOfScanning / 1000
+                   << endl;
+              exit ( 0 );
             }
 
+            sensedCells = newSensedCells;
+
           }
-          // ... otherwise, if we are doing backtracking
+            //... otherwise, if there are further candidate new position from the current pose of the robot
           else
           {
-            long x = target.getX();
-            long y = target.getY();
-            int orientation = target.getOrientation();
-            int range = target.getRange();
-            double FOV = target.getFOV();
-            string actualPose = function.getEncodedKey ( target,0 );
-            map.setCurrentPose ( target );
-            //NOTE; calculate path and turnings between actual position and goal
-            cout<< function.getEncodedKey ( target,1 ) << endl;
-            // Calculate the distance between the previous robot pose and the next one (target)
-            string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(),map );
-            // Update the overall covered distance
-            travelledDistance = travelledDistance + astar.lenghtPath( path );
-            cout << "BT: " << astar.lenghtPath ( path ) << endl;
-            // Update the overall number of turnings
-            numOfTurning = numOfTurning + astar.getNumberOfTurning ( path );
+            // need to convert from a <int,int pair> to a Pose with also orientation,laser range and angle
+            list<Pose> frontiers;
+            // For every candidate positio, create 8 pose with a different orientation each and consider them as frontiers
+            vector<pair<long,long> >::iterator it =candidatePosition.begin();
+            for ( it; it != candidatePosition.end(); it++ )
+            {
+              Pose p1 = Pose ( ( *it ).first, ( *it ).second,0 ,range,FOV );
+              Pose p2 = Pose ( ( *it ).first, ( *it ).second,45,range,FOV );
+              Pose p3 = Pose ( ( *it ).first, ( *it ).second,90,range,FOV );
+              Pose p4 = Pose ( ( *it ).first, ( *it ).second,135,range,FOV );
+              Pose p5 = Pose ( ( *it ).first, ( *it ).second,180,range,FOV );
+              Pose p6 = Pose ( ( *it ).first, ( *it ).second,225,range,FOV );
+              Pose p7 = Pose ( ( *it ).first, ( *it ).second,270,range,FOV );
+              Pose p8 = Pose ( ( *it ).first, ( *it ).second,315,range,FOV );
+              frontiers.push_back ( p1 );
+              frontiers.push_back(p2);
+              frontiers.push_back ( p3 );
+              frontiers.push_back(p4);
+              frontiers.push_back ( p5 );
+              frontiers.push_back(p6);
+              frontiers.push_back ( p7 );
+              frontiers.push_back(p8);
 
-            string encoding = to_string ( target.getX() ) + to_string ( target.getY() );
-            visitedCell.emplace ( encoding,0 );
-            // Set the previous cell to be the same of the current one
-            previous = target;
+            }
 
-            // Calculate how much time it takes to scan the current area
-            target.setScanAngles ( ray.getSensingTime ( map,x,y,orientation,FOV,range ) );
-            // Get the scanning angle
-            double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
-            // Update the overall scanned angle
-            totalAngle += scanAngle;
-            // ...and the overall scan time
-            totalScanTime += calculateScanTime ( scanAngle*180/PI );
-            // Calculate the relative coordinate to the robot of the RFID tag
-//            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
-            // Calculate received power and phase
-//            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
-//            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
-            map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY );
-//            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(), target.getY(), target.getOrientation(), -0.5, 7.0);
-            // Remove the current pose from the list of possible candidate cells
-            cleanPossibleDestination2 ( nearCandidates,target );
-            // Get the list of the candidate cells with their evaluation
-            EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates,map,threshold );
+            unexploredFrontiers = frontiers;
 
-            // If there are candidate cells
+            // Evaluate the frontiers and return a list of <frontier, evaluation> pairs
+            EvaluationRecords *record = function.evaluateFrontiers ( frontiers,map,threshold );
+            nearCandidates = record->getFrontiers();
+
+            // If there are candidate positions
             if ( record->size() != 0 )
             {
-              // Find the new destination
+              // Set the previous pose equal to the current one (represented by target)
+              previous = target;
+              // Select the new robot destination from the list of candidates
               std::pair<Pose,double> result = function.selectNewPose ( record );
               target = result.first;
-              // If this cells has not been visited before
-              if ( ! contains ( tabuList,target ) )
+              // If the selected destination does not appear among the cells already visited
+              if ( ! contains ( tabuList,target ))
               {
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
                                   &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
-                // Leave the backtracking branch
-                btMode = false;
-                nearCandidates.clear();
-                cout << "[BT-MODE4] Go back to previous positions in the graph" << endl;
+                //---------------------------PRINT GOAL POSITION
+                geometry_msgs::PointStamped p;
+                p.header.frame_id = "map";
+                p.header.stamp = ros::Time::now();
+                //NOTE: as before, Y in map are X in image
+                if (resolution != costresolution){// && resolution != costresolution) {
+                  //NOTE: full resolution
+                  cout << " [Marker] Full resolution" << endl;
+                  p.point.y = - float(target.getX() + costorigin.position.y / costresolution) * costresolution;
+                  p.point.x = - float(map.getPathPlanningNumRows() - target.getY() + costorigin.position.x / costresolution) * costresolution;
+
+                } else {
+                  //NOTE: 1mx1m
+                  cout << " [Marker] 1mx1m" << endl;
+                  p.point.x = (target.getX());//* costresolution;
+                  p.point.y = (target.getY());// * costresolution;
+                }
+                cout << "   (" << p.point.x << "," << p.point.y << ")" << endl;
+
+//                if (resolution == costresolution)
+//                {
+//                  cout << "   resolution = costresolution" << endl;
+//                  tf::Vector3 vec = tf::Vector3(p.point.x, p.point.y, 0.0);
+//                  //vec = transform.operator*(vec);
+//                  p.point.x = vec.getY() + costorigin.position.x;
+//                  p.point.y = vec.getX() + costorigin.position.y;
+//                }
+                cout << "   New goal in map: X = " << p.point.x << ", Y = " << p.point.y << endl;
+                //NOTE: not requested for testing purpose
+                //usleep(microseconds);
+                marker_pub.publish(p);
+                //----------------------------------------------
+                move_base_msgs::MoveBaseGoal goal;
+                double orientZ = (double) (target.getOrientation() * PI / (2 * 180));
+                double orientW = (double) (target.getOrientation() * PI / (2 * 180));
+
+                string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(),map );
+                float travel_distance = astar.lenghtPath(path);
+                cout << "Target is at " << astar.lenghtPath(path) << " cells from the robot" << endl;
+                cout << "Resolution : " << resolution << endl;
+                float time_travel = travel_distance / min_robot_speed;
+                if (resolution == 0)
+                {
+                  travel_distance = travel_distance * costresolution;
+                  time_travel = travel_distance / min_robot_speed;
+                }
+                cout << "Target is at " << travel_distance << " cells from the robot" << endl;
+
+
+
+                if (resolution != 0)
+                {
+                  cout << "[map] 1mx1m or similar clustered map " << endl;
+                  move(p.point.x, p.point.y , sin(orientZ), cos(orientW), resolution, costresolution, time_travel);
+                } else
+                {
+                  cout << "[map] Full resolution" << endl;
+                  move(p.point.x, p.point.y, sin(orientZ), cos(orientW), resolution, costresolution, time_travel);  // full resolution
+                }
+
+                scan = true;
               }
-              // ... otherwise, if the cells has already been visisted
+                // ...otherwise, if the selected cell has already been visited
               else
               {
-                // If there are other candidates
-                if ( nearCandidates.size() != 0 )
+                // If the graph is empty, stop the navigation
+                if ( graph2.size() == 0 ) break;
+                // If there still are more candidates to explore from the last pose in the graph
+                if ( graph2.at ( graph2.size()-1 ).second.size() != 0 )
                 {
-                  cout << "[BT-MODE1]Already visited, but there are other candidates" << endl;
-
-                  // Remove the destination from the candidate list
+                  cout << "[BT1 - Tabulist]There are visible cells but the selected one is already explored!Come back to second best position from the previous position"<< endl;
+                  // Remove the current position from possible candidates
                   cleanPossibleDestination2 ( nearCandidates,target );
-                  // Get the candidates with their evaluation
-                  EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates,map,threshold );
-                  // Select the new destination
-                  std::pair<Pose,double> result = function.selectNewPose ( record );
-                  target = result.first;
-
-                  // Add it to the list of visited cells as first-view
-                  encodedKeyValue = 1;
-                  updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                    &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                  // Get the list of new candidate position with associated evaluation
+                  record = function.evaluateFrontiers ( nearCandidates,map,threshold );
+                  // If there are candidate positions
+                  if ( record->size() != 0 )
+                  {
+                    // Select the new pose of the robot
+                    std::pair<Pose,double> result = function.selectNewPose ( record );
+                    target = result.first;
+                    encodedKeyValue = 1;
+                    updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
+                                      &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                    scan = false;
+                    // Set that we are now in backtracking
+                    btMode = true;
+                  }
+                    // If there are no more candidate position from the last position in the graph
+                  else
+                  {
+                    // if the graph is now empty, stop the navigation
+                    if ( graph2.size() == 0 ) break;
+                    // Otherwise, select as new position the last cell in the graph and then remove it from there
+                    string targetString = graph2.at ( graph2.size()-1 ).first;
+                    graph2.pop_back();
+                    target = record->getPoseFromEncoding ( targetString );
+                    scan = false;
+                  }
                 }
-                // ...otherwise, if there are no more candidates
+                  // ... if the graph still does not present anymore candidate positions for its last pose
                 else
                 {
-                  cout << "[BT-MODE2] Go back to previous positions in the graph" << endl;
-                  // Select as target the last element in the graph
-                  string targetString = graph2.at ( graph2.size()-1 ).first;
-                  // And remove from the graph
+                  // Remove the last element (cell and associated candidate from there) from the graph
                   graph2.pop_back();
+                  // Select as new target, the new last element of the graph
+                  string targetString = graph2.at ( graph2.size()-1 ).first;
                   target = record->getPoseFromEncoding ( targetString );
-                  // Add it to the history of cell as already more than once
-                  encodedKeyValue = 2;
-                  updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                    &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
-                  // Leave backtracking
-                  btMode = false;
-                  // Clear candidate list
-                  nearCandidates.clear();
+                  // Save it history as cell visited more than once
+                  history.push_back ( function.getEncodedKey ( target,2 ) );
+                  cout << "[BT2 - Tabulist]There are visible cells but the selected one is already explored!Come back to two position ago"<< endl;
+                  count = count + 1;
+                  scan = false;
                 }
+
               }
             }
-            // ... if there are not candidate cells
+              // ... otherwise, if there are no candidate positions
             else
             {
-              // Select as new pose, the last cell in the graph
+              // If the graph is empty, stop the navigation
+              if ( graph2.size() == 0 ) break;
+              // Select as new target the last one in the graph structure
               string targetString = graph2.at ( graph2.size()-1 ).first;
-              // and the remove it form the graph
+              // Remove it from the graph
               graph2.pop_back();
               target = record->getPoseFromEncoding ( targetString );
+              // Check if the selected cell in the graph is the previous robot position
+              if ( !target.isEqual ( previous ) )
+              {
+                // if it's not, set the old position as the current one
+                previous = target;  //TODO: WHY?
+                cout << "[BT3]There are no visible cells so come back to previous position in the graph structure" << endl;
+                // Save the new target in the history as cell visited more than once
+                history.push_back ( function.getEncodedKey ( target,2 ) );
+                count = count + 1;
+              }
+                // If the selected cell is the old robot position
+              else
+              {
+                // If there are no more cells in the graph, just finish the navigation
+                if ( graph2.size() == 0 )
+                {
+                  cout << "[BT4]No other possibilities to do backtracking on previous positions" << endl;
+                  break;
+                }
+                // Select the last position in the graph
+                string targetString = graph2.at ( graph2.size()-1 ).first;
+                // and remove it from the graph
+                graph2.pop_back();
+                target = record->getPoseFromEncoding ( targetString );
+                // Set the previous pose as the current one
+                previous = target;
+                cout << "[BT5]There are no visible cells so come back to previous position" << endl;
+                cout << "[BT5]Cell already explored!Come back to previous position"<< endl;
+                // Add it in history as cell visited more than once
+                history.push_back ( function.getEncodedKey ( target,2 ) );
+                count = count + 1;
+              }
 
-              // Add it in history as cell visited more than once
-              encodedKeyValue = 2;
-              updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
-              // Leave backtracking
-              btMode = false;
-              cout << "[BT-MODE3] Go back to previous positions in the graph" << endl;
             }
+
+
+
+            //NOTE: not requested for testing purpose
+            //usleep(microseconds);
+            sensedCells = newSensedCells;
+            frontiers.clear();
+            candidatePosition.clear();
             delete record;
           }
+
         }
+          // ... otherwise, if we are doing backtracking
+        else
+        {
+          long x = target.getX();
+          long y = target.getY();
+          int orientation = target.getOrientation();
+          int range = target.getRange();
+          double FOV = target.getFOV();
+          string actualPose = function.getEncodedKey ( target,0 );
+          map.setCurrentPose ( target );
+          //NOTE; calculate path and turnings between actual position and goal
+          cout<< function.getEncodedKey ( target,1 ) << endl;
+          // Calculate the distance between the previous robot pose and the next one (target)
+          string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(),map );
+          // Update the overall covered distance
+          travelledDistance = travelledDistance + astar.lenghtPath( path );
+          cout << "BT: " << astar.lenghtPath ( path ) << endl;
+          // Update the overall number of turnings
+          numOfTurning = numOfTurning + astar.getNumberOfTurning ( path );
+
+          string encoding = to_string ( target.getX() ) + to_string ( target.getY() );
+          visitedCell.emplace ( encoding,0 );
+          // Set the previous cell to be the same of the current one
+          previous = target;
+
+          // Calculate how much time it takes to scan the current area
+          target.setScanAngles ( ray.getSensingTime ( map,x,y,orientation,FOV,range ) );
+          // Get the scanning angle
+          double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
+          // Update the overall scanned angle
+          totalAngle += scanAngle;
+          // ...and the overall scan time
+          totalScanTime += calculateScanTime ( scanAngle*180/PI );
+          // Calculate the relative coordinate to the robot of the RFID tag
+//            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
+          // Calculate received power and phase
+//            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
+//            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
+          map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY );
+//            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(), target.getY(), target.getOrientation(), -0.5, 7.0);
+          // Remove the current pose from the list of possible candidate cells
+          cleanPossibleDestination2 ( nearCandidates,target );
+          // Get the list of the candidate cells with their evaluation
+          EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates,map,threshold );
+
+          // If there are candidate cells
+          if ( record->size() != 0 )
+          {
+            // Find the new destination
+            std::pair<Pose,double> result = function.selectNewPose ( record );
+            target = result.first;
+            // If this cells has not been visited before
+            if ( ! contains ( tabuList,target ) )
+            {
+              // Add it to the list of visited cells as first-view
+              encodedKeyValue = 1;
+              updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
+                                &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+              // Leave the backtracking branch
+              btMode = false;
+              nearCandidates.clear();
+              cout << "[BT-MODE4] Go back to previous positions in the graph" << endl;
+            }
+              // ... otherwise, if the cells has already been visisted
+            else
+            {
+              // If there are other candidates
+              if ( nearCandidates.size() != 0 )
+              {
+                cout << "[BT-MODE1]Already visited, but there are other candidates" << endl;
+
+                // Remove the destination from the candidate list
+                cleanPossibleDestination2 ( nearCandidates,target );
+                // Get the candidates with their evaluation
+                EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates,map,threshold );
+                // Select the new destination
+                std::pair<Pose,double> result = function.selectNewPose ( record );
+                target = result.first;
+
+                // Add it to the list of visited cells as first-view
+                encodedKeyValue = 1;
+                updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
+                                  &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+              }
+                // ...otherwise, if there are no more candidates
+              else
+              {
+                cout << "[BT-MODE2] Go back to previous positions in the graph" << endl;
+                // Select as target the last element in the graph
+                string targetString = graph2.at ( graph2.size()-1 ).first;
+                // And remove from the graph
+                graph2.pop_back();
+                target = record->getPoseFromEncoding ( targetString );
+                // Add it to the history of cell as already more than once
+                encodedKeyValue = 2;
+                updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
+                                  &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                // Leave backtracking
+                btMode = false;
+                // Clear candidate list
+                nearCandidates.clear();
+              }
+            }
+          }
+            // ... if there are not candidate cells
+          else
+          {
+            // Select as new pose, the last cell in the graph
+            string targetString = graph2.at ( graph2.size()-1 ).first;
+            // and the remove it form the graph
+            graph2.pop_back();
+            target = record->getPoseFromEncoding ( targetString );
+
+            // Add it in history as cell visited more than once
+            encodedKeyValue = 2;
+            updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
+                              &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+            // Leave backtracking
+            btMode = false;
+            cout << "[BT-MODE3] Go back to previous positions in the graph" << endl;
+          }
+          delete record;
+        }
+      }
         // Perform exploration until a certain coverage is achieved
-        while ( sensedCells < precision * totalFreeCells );
-        // Plotting utilities
-        map.drawVisitedCells ();
-        map.printVisitedCells ( history );
+      while ( sensedCells < precision * totalFreeCells );
+      // Plotting utilities
+      map.drawVisitedCells ();
+      map.printVisitedCells ( history );
 //        map.drawRFIDScan();
 //        map.drawRFIDGridScan(myGrid);
 //        myGrid.saveAs(("/home/pulver/Desktop/MCDM/rfid_result_gridmap.pgm"));
 
-        cout << "Num configuration: " << numConfiguration << endl;
-        cout << "Travelled distance calculated during the algorithm: " << travelledDistance << endl;
+      cout << "Num configuration: " << numConfiguration << endl;
+      cout << "Travelled distance calculated during the algorithm: " << travelledDistance << endl;
 
-        cout << "------------------ HISTORY -----------------" << endl;
-        // Calculate which cells have been visited only once
-        list<Pose> tmp_history = cleanHistory(&history, &record);
-        calculateDistance(tmp_history, map, &astar );
+      cout << "------------------ HISTORY -----------------" << endl;
+      // Calculate which cells have been visited only once
+      list<Pose> tmp_history = cleanHistory(&history, &record);
+      calculateDistance(tmp_history, map, &astar );
 
-        cout << "------------------ TABULIST -----------------" << endl;
-        calculateDistance(tabuList, map, &astar );
+      cout << "------------------ TABULIST -----------------" << endl;
+      calculateDistance(tabuList, map, &astar );
 
-        // Trasform distance in meters
-        if ( resolution == 1.0 ) // Corridor map has a resolution of 0.5 meter per cell
-        {
-          travelledDistance = travelledDistance/2;
-        }
+      // Trasform distance in meters
+      if ( resolution == 1.0 ) // Corridor map has a resolution of 0.5 meter per cell
+      {
+        travelledDistance = travelledDistance/2;
+      }
 
 
-        printResult(newSensedCells, totalFreeCells, precision, numConfiguration, travelledDistance, numOfTurning,
-            totalAngle, totalScanTime);
-        // Find the tag
+      printResult(newSensedCells, totalFreeCells, precision, numConfiguration, travelledDistance, numOfTurning,
+                  totalAngle, totalScanTime);
+      // Find the tag
 //        std::pair<int,int> tag = map.findTag();
 //        cout << "RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
 //        tag = map.findTagfromGridMap(myGrid);
 //        cout << "[Grid]RFID pose: [" << tag.second << "," << tag.first << "]" << endl;
-        cout << "-----------------------------------------------------------------"<<endl;
-        auto endMCDM= chrono::high_resolution_clock::now();
+      cout << "-----------------------------------------------------------------"<<endl;
+      auto endMCDM= chrono::high_resolution_clock::now();
 
-        double totalTimeMCDM = chrono::duration<double,milli> ( endMCDM - startMCDM ).count();
-        cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "ms, " << totalTimeMCDM/1000 <<" s, " <<
-       		totalTimeMCDM/60000 << " m "<< endl;
-        cout << "Spinning at the end" << endl;
-        sleep(1);
-        exit ( 0 );
-        }
+      double totalTimeMCDM = chrono::duration<double,milli> ( endMCDM - startMCDM ).count();
+      cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "ms, " << totalTimeMCDM/1000 <<" s, " <<
+           totalTimeMCDM/60000 << " m "<< endl;
+      cout << "Spinning at the end" << endl;
+      sleep(1);
+      exit ( 0 );
+    }
 
     ros::spinOnce();
     r.sleep();
@@ -849,28 +849,28 @@ Pose createFromInitialPose ( Pose pose, int variation, int range, int FOV )
 
 void calculateDistance(list<Pose> history, dummy::Map& map, Astar* astar)
 {
-    std::list<Pose>::iterator it = history.begin();
-    double travelledDistance = 0;
-    int numOfTurning = 0;
-    // Calculate the overall path connecting these cells
-    for ( it; it != prev ( history.end(),1 ); it++ )
-    {
+  std::list<Pose>::iterator it = history.begin();
+  double travelledDistance = 0;
+  int numOfTurning = 0;
+  // Calculate the overall path connecting these cells
+  for ( it; it != prev ( history.end(),1 ); it++ )
+  {
 //        cout << function->getEncodedKey(*it,1) << endl; // print cell in the tabulist
-        std::list<Pose>::iterator it2 = next ( it,1 );
-        string path = astar->pathFind ( ( *it2 ).getX(), ( *it2 ).getY(), ( *it ).getX(), ( *it ).getY(), map );
-        travelledDistance = travelledDistance + astar->lenghtPath ( path );
-        numOfTurning = numOfTurning + astar->getNumberOfTurning ( path );
-        //cout << astar.lengthPath ( path ) << endl;
-    }
-    cout << "Number of cells: " << history.size() << endl;
-    cout << "Num of Turning: " << numOfTurning << endl;
-    cout << "Travelled distance (cells): " << travelledDistance << endl;
-    cout << "Travelled distance (meters): " << travelledDistance / 2.0 << endl; // Valid only if resolution == 1.0 (cell side is 0.5m)
+    std::list<Pose>::iterator it2 = next ( it,1 );
+    string path = astar->pathFind ( ( *it2 ).getX(), ( *it2 ).getY(), ( *it ).getX(), ( *it ).getY(), map );
+    travelledDistance = travelledDistance + astar->lenghtPath ( path );
+    numOfTurning = numOfTurning + astar->getNumberOfTurning ( path );
+    //cout << astar.lengthPath ( path ) << endl;
+  }
+  cout << "Number of cells: " << history.size() << endl;
+  cout << "Num of Turning: " << numOfTurning << endl;
+  cout << "Travelled distance (cells): " << travelledDistance << endl;
+  cout << "Travelled distance (meters): " << travelledDistance / 2.0 << endl; // Valid only if resolution == 1.0 (cell side is 0.5m)
 }
 
 void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPose, list<Pose>* nearCandidates, vector<pair<string,list<Pose>>>* graph2,
-    dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int encodedKeyValue, Astar* astar , long* numConfiguration,
-    double* totalAngle, double* travelledDistance, int* numOfTurning , double scanAngle)
+                       dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int encodedKeyValue, Astar* astar , long* numConfiguration,
+                       double* totalAngle, double* travelledDistance, int* numOfTurning , double scanAngle)
 {
   // Add it to the list of visited cells as first-view
   history->push_back ( function->getEncodedKey ( *target, encodedKeyValue ) );
@@ -913,7 +913,7 @@ list<Pose> cleanHistory(vector<string>* history, EvaluationRecords* record_histo
 }
 
 void printResult(long newSensedCells, long totalFreeCells, double precision, long numConfiguration, double travelledDistance,
-    int numOfTurning, double totalAngle, double totalScanTime)
+                 int numOfTurning, double totalAngle, double totalScanTime)
 {
   cout << "-----------------------------------------------------------------"<<endl;
   cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells<< endl;
@@ -926,7 +926,7 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
   cout << "Sum of scan angles (radians): " << totalAngle << endl;
   cout << "Total time for scanning: " << totalScanTime << endl;
   cout << "Total time for exploration: " << travelledDistance/0.5 + totalScanTime << "s, " <<
-                                              ( travelledDistance/0.5 + totalScanTime ) /60 << " m" << endl;
+       ( travelledDistance/0.5 + totalScanTime ) /60 << " m" << endl;
   if (newSensedCells < precision * totalFreeCells)
   {
     cout << "FINAL: MAP NOT EXPLORED! :(" << endl;
@@ -998,8 +998,7 @@ Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, dou
     cout << endl << "1mx1m" << endl;
     //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << map.getPathPlanningNumRows() - (long)pose.getY() << endl;
     //NOTE: Y in map are X in image
-    Pose initialPose = Pose(map->getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y, (long) pose.getX() - costorigin.position.x,
-                            initOrientation, initRange, initFov);
+    Pose initialPose = Pose( (long) pose.getX() , (long) pose.getY(), initOrientation, initRange, initFov);
     return initialPose;
   }
 
@@ -1058,18 +1057,18 @@ void move(float x, float y, float orZ, float orW, int resolution, int costresolu
   goal.target_pose.header.stamp = ros::Time::now();
 
 
-  // TODO: merge
-  // Clustered map
-  if (resolution == costresolution)
-  {
-    goal.target_pose.pose.position.x = x ;//+ costorigin.position.x;
-    goal.target_pose.pose.position.y = y ;//+ costorigin.position.y;
-  } else
-  {
+//  // TODO: merge
+//  // Clustered map
+//  if (resolution == costresolution)
+//  {
+//    goal.target_pose.pose.position.x = x ;//+ costorigin.position.x;
+//    goal.target_pose.pose.position.y = y ;//+ costorigin.position.y;
+//  } else
+//  {
     // Full resolution
     goal.target_pose.pose.position.x = x;//  * costresolution + costorigin.position.x;
     goal.target_pose.pose.position.y = y; // * costresolution + costorigin.position.y;
-  }
+//  }
 
   goal.target_pose.pose.orientation.z = orZ;
   goal.target_pose.pose.orientation.w = orW;

@@ -44,7 +44,7 @@ namespace dummy{
       // harcoded values!!!!
       std::string map_frame_id="map";
       double map_resolution = 0.1;
-      ROS_WARNING("[Map.cpp@createMap] MAP RESOLUTION MUST BE 0.1 m/cell !!!.");
+      ROS_WARN("[Map.cpp@createMap] MAP RESOLUTION MUST BE 0.1 m/cell !!!.");
 
       createMap(imageCV,origin,map_frame_id,map_resolution);
     }
@@ -109,7 +109,7 @@ namespace dummy{
       // note. For some reason, upon creating the grid, it casts from [0,255] to
       // [0,1]. So instead of looking for 250, look for 250/255~0.98
       for (grid_map::GridMapIterator iterator(tempMap); !iterator.isPastEnd(); ++iterator) {
-        if (tempMap.at("layer", *iterator)<0.98){
+        if (tempMap.at("layer", *iterator)<0.35){
                tempMap.at("layer", *iterator)=1;
                countOnes++;
         } else {
