@@ -378,7 +378,7 @@ namespace dummy{
     }
 
     // Generic (internal) getters ..............................................
-    int  Map::getValue(long i,long j, grid_map::GridMap *gm) const
+    int  Map::getValue(long i,long j, const grid_map::GridMap *gm) const
     {
       int val;
       grid_map::Index index(i,j);
@@ -396,7 +396,7 @@ namespace dummy{
       return val;
     }
 
-    int  Map::getValue(geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) const
+    int  Map::getValue(geometry_msgs::PoseStamped ps, const grid_map::GridMap *gm) const
     {
         double val;
         if (ps.header.frame_id!=gm->getFrameId())
@@ -422,7 +422,7 @@ namespace dummy{
         return (int) val;
     }
 
-    int Map::getValue(long i, grid_map::GridMap *gm) const
+    int Map::getValue(long i, const  grid_map::GridMap *gm) const
     {
       long rows = getGridNumRows(gm);
       std::ldiv_t result = std::div(i , rows);
@@ -432,12 +432,12 @@ namespace dummy{
       return getValue(rows,cols, gm);
     }
 
-    int Map::getGridNumCols(grid_map::GridMap *gm) const
+    int Map::getGridNumCols(const grid_map::GridMap *gm) const
     {
       return gm->getSize()(1);
     }
 
-    int Map::getGridNumRows(grid_map::GridMap *gm) const
+    int Map::getGridNumRows(const grid_map::GridMap *gm) const
     {
       return gm->getSize()(0);
     }
@@ -445,14 +445,14 @@ namespace dummy{
 
 
     // Generic (internal) setters ..............................................
-    void Map::setValue(int value, long i,long j, grid_map::GridMap *gm) const
+    void Map::setValue(int value, long i,long j, grid_map::GridMap *gm)
     {
       grid_map::Index index(i,j);
       Position position;
 
       if (gm->getPosition(index, position))
       {
-        gm->at("layer", index)= value;
+        (gm->at("layer", index)) = value;
       }
       else
       {
@@ -460,7 +460,7 @@ namespace dummy{
       }
     }
 
-    void  Map::setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) const
+    void  Map::setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm)
     {
         if (ps.header.frame_id!=gm->getFrameId())
         {
@@ -481,7 +481,7 @@ namespace dummy{
         }
     }
 
-    void Map::setValue(int value, long i, grid_map::GridMap *gm) const
+    void Map::setValue(int value, long i, grid_map::GridMap *gm) 
     {
       long rows = getGridNumRows(gm);
       std::ldiv_t result = std::div(i , rows);
@@ -778,7 +778,7 @@ namespace dummy{
        return tag;
     }
 
-    void Map::printErrorReason(grid_map::Position point, grid_map::GridMap *gm) const
+    void Map::printErrorReason(grid_map::Position point, const grid_map::GridMap *gm) const
     {
       int maxRow = gm->getSize()(0)-1;
       int maxCol = gm->getSize()(1)-1;

@@ -469,7 +469,7 @@ private:
   * @param  gm  grid_map to retrieve
   * @return     grid value at indexes
   */
-  int  getValue(long i,long j, grid_map::GridMap gm) const;
+  int  getValue(long i,long j, const grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
@@ -477,14 +477,14 @@ private:
   * @param  gm  grid_map to retrieve
   * @return     grid value at pose stamped
   */
-  int  getValue(geometry_msgs::PoseStamped ps, grid_map::GridMap gm) const;
+  int  getValue(geometry_msgs::PoseStamped ps, const  grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
   * @param  i ith element (as vector)
   * @return   navigation grid value
   */
-  int getValue(long i, grid_map::GridMap gm) const;
+  int getValue(long i, const  grid_map::GridMap *gm) const;
 
   /**
   * Set a grid cell value
@@ -493,7 +493,7 @@ private:
   * @param  j col index
   * @param  gm  grid_map to retrieve
   */
-  void setValue(int value, long i,long j, grid_map::GridMap gm) const;
+  void setValue(int value, long i,long j, grid_map::GridMap *gm) ;
 
   /**
   * Set a grid cell value
@@ -501,28 +501,28 @@ private:
   * @param  ps  Pose stamped in "map" frame_id
   * @param  gm  grid_map to retrieve
   */
-  void setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap gm) const;
+  void setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) ;
 
   /**
   * Set a grid cell value
   * @param  value value to store
   * @param  i ith element (as vector)
   */
-  void setValue(int value, long i, grid_map::GridMap gm) const;
+  void setValue(int value, long i, grid_map::GridMap *gm) ;
 
   /**
    * Get number of Cols (width) in grid_map
    * @param  gm  grid_map to retrieve
    * @return number of cols
    */
-  int getGridNumCols(grid_map::GridMap gm) const;
+  int getGridNumCols(const grid_map::GridMap *gm) const;
 
   /**
   * Get number of rows (height) in grid_map
   * @param  gm  grid_map to retrieve
   * @return number of rows
   */
-  int getGridNumRows(grid_map::GridMap gm) const;
+  int getGridNumRows(const grid_map::GridMap *gm) const;
 
   // aux function ...
   string type2str(int type) ;
@@ -532,7 +532,7 @@ private:
    * @param point point to print
    * @param gm    grid_map
    */
-  void printErrorReason(grid_map::Position point, grid_map::GridMap gm) const;
+  void printErrorReason(grid_map::Position point, const grid_map::GridMap *gm) const;
 
 };
 }
