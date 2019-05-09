@@ -227,6 +227,7 @@ int main ( int argc, char **argv )
       double txtPower = 0; // std::stod(argv[14]); // dBs
       double rxPower = 0;
       std::pair<int, int> relTagCoord;
+      long i, j;
 
       do
       {
@@ -235,8 +236,11 @@ int main ( int argc, char **argv )
         {
           // At every iteration, the current pose of the robot is taken from the TF-tree
           Pose target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
-          cout << "[Target]: " << target.getY() << ", " << target.getX() << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
+          cout << "[Current Pose]: " << target.getY() << ", " << target.getX() << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
 //            cout << "[Tmp]: " << tmp_target.getY() << ", " << tmp_target.getX() << ", " << (tmp_target.getOrientation() + 360 ) % 360 << ", " << tmp_target.getFOV() <<", " << tmp_target.getRange() << endl;
+          map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
+          cout << "[Current Pose in PathPlanningGrid]: " << i << ", " << j << endl;
+
 
           long x = target.getX();
           long y = target.getY();
