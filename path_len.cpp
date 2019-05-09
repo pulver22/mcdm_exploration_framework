@@ -18,6 +18,17 @@ Uses clicked point to define start and end points.
 #include <fstream>      // std::ofstream
 #include <limits>
 
+
+
+#include <sstream> // stringstream
+#include <vector>
+#include <string>
+#include <iostream>
+#include "pose.h"
+#include <unordered_map>
+#include <nav_msgs/OccupancyGrid.h>
+#include "RFIDGridmap.h"
+
 using namespace ros;
 using namespace std;
 
@@ -64,7 +75,7 @@ double getPathLen(std::vector<geometry_msgs::PoseStamped> poses)
   return len;
 }
 
-int main(int argc,char **argv){
+int main0(int argc,char **argv){
   double len;
   ros::Time ping,pong,loop_pong,loop_ping;
   bool srv_call;
@@ -131,5 +142,55 @@ int main(int argc,char **argv){
     }
 
 return 0;
+
+}
+
+
+
+int main(int argc,char **argv){
+  double resolution;
+  grid_map::GridMap map(vector<string>({"layer"}));
+  grid_map::GridMap modifiedMap(vector<string>({"layer"}));
+  cv::Mat imageCV;
+  double  minValue;
+  double  maxValue;
+  sensor_msgs::ImagePtr imageROS;
+  cv_bridge::CvImagePtr cv_ptr;
+
+  string format=("mono8");
+
+
+  //read image into cv
+  ROS_INFO("Loading image ");
+  imageCV = cv::imread("/opt/ros/kinetic/share/gazebo_worlds_oru/maps/ncfm_sim.png", cv::IMREAD_GRAYSCALE);
+  ROS_INFO("In image is %d,%d ",imageCV.rows,imageCV.cols);
+  cv::minMaxLoc(imageCV, &minValue, &maxValue);
+
+  ROS_INFO("Creating empty grid");
+  resolution = 1.0;
+  map.setGeometry(Length(imageCV.rows*resolution, imageCV.cols*resolution), resolution, Position(0, 0));
+  map.clearAll();
+
+  //create a gridmap resolution 1mx1m
+  ROS_INFO("Creating ros image from image ");
+  imageROS = cv_bridge::CvImage(std_msgs::Header(), format, imageCV).toImageMsg();
+  ROS_INFO("Creating grid from image ");
+  GridMapRosConverter::addLayerFromImage(*imageROS, "layer", map);
+  ROS_INFO("Input grid is %d,%d ",map.getSize()(0),map.getSize()(1));
+
+  // resize to gridmap 0.5 x 0.5
+  ROS_INFO("Resizing ");
+  resolution = 2.0;
+  GridMapCvProcessing::changeResolution(map, modifiedMap, resolution);
+  ROS_INFO("Out grid is %d,%d ",modifiedMap.getSize()(0),modifiedMap.getSize()(1));
+
+  // store it in file
+  ROS_INFO("Storing ");
+  GridMapRosConverter::toImage(modifiedMap, "layer", sensor_msgs::image_encodings::MONO16, minValue, maxValue, *imageROS);
+  cv_ptr = cv_bridge::toCvCopy(imageROS, sensor_msgs::image_encodings::TYPE_16UC1);
+  imageCV =  cv_ptr->image;
+  cv::imwrite("/tmp/ncfm_sim.jpg", imageCV);
+  ROS_INFO("Out image is %d,%d ",imageCV.rows,imageCV.cols);
+
 
 }

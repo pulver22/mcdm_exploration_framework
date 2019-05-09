@@ -36,14 +36,14 @@ public:
 
    /**
    *  Creates Map using provided data vector and parameters
-   * @param resolution     navigation grid resolution [m./cell]
-   * @param costresolution path planning grid resolution [m./cell] (should be greater than nav resolution)
+   * @param plan_resolution     planning grid resolution [m./cell] (should be greater than nav resolution)
+   * @param map_resolution      map, nav and rfid grid resolution [m./cell]
    * @param width          data vector width (== numRows)
    * @param height         data vector height (== numCols)
    * @param data           data vector containing map data
    * @param origin         Where to place 0,0 in map frame_id.
    */
-  Map(float resolution, float costresolution, int width, int height, vector< int > data, geometry_msgs::Pose origin);
+Map(float plan_resolution, float map_resolution, int width, int height, vector< int > data, geometry_msgs::Pose origin);
 
    /**
    * Set a navigation grid cell value
@@ -653,6 +653,8 @@ private:
   void printGridData(std::string grid_name , const grid_map::GridMap *gm );
 
   cv::Mat binarizeImage(cv::Mat imageCV);
+
+  void plotMyGrid(std::string fileURI, const grid_map::GridMap * gm);
 };
 }
 

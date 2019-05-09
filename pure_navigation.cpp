@@ -157,13 +157,6 @@ int main ( int argc, char **argv )
       cout << "   threshold: " << threshold << endl;
 
 
-
-      if(resolution == 1){
-        resolution = costresolution;
-      }else if(resolution > 0 && resolution < 1){
-        costresolution = (1 / resolution) * costresolution;
-      }
-
       cout << "   Resolution: " << resolution << "\n   Costresolution: " << costresolution << endl;
 
       dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
@@ -187,7 +180,7 @@ int main ( int argc, char **argv )
       Pose target = start_pose;
       Pose previous = target;
       cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
-           << endl;
+           << " m. "<< endl;
       Pose invertedInitial = createFromInitialPose(start_pose, 180, initRange, initFov);
       Pose eastInitial = createFromInitialPose(start_pose, 90, initRange, initFov);
       Pose westInitial = createFromInitialPose(start_pose, 270, initRange, initFov);
@@ -236,10 +229,10 @@ int main ( int argc, char **argv )
         {
           // At every iteration, the current pose of the robot is taken from the TF-tree
           Pose target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
-          cout << "[Current Pose]: " << target.getY() << ", " << target.getX() << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
+          cout << "[Current Pose]: " << target.getY() << ", " << target.getX()<<" m. " << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
 //            cout << "[Tmp]: " << tmp_target.getY() << ", " << tmp_target.getX() << ", " << (tmp_target.getOrientation() + 360 ) % 360 << ", " << tmp_target.getFOV() <<", " << tmp_target.getRange() << endl;
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
-          cout << "[Current Pose in PathPlanningGrid]: " << i << ", " << j << endl;
+          cout << "[Current CELL INDEX in PathPlanningGrid]: " << i << ", " << j << endl;
 
 
           long x = target.getX();
@@ -459,7 +452,7 @@ int main ( int argc, char **argv )
 //                  p.point.x = vec.getY() + costorigin.position.x;
 //                  p.point.y = vec.getX() + costorigin.position.y;
 //                }
-                cout << "   New goal in map: X = " << p.point.x << ", Y = " << p.point.y << endl;
+                cout << "   New goal in map: X = " << p.point.x << ", Y = " << p.point.y << " m. "<<endl;
                 //NOTE: not requested for testing purpose
                 //usleep(microseconds);
                 marker_pub.publish(p);

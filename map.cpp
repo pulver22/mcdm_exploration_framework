@@ -16,18 +16,23 @@ namespace dummy{
       ROS_DEBUG("[Map.cpp@map] map created from ifstream");
     }
 
-    Map::Map(float resolution, float costresolution, int width, int height, vector<int> data, geometry_msgs::Pose origin):map_grid_(vector<string>({"layer"})), nav_grid_(vector<string>({"layer"})), planning_grid_(vector<string>({"layer"})), rfid_grid_(vector<string>({"layer"}))
+    Map::Map(float plan_resolution, float map_resolution, int width, int height, vector<int> data, geometry_msgs::Pose origin):map_grid_(vector<string>({"layer"})), nav_grid_(vector<string>({"layer"})), planning_grid_(vector<string>({"layer"})), rfid_grid_(vector<string>({"layer"}))
     {
-      Map::createMap(width, height, costresolution, data, origin);
-      Map::createGrid(resolution);
+      Map::createMap(width, height, map_resolution, data, origin);
+      plotMyGrid("/tmp/initial_map.pgm", &map_grid_);
+      Map::createGrid(map_resolution);
+      plotMyGrid("/tmp/initial_nav.pgm", &nav_grid_);
       Map::createNewMap();
-      Map::createPathPlanningGrid(costresolution);
+
+      Map::createPathPlanningGrid(plan_resolution);
+      plotMyGrid("/tmp/initial_planning.pgm", &planning_grid_);
+
       // once both are created, we can obtain the ratio
       gridToPathGridScale = planning_grid_.getResolution()/nav_grid_.getResolution();
       ROS_ASSERT_MSG(gridToPathGridScale >= 1, "[Map.cpp@map] Planning resolution lower than navigation resolution = %d", gridToPathGridScale);
 
 
-      Map::createRFIDGrid(costresolution);
+      Map::createRFIDGrid(map_resolution);
       ROS_DEBUG("[Map.cpp@map] map created from data vector");
     }
 
@@ -154,11 +159,30 @@ namespace dummy{
 
     cv::Mat Map::binarizeImage(cv::Mat mImg)
     {
-      //Apply thresholding to binarize!
-      cv::adaptiveThreshold(mImg, mImg, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C,cv::THRESH_BINARY,3,5);
 
+
+            // how many different values does it have?
+            std::vector<uchar> diffValues;
+            for (int y = 0; y < mImg.rows; ++y)
+            {
+                const uchar* row_ptr = mImg.ptr<uchar>(y);
+                for (int x = 0; x < mImg.cols; ++x)
+                {
+                    uchar value = row_ptr[x];
+
+                    if ( std::find(diffValues.begin(), diffValues.end(), value) == diffValues.end() ){
+                        diffValues.push_back(value);
+                        ROS_DEBUG("[Map.cpp@binarize] Map val 0x%x",value);
+                    }
+                }
+            }
+
+
+      //Apply thresholding to binarize!
+      //cv::adaptiveThreshold(mImg, mImg, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C,cv::THRESH_BINARY,3,5);
+      cv::threshold(mImg, mImg,99,255,cv::THRESH_BINARY_INV);
+      diffValues.clear();
       // how many different values does it have?
-      std::vector<uchar> diffValues;
       for (int y = 0; y < mImg.rows; ++y)
       {
           const uchar* row_ptr = mImg.ptr<uchar>(y);
@@ -189,6 +213,10 @@ namespace dummy{
       ROS_DEBUG("[Map.cpp@createGrid] creating grid with resolution %3.3f",resolution);
 
       GridMapCvProcessing::changeResolution(map_grid_, nav_grid_, resolution);
+
+      //cv::resize(src, dst, Size(), 0.5, 0.5, cv::CV_INTER_AREA);
+
+
       Map::numGridRows = nav_grid_.getSize()(0);
       Map::numGridCols = nav_grid_.getSize()(1);
       printGridData("nav",&nav_grid_ );
@@ -932,10 +960,34 @@ namespace dummy{
       ROS_DEBUG("[Map.cpp@printGridData] Grid Center [%3.3f %3.3f] m. ", gm->getPosition().x(),gm->getPosition().y());
       ROS_DEBUG("[Map.cpp@printGridData] Resolution [%3.3f] m./cell ", gm->getResolution());
       ROS_DEBUG("[Map.cpp@printGridData] Map Size [%3.3f x %3.3f] m.", gm->getLength()(0),gm->getLength()(1)  );
-      ROS_DEBUG("[Map.cpp@printGridData] Bounding box positions (m.): topLeft [%3.3f, %3.3f], topRight [%3.3f, %3.3f], bottomRight [%3.3f, %3.3f], bottomLeft [%3.3f, %3.3f]",
-                                                                      topLeftP.x(),topLeftP.y(),  topRightP.x(), topRightP.y(),  bottomRightP.x(),bottomRightP.y(),  bottomLeftP.x(),bottomLeftP.y()  );
+      ROS_DEBUG("[Map.cpp@printGridData] Bounding box positions (m.):");
+      ROS_DEBUG(" \t\t topLeft cell: [%d, %d] == [%3.3f, %3.3f] m.",topLeftI.x(),topLeftI.y() ,topLeftP.x(),topLeftP.y() );
+      ROS_DEBUG(" \t\t topRight cell: [%d, %d] == [%3.3f, %3.3f] m.", topRightI.x(), topRightI.y(), topRightP.x(), topRightP.y()  );
+      ROS_DEBUG(" \t\t bottomRight cell: [%d, %d] == [%3.3f, %3.3f] m.", bottomRightI.x(),bottomRightI.y(), bottomRightP.x(),bottomRightP.y()  );
+      ROS_DEBUG(" \t\t bottomLeft cell: [%d, %d] == [%3.3f, %3.3f] m.",bottomLeftI.x(),bottomLeftI.y(),bottomLeftP.x(),bottomLeftP.y()  );
+
+    }
+
+    void Map::plotMyGrid(std::string fileURI, const grid_map::GridMap * gm)
+    {
+
+      cv::Mat imageCV;
+      double  minValue=1e20;
+      double  maxValue=-1e20;
+      sensor_msgs::ImagePtr imageROS;
+      cv_bridge::CvImagePtr cv_ptr;
 
 
+      for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
+
+          if (gm->at("layer",*iterator)>maxValue)
+            maxValue=gm->at("layer",*iterator);
+          if (gm->at("layer",*iterator)<minValue)
+              minValue=gm->at("layer",*iterator);
+      }
+      ROS_DEBUG("Ranges [%3.3f, %3.3f]",minValue,maxValue);
+      GridMapCvConverter::toImage<unsigned short, 1>(*gm, "layer", CV_16UC1, minValue, maxValue, imageCV);
+      cv::imwrite(fileURI.c_str(), imageCV);
 
     }
 }
