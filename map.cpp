@@ -277,6 +277,16 @@ namespace dummy{
     }
 
     // Getter shortcuts ........................................................
+    bool  Map::getPathPlanningPosition(double &x, double &y, long i, long j)
+    {
+      return getPosition(x, y,  i, j, &planning_grid_);
+    }
+
+    bool  Map::getPathPlanningIndex(double x, double y, long &i, long &j)
+    {
+      return getIndex(x, y,  i, j, &planning_grid_);
+    }
+
     int Map::getPathPlanningGridValue(long i,long j) const
     {
         return getValue(i,j, &planning_grid_);
@@ -301,6 +311,17 @@ namespace dummy{
     {
         return getGridNumRows(&planning_grid_);
     }
+
+    bool  Map::getGridPosition(double &x, double &y, long i, long j)
+    {
+      return getPosition(x, y,  i, j, &nav_grid_);
+    }
+
+    bool  Map::getGridIndex(double x, double y, long &i, long &j)
+    {
+      return getIndex(x, y,  i, j, &nav_grid_);
+    }
+
 
     int Map::getGridValue(long i,long j) const
     {
@@ -327,6 +348,16 @@ namespace dummy{
         return getGridNumRows(&nav_grid_);
     }
 
+    bool  Map::getMapPosition(double &x, double &y, long i, long j)
+    {
+      return getPosition(x, y,  i, j, &map_grid_);
+    }
+
+    bool  Map::getMapIndex(double x, double y, long &i, long &j)
+    {
+      return getIndex(x, y,  i, j, &map_grid_);
+    }
+
     int Map::getMapValue(long i, long j)
     {
       return getValue(i,j, &map_grid_);
@@ -350,6 +381,16 @@ namespace dummy{
     long Map::getNumRows()
     {
         return getGridNumRows(&map_grid_);
+    }
+
+    bool  Map::getRFIDPosition(double &x, double &y, long i, long j)
+    {
+      return getPosition(x, y,  i, j, &rfid_grid_);
+    }
+
+    bool  Map::getRFIDIndex(double x, double y, long &i, long &j)
+    {
+      return getIndex(x, y,  i, j, &rfid_grid_);
     }
 
     int Map::getRFIDGridValue(long i, long j) const
@@ -378,6 +419,49 @@ namespace dummy{
     }
 
     // Generic (internal) getters ..............................................
+    bool  Map::getIndex(double x, double y, long &i, long &j, grid_map::GridMap *gm){
+      grid_map::Index resIndex;
+      Position inPose(x,y);
+      bool success;
+      if (gm->isInside(inPose))
+      {
+        gm->getIndex(inPose, resIndex);
+        i=resIndex(0);
+        j=resIndex(1);
+        success=true;
+      }
+      else
+      {
+        printErrorReason(inPose,gm);
+        i=-1;
+        j=-1;
+        success=false;
+      }
+      return success;
+    }
+
+    bool  Map::getPosition(double &x, double &y, long i, long j, grid_map::GridMap *gm){
+      grid_map::Index inIndex(i,j);
+      Position inPose;
+      bool success;
+      if (gm->getPosition(inIndex, inPose))
+      {
+        x=inPose.x();
+        y=inPose.y();
+        success=true;
+      }
+      else
+      {
+        ROS_ERROR("Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
+        x=std::numeric_limits<double>::max();
+        y=std::numeric_limits<double>::max();
+        success=false;
+      }
+      return success;
+    }
+
+
+
     int  Map::getValue(long i,long j, const grid_map::GridMap *gm) const
     {
       int val;
@@ -481,7 +565,7 @@ namespace dummy{
         }
     }
 
-    void Map::setValue(int value, long i, grid_map::GridMap *gm) 
+    void Map::setValue(int value, long i, grid_map::GridMap *gm)
     {
       long rows = getGridNumRows(gm);
       std::ldiv_t result = std::div(i , rows);

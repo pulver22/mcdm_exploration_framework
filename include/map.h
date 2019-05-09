@@ -346,6 +346,99 @@ public:
    */
   std::pair<int,int> findTagfromGridMap(RFIDGridmap grid);
 
+
+   /**
+   * Returns the i,j index from pathplanning grid of the given metric position (in "map" frame id)
+   * @param  x  metric position x coordinate (in "map" frame id) in m.
+   * @param  y  metric position y coordinate (in "map" frame id) in m.
+   * @param  i  corresponding cell row index
+   * @param  j  corresponding cell col index
+   * @return    True if index was retrieved
+   */
+   bool  getPathPlanningIndex(double x, double y, long &i, long &j);
+
+   /**
+   * Returns the metric position (in "map" frame id) from pathplanning  grid of the given i,j index
+   * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
+   * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+   * @param  i  cell row index
+   * @param  j  cell col index
+   * @return    True if position was retrieved
+   */
+   bool  getPathPlanningPosition(double &x, double &y, long i, long j);
+
+   /**
+    * Returns the i,j index from navigation grid of the given metric position (in "map" frame id)
+    * @param  x  metric position x coordinate (in "map" frame id) in m.
+    * @param  y  metric position y coordinate (in "map" frame id) in m.
+    * @param  i  corresponding cell row index
+    * @param  j  corresponding cell col index
+    * @return    True if index was retrieved
+    */
+  bool  getGridIndex(double x, double y, long &i, long &j);
+
+  /**
+   * Returns the metric position (in "map" frame id) from navigation grid of the given i,j index
+   * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
+   * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+   * @param  i  cell row index
+   * @param  j  cell col index
+   * @return    True if position was retrieved
+   */
+   bool  getGridPosition(double &x, double &y, long i, long j);
+
+
+
+
+
+
+    /**
+     * Returns the i,j index from map grid of the given metric position (in "map" frame id)
+     * @param  x  metric position x coordinate (in "map" frame id) in m.
+     * @param  y  metric position y coordinate (in "map" frame id) in m.
+     * @param  i  corresponding cell row index
+     * @param  j  corresponding cell col index
+     * @return    True if index was retrieved
+     */
+  bool  getMapIndex(double x, double y, long &i, long &j);
+
+  /**
+   * Returns the metric position (in "map" frame id) from map grid of the given i,j index
+   * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
+   * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+   * @param  i  cell row index
+   * @param  j  cell col index
+   * @return    True if position was retrieved
+   */
+   bool  getMapPosition(double &x, double &y, long i, long j);
+
+
+
+
+
+   /**
+    * Returns the metric position (in "map" frame id) from RFID grid of the given i,j index
+    * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
+    * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+    * @param  i  cell row index
+    * @param  j  cell col index
+    * @return    True if position was retrieved
+    */
+    bool  getRFIDPosition(double &x, double &y, long i, long j);
+
+
+      /**
+       * Returns the i,j index from RFID grid of the given metric position (in "map" frame id)
+       * @param  x  metric position x coordinate (in "map" frame id) in m.
+       * @param  y  metric position y coordinate (in "map" frame id) in m.
+       * @param  i  corresponding cell row index
+       * @param  j  corresponding cell col index
+       * @return    True if index was retrieved
+       */
+  bool  getRFIDIndex(double x, double y, long &i, long &j);
+
+
+
 protected:
 
   /**
@@ -462,6 +555,29 @@ protected:
   long numGridCols;
 
 private:
+
+  /**
+   * Returns the i,j index from grid of the given metric position (in "map" frame id)
+   * @param  x  metric position x coordinate (in "map" frame id) in m.
+   * @param  y  metric position y coordinate (in "map" frame id) in m.
+   * @param  i  corresponding cell row index
+   * @param  j  corresponding cell col index
+   * @param  gm grid map where we operate
+   * @return    True if index was retrieved
+   */
+  bool getIndex(double x, double y, long &i, long &j, grid_map::GridMap *gm);
+
+  /**
+   * Returns the metric position (in "map" frame id) from grid of the given i,j index
+   * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
+   * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+   * @param  i  cell row index
+   * @param  j  cell col index
+   * @param  gm grid map where we operate
+   * @return    True if position was retrieved
+   */
+  bool getPosition(double &x, double &y, long i, long j, grid_map::GridMap *gm);
+
   /**
   * Get a grid cell value
   * @param  i row index
