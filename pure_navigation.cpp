@@ -79,7 +79,7 @@ int main ( int argc, char **argv )
   }
   else
   {
-    ROS_INFO("Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n- Threshold (%3.3f)\n- Resolution: (%3.3f)\n- CostResolution: (%3.3f)",
+    ROS_INFO("Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n- Threshold (%3.3f)\n- Resolution: (%3.3f)",
              atof(argv[1]),atoi(argv[2]),atof(argv[3]),atof(argv[4]),atof(argv[5]));
   }
   // sets console output to debug mode...

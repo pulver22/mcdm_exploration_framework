@@ -650,6 +650,9 @@ private:
    */
   void printErrorReason(grid_map::Position point, const grid_map::GridMap *gm) const;
 
+  void printGridData(std::string grid_name , const grid_map::GridMap *gm );
+
+  cv::Mat binarizeImage(cv::Mat imageCV);
 };
 }
 
