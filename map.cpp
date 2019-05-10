@@ -29,7 +29,7 @@ namespace dummy{
 
       // once both are created, we can obtain the ratio
       gridToPathGridScale = planning_grid_.getResolution()/nav_grid_.getResolution();
-      ROS_ASSERT_MSG(gridToPathGridScale >= 1, "[Map.cpp@map] Planning resolution lower than navigation resolution = %d", gridToPathGridScale);
+      ROS_ASSERT_MSG(gridToPathGridScale >= 1, "[Map.cpp@map] Planning resolution lower than navigation resolution = %3.3f", gridToPathGridScale);
 
 
       Map::createRFIDGrid(map_resolution);
@@ -159,30 +159,8 @@ namespace dummy{
 
     cv::Mat Map::binarizeImage(cv::Mat mImg)
     {
-
-
-            // how many different values does it have?
-            std::vector<uchar> diffValues;
-            for (int y = 0; y < mImg.rows; ++y)
-            {
-                const uchar* row_ptr = mImg.ptr<uchar>(y);
-                for (int x = 0; x < mImg.cols; ++x)
-                {
-                    uchar value = row_ptr[x];
-
-                    if ( std::find(diffValues.begin(), diffValues.end(), value) == diffValues.end() ){
-                        diffValues.push_back(value);
-                        ROS_DEBUG("[Map.cpp@binarize] Map val 0x%x",value);
-                    }
-                }
-            }
-
-
-      //Apply thresholding to binarize!
-      //cv::adaptiveThreshold(mImg, mImg, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C,cv::THRESH_BINARY,3,5);
-      cv::threshold(mImg, mImg,99,255,cv::THRESH_BINARY);
-      diffValues.clear();
       // how many different values does it have?
+      std::vector<uchar> diffValues;
       for (int y = 0; y < mImg.rows; ++y)
       {
           const uchar* row_ptr = mImg.ptr<uchar>(y);
@@ -190,19 +168,48 @@ namespace dummy{
           {
               uchar value = row_ptr[x];
 
-              if ( std::find(diffValues.begin(), diffValues.end(), value) == diffValues.end() )
+              if ( std::find(diffValues.begin(), diffValues.end(), value) == diffValues.end() ){
                   diffValues.push_back(value);
+                  ROS_DEBUG("[Map.cpp@binarize] Map val 0x%x",value);
+              }
           }
+      }
+      std::sort(diffValues.begin(), diffValues.end());
+      if (diffValues.size()>2)
+      {
+
+        //Apply thresholding to binarize!
+        //cv::adaptiveThreshold(mImg, mImg, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C,cv::THRESH_BINARY,3,5);
+        cv::threshold(mImg, mImg,diffValues[diffValues.size()-2],255,cv::THRESH_BINARY_INV);
+        diffValues.clear();
+        // how many different values does it have?
+        for (int y = 0; y < mImg.rows; ++y)
+        {
+            const uchar* row_ptr = mImg.ptr<uchar>(y);
+            for (int x = 0; x < mImg.cols; ++x)
+            {
+                uchar value = row_ptr[x];
+
+                if ( std::find(diffValues.begin(), diffValues.end(), value) == diffValues.end() )
+                    diffValues.push_back(value);
+            }
+        }
+
+        if (diffValues.size()!=2)
+        {
+            ROS_ERROR("[Map.cpp@createMap] After binarizing, we still have [%lu] different values: ",diffValues.size());
+            for (int i = 0; i < diffValues.size(); i++)
+            {
+              ROS_ERROR("[Map.cpp@createMap] \t\t [0x%x]==[%d] ",diffValues[i],diffValues[i]);
+            }
+        }
+
+      }
+      else
+      {
+            ROS_ERROR("[Map.cpp@createMap] Input image only has [%lu] different values: ",diffValues.size());
       }
 
-      if (diffValues.size()!=2)
-      {
-          ROS_ERROR("[Map.cpp@createMap] [%lu] different values: ",diffValues.size());
-          for (int i = 0; i < diffValues.size(); i++)
-          {
-            ROS_ERROR("[Map.cpp@createMap] \t\t [0x%x]==[%d] ",diffValues[i],diffValues[i]);
-          }
-      }
       return mImg;
 
     }

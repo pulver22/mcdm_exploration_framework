@@ -10,9 +10,9 @@ using namespace dummy;
 
 class NewRay
 {
-  
+
 public:
-  
+
   NewRay();
   //~Ray();
   void findCandidatePositions(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
@@ -21,14 +21,13 @@ public:
   int isCandidate2(const dummy::Map &map, long i, long j);
   std::vector<std::pair<long, long> > getCandidatePositions();
   pair< double, double > getSensingTime(const dummy::Map& map, long int posX, long int posY, int orientation, double FOV, int range);
-  int performSensingOperation(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range, double firstAngle, double lastAngle);
+  int performSensingOperation(dummy::Map *map, long posX, long posY, int orientation, double FOV, int range, double firstAngle, double lastAngle);
   void emptyCandidatePositions();
   int getInformationGain(const dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
   long convertPoint(long y);
   long convertPointPP(long y);
   void calculateInfoGainSensingTime (const dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
   void setGridToPathGridScale(float value);
-  
 protected:
   double mapX, mapY;			//coordinates in the map
   long posX, posY;		//starting position of the robot

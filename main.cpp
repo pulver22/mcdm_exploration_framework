@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
                     //newSensedCells = sensedCells + ray.getInformationGain(map,x,y,orientation,FOV,range);
                     cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells -200<< endl;
                     target.setScanAngles(ray.getSensingTime(map,x,y,orientation,FOV,range));
-                    newSensedCells = sensedCells + ray.performSensingOperation(map,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
+                    newSensedCells = sensedCells + ray.performSensingOperation(&map,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
                     map.updatePathPlanningGrid(x, y, range, 0.0);
                     totalAngle += target.getScanAngles().second - target.getScanAngles().first;
                     ray.findCandidatePositions(map,x,y,orientation,FOV,range);

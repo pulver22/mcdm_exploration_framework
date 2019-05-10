@@ -426,11 +426,12 @@ std::pair<double,double> NewRay::getSensingTime(const dummy::Map &map, long posX
 
 
 //perform the sensing operation by setting the value of the free cell scanned to 2
-int NewRay::performSensingOperation(dummy::Map &map, long posX, long posY, int orientation, double FOV, int range, double firstAngle, double lastAngle)
+int NewRay::performSensingOperation(dummy::Map *map, long posX, long posY, int orientation, double FOV, int range, double firstAngle, double lastAngle)
 {
   cout << "[newray.cpp@performSensingOperation]" << endl;
-  NewRay::numGridRows = map.getNumGridRows();
-  setGridToPathGridScale(map.getGridToPathGridScale());
+  NewRay::numGridRows = map->getNumGridRows();
+  setGridToPathGridScale(map->getGridToPathGridScale());
+
   int counter = 0;
 
   //set the correct FOV orientation
@@ -460,8 +461,8 @@ int NewRay::performSensingOperation(dummy::Map &map, long posX, long posY, int o
 
   if(minI < 0) minI = 0;
   if(minJ < 0) minJ = 0;
-  if(maxI > map.getNumGridRows()) maxI = map.getNumGridRows();
-  if(maxJ > map.getNumGridCols()) maxJ = map.getNumGridCols();
+  if(maxI > map->getNumGridRows()) maxI = map->getNumGridRows();
+  if(maxJ > map->getNumGridCols()) maxJ = map->getNumGridCols();
 
   cout << "[newray.cpp@performSensingOperation] [minI, minJ]: " << minI << "," << minJ << ", [maxI, maxJ]: " << maxI << ", " << maxJ << endl;
 
@@ -474,7 +475,8 @@ int NewRay::performSensingOperation(dummy::Map &map, long posX, long posY, int o
       double distance = sqrt((i - posX*gridToPathGridScale)*(i - posX*gridToPathGridScale) + (j - posY*gridToPathGridScale)*(j - posY*gridToPathGridScale));
 //      std::cout << endl << "[newray.cpp@performSensingOperation] Cell: [" << i << "," << j << ", Value "<< map.getGridValue(i, j) << ", Distance: " << distance << std::endl;
       //if a cell is free and within range of the robot, generate the ray connecting the robot cell and the free cell
-      if(map.getGridValue(i, j) == 1 && distance <= range*gridToPathGridScale)
+      if(map->getGridValue(i, j) == 1 && distance <= range*gridToPathGridScale)
+
       {
         double curX = posX*gridToPathGridScale + gridToPathGridScale/2;		//starting position of the ray
         double curY = posY*gridToPathGridScale + gridToPathGridScale/2;
@@ -506,9 +508,9 @@ int NewRay::performSensingOperation(dummy::Map &map, long posX, long posY, int o
             curX = robotX + 0.5 - u*sin(slope);
 
             //not needed, but left anyway
-            if(curX < 0 || curX > map.getNumGridRows() || curY < 0 || curY > map.getNumGridCols()) hit = 1;
+            if(curX < 0 || curX > map->getNumGridRows() || curY < 0 || curY > map->getNumGridCols()) hit = 1;
 
-            if(map.getGridValue((long)curX, (long)curY) == 1)
+            if(map->getGridValue((long)curX, (long)curY) == 1)
             {
               hit = 1;		//hit set to 1 if an obstacle is found
               std::cout << "[newray.cpp@performSensingOperation] HIT! cell: " << j << " " << i << " Hit point: " << curY << " " << curX << std::endl;
@@ -516,7 +518,7 @@ int NewRay::performSensingOperation(dummy::Map &map, long posX, long posY, int o
 
             if((long)curX == i && (long)curY == j)	//if the free cell is reached, set its value to 2 and stop the ray
             {
-              map.setGridValue(2, i, j);
+              map->setGridValue(2, i, j);
               counter++;
               std::cout << "[newray.cpp@performSensingOperation] Cell scanned: " << (int)curY << " " << (int)curX << std::endl;
               hit = 1;
@@ -771,5 +773,3 @@ void NewRay::calculateInfoGainSensingTime (const dummy::Map &map, long posX, lon
   }
 
 }
-
-
