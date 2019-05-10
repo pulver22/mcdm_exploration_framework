@@ -233,6 +233,8 @@ int main ( int argc, char **argv )
 //            cout << "[Tmp]: " << tmp_target.getY() << ", " << tmp_target.getX() << ", " << (tmp_target.getOrientation() + 360 ) % 360 << ", " << tmp_target.getFOV() <<", " << tmp_target.getRange() << endl;
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           cout << "[Current CELL INDEX in PathPlanningGrid]: " << i << ", " << j << endl;
+          map.getGridIndex(target.getX(), target.getY(), i, j);
+          cout << "[Current CELL INDEX in NavigationGrid]: " << i << ", " << j << endl;
 
 
           long x = target.getX();

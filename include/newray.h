@@ -27,7 +27,7 @@ public:
   long convertPoint(long y);
   long convertPointPP(long y);
   void calculateInfoGainSensingTime (const dummy::Map &map, long posX, long posY, int orientation, double FOV, int range);
-  int setGridToPathGridScale(int value);
+  void setGridToPathGridScale(float value);
   
 protected:
   double mapX, mapY;			//coordinates in the map
@@ -42,7 +42,7 @@ protected:
   long numPathPlanningGridCols;
   long informationGain;
   double sensingTime;
-  int gridToPathGridScale;
+  float gridToPathGridScale;
 };
 
 

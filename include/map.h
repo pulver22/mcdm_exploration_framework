@@ -237,7 +237,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * Return planning_grid to nav_grid resolution ratio
    * @return ratio
    */
-  int getGridToPathGridScale() const;
+  float getGridToPathGridScale() const;
 
   /**
   * Iterates over pathplanning-grid in a square and updates according to values in navigation grid
@@ -546,7 +546,7 @@ protected:
   grid_map::GridMap  rfid_grid_;
 
   // planning_grid to nav_grid resolution ratio
-  int gridToPathGridScale;
+  float gridToPathGridScale;
 
   // number of rows of the navigation grid
   long numGridRows;

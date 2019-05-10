@@ -180,7 +180,7 @@ namespace dummy{
 
       //Apply thresholding to binarize!
       //cv::adaptiveThreshold(mImg, mImg, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C,cv::THRESH_BINARY,3,5);
-      cv::threshold(mImg, mImg,99,255,cv::THRESH_BINARY_INV);
+      cv::threshold(mImg, mImg,99,255,cv::THRESH_BINARY);
       diffValues.clear();
       // how many different values does it have?
       for (int y = 0; y < mImg.rows; ++y)
@@ -285,30 +285,38 @@ namespace dummy{
 
                       for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex, navBufferSize);
                               !nav_iterator.isPastEnd(); ++nav_iterator) {
+//                        std::cout << "[Map.cpp@updatePathPlanningGrid] Inside : " << nav_grid_.at("layer", *nav_iterator) << endl;
 
                                    if( nav_grid_.at("layer", *nav_iterator) == 1)
                                    {
                                        setToOne = 1;
+                                     std::cout << "[Map.cpp@updatePathPlanningGrid] 1" << endl;
                                    }
 
                                    if( nav_grid_.at("layer", *nav_iterator) == 2)
                                    {
                                        countScanned++;
+                                     std::cout << "[Map.cpp@updatePathPlanningGrid] 2" << endl;
                                    }
                       }
                       if(countScanned == gridToPathGridScale*gridToPathGridScale)
                       {
                         planning_grid_.at("layer", *planning_iterator)=2;
                         rfid_grid_.atPosition("layer", position_pp)+=power;
+                        std::cout << "[Map.cpp@updatePathPlanningGrid] CountScanned" << endl;
                       }
                       if(setToOne == 1)
+                      {
                         planning_grid_.at("layer", *planning_iterator)=1;
+                        std::cout << "[Map.cpp@updatePathPlanningGrid] SetToOne" << endl;
+                      }
+
           }
       }
 
-    int Map::getGridToPathGridScale() const
+    float Map::getGridToPathGridScale() const
     {
-      return (int) (planning_grid_.getResolution()/nav_grid_.getResolution());
+      return planning_grid_.getResolution()/nav_grid_.getResolution();
     }
 
     // Getter shortcuts ........................................................
