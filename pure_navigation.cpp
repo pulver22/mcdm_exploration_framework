@@ -249,7 +249,7 @@ int main ( int argc, char **argv )
           // Get the sensing time required for scanning
           target.setScanAngles ( ray.getSensingTime ( map,x,y,orientation,FOV,range ) );
           // Perform a scanning operation
-          newSensedCells = sensedCells + ray.performSensingOperation ( &map,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second );
+          newSensedCells = sensedCells + ray.performSensingOperation ( &map, x, y, orientation, FOV, range, target.getScanAngles().first, target.getScanAngles().second );
           // Calculate the scanning angle
           double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanning time
@@ -260,10 +260,11 @@ int main ( int argc, char **argv )
 //            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
 //            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
           // Update the path planning and RFID map
+          cout << endl << "[pure_navigation.cpp]" << map.getGridValue(target.getX() + 1, target.getY() + 1) << endl;
           map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY);
 //            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
           // Search for new candidate position
-          ray.findCandidatePositions ( map, x, y, orientation, FOV, range );
+          ray.findCandidatePositions ( &map, x, y, orientation, FOV, range );
           vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
           cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
           ray.emptyCandidatePositions();
@@ -811,7 +812,7 @@ void pushInitialPositions ( dummy::Map map, int x, int y, int orientation, int r
 {
   NewRay ray;
   MCDMFunction function;
-  ray.findCandidatePositions ( map,x,y,orientation ,FOV,range );
+  ray.findCandidatePositions ( &map,x,y,orientation ,FOV,range );
   vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
   ray.emptyCandidatePositions();
   list<Pose> frontiers;
