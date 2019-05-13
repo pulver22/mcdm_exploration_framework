@@ -1012,6 +1012,73 @@ namespace dummy{
 
     }
 
+
+/*
+int Map::getPathPlanningNumRows() const
+{
+    return getGridNumRows(&planning_grid_);
+}
+
+bool  Map::getGridPosition(double &x, double &y, long i, long j)
+{
+  return getPosition(x, y,  i, j, &nav_grid_);
+}
+ */
+    void Map::plotPathPlanningGridColor(std::string fileURI)
+    {
+      plotMyGridColor(fileURI, &planning_grid_);
+    }
+
+    void Map::plotGridColor(std::string fileURI)
+    {
+      plotMyGridColor(fileURI, &nav_grid_);
+    }
+
+    void Map::plotMyGridColor(std::string fileURI, const grid_map::GridMap * gm)
+    {
+      // "channels" is a vector of 3 Mat arrays:
+      vector<cv::Mat> channels(3);
+
+      grid_map::GridMap tempGrid;
+
+      cv::Mat imageCV,color_imageCV,exploredCV;
+
+      sensor_msgs::ImagePtr imageROS;
+
+      tempGrid = *gm;
+      tempGrid.add("obstacles", 0.0);
+      tempGrid.add("explored", 0.0);
+
+      // get values:
+      for (grid_map::GridMapIterator iterator(tempGrid); !iterator.isPastEnd(); ++iterator) {
+                if (tempGrid.at("layer",*iterator)==1)
+                      tempGrid.at("obstacles",*iterator)=1;
+                if (tempGrid.at("layer",*iterator)==2)
+                      tempGrid.at("explored",*iterator)=1;
+      }
+
+      // we cast obstacles to a grayscale image (hopefully, binary)
+      GridMapCvConverter::toImage<unsigned short, 1>(tempGrid, "obstacles", CV_16UC1, 0, 1, imageCV);
+
+      // we cast explored to a grayscale image (hopefully, binary)
+      GridMapCvConverter::toImage<unsigned short, 1>(tempGrid, "explored", CV_16UC1, 0, 1, exploredCV);
+
+      // change grayscale representation into color representation.
+      cv::cvtColor(imageCV, color_imageCV, cv::COLOR_GRAY2BGR);
+      // split it into channels
+      cv::split(color_imageCV, channels);
+
+      // add the exploredCV image as channel into the color image
+      // BGR order in OpenCV)
+      channels[2]= channels[2]+exploredCV;
+
+      //then merge them back
+      cv::merge(channels,color_imageCV);
+
+      cv::imwrite(fileURI.c_str(), color_imageCV);
+
+    }
+
     int Map::isCandidate(long i, long j)
     {
   	   return isCandidate_inner( i,  j, 1);

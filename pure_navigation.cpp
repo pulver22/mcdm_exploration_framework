@@ -161,6 +161,12 @@ int main ( int argc, char **argv )
 
       dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
       ROS_DEBUG("Map created correctly");
+
+      map.plotPathPlanningGridColor("/tmp/pathplanning_start.png");
+
+      map.plotGridColor("/tmp/nav_start.png");
+
+
 //        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
 //        cout << "RFIDgrid created correctly" << endl;
       ros::Publisher marker_pub = nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
@@ -224,6 +230,11 @@ int main ( int argc, char **argv )
 
       do
       {
+
+        map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
+
+        map.plotGridColor("/tmp/nav_lastLoop.png");
+
         // If we are doing "forward" navigation towards cells never visited before
         if ( btMode == false )
         {
@@ -329,6 +340,9 @@ int main ( int argc, char **argv )
 
             cout << "No other candidate position" << endl;
             cout << "----- BACKTRACKING -----" << endl;
+
+
+
             // If the graph contains cells that can be explored
             if ( graph2.size() > 1 )
             {

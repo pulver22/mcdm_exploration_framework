@@ -437,6 +437,11 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
        */
   bool  getRFIDIndex(double x, double y, long &i, long &j);
 
+
+  void plotPathPlanningGridColor(std::string fileURI);
+
+  void plotGridColor(std::string fileURI);
+
   // ...........................................................................
   // following methods were at newray.cpp ......................................
   // ...........................................................................
@@ -768,6 +773,8 @@ private:
   cv::Mat binarizeImage(cv::Mat imageCV);
 
   void plotMyGrid(std::string fileURI, const grid_map::GridMap * gm);
+
+  void plotMyGridColor(std::string fileURI, const grid_map::GridMap * gm);
 
   /**
    * constraints angle into -pi,pi range
