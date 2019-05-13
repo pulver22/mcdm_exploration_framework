@@ -437,6 +437,119 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
        */
   bool  getRFIDIndex(double x, double y, long &i, long &j);
 
+  // ...........................................................................
+  // following methods were at newray.cpp ......................................
+  // ...........................................................................
+
+  /**
+   * Check if a path planning cell is candidate: is next to an empty cell
+   * @param  i   cell row index in pathplanning grid
+   * @param  j   cell col index in pathplanning grid
+   * @return     1 == cell is adjacent to at least one free cell, 0 otherwise
+   */
+  int isCandidate(long i,long  j);
+
+  int planning_iterate_func(grid_map::SubmapIterator iterator);
+
+  /**
+   * Like isCandidate, but inside each of the surrounding path planning cells,
+   *       checks if any of the corresponding nav cells are empty
+   * @param  i   cell row index in pathplanning grid
+   * @param  j   cell col index in pathplanning grid
+   * @return     1 == cell is adjacent to at least one free nav cell, 0 otherwise
+   */
+  int isCandidate2(long i,long  j);
+
+  int nav_iterate_func(grid_map::SubmapIterator iterator);
+
+  int isCandidate_inner(long i, long j, int mode);
+
+  void findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+  void calculateInfoGainSensingTime (double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+  /**
+   * Given a starting point and heading, updates candidatePositions.
+   * Candidate positions  are:
+   *        -  closer to starter point than range
+   *        -  within a given FOV from starting heading.
+   *        -  free from obstacles between them and starting point
+   *        -  "Candidate" as in function isCandidate.
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  range_m      Max. distance to consider in m.
+   */
+  void findCandidatePositions(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+
+
+  /**
+   * This function is exactly as findCandidatePositions but using Candidate2
+   * Given a starting point and heading, updates candidatePositions.
+   * Candidate positions  are:
+   *        -  closer to starter point than range
+   *        -  within a given FOV from starting heading.
+   *        -  free from obstacles between them and starting point
+   *        -  "Candidate2" as in function isCandidate.
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  range_m      Max. distance to consider in m.
+   */
+  void findCandidatePositions2(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+  /**
+   * Returns candidate positions: path planning cell indexes list built with findCandidatePositions or  findCandidatePositions2
+   */
+  vector< std::pair<long,long>> getCandidatePositions();
+
+  /**
+   * Clears candidate positions (built with findCandidatePositions or  findCandidatePositions2)
+   */
+  void emptyCandidatePositions();
+
+  /**
+   * Calculate the sensing time of a possible scanning operation, at nav grid level.
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  range_m      Max. distance to consider in m.
+   * @return pair         Minimum FOV required to scan all the free cells from the considered pose
+   */
+  std::pair<double,double> getSensingTime(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+
+  /**
+   * Perform the sensing operation by setting the value of the free cell scanned to 2
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians) [UNUSED]
+   * @param  range_m      Max. distance to consider in m.
+   * @param  minAngle_rad Min angle from current heading (in radians) to consider in scan
+   * @param  maxAngle_rad Max angle from current heading (in radians) to consider in scan
+   * @return int          Number of modified cells at nav grid.
+   */
+  int performSensingOperation(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m, double minAngle_rad, double maxAngle_rad);
+
+
+  /**
+   * Returns number of free cells in scanning area at nav grid
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  range_m      Max. distance to consider in m.
+   * @return int          Number of free cells at nav grid area.
+   */
+  int getInformationGain(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+  // ...........................................................................
+  // End of methos previously at newray.cpp ....................................
+  // ...........................................................................
 
 
 protected:
@@ -526,9 +639,6 @@ protected:
   // number of cols of the  path planning grid
   int numPathPlanningGridCols;
 
-  // TODO: meaningful description here
-  std::vector<std::pair<int, int> > edgePoints;
-
   // Number of cells in navigation grid that are not == 1
   long totalFreeCells;
 
@@ -555,6 +665,9 @@ protected:
   long numGridCols;
 
 private:
+
+  // TODO: meaningful description here
+  std::vector<std::pair<long, long> > edgePoints;
 
   /**
    * Returns the i,j index from grid of the given metric position (in "map" frame id)
@@ -655,6 +768,14 @@ private:
   cv::Mat binarizeImage(cv::Mat imageCV);
 
   void plotMyGrid(std::string fileURI, const grid_map::GridMap * gm);
+
+  /**
+   * constraints angle into -pi,pi range
+   * @param  x angle in radians
+   * @return   -pi,pi wrapped angle
+   */
+  double  constrainAnglePI(double x);
+
 };
 }
 
