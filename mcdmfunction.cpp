@@ -109,8 +109,8 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers, dummy::Map *ma
   {
     Pose f = *it2;
     double value = 0.0;
-//    cout << "[mcdmfunction.cpp@evaluateFrontiers] Evaluating frontiers: " << counter << endl;
     value = evaluateFrontier(f, map);
+    cout << "[mcdmfunction.cpp@evaluateFrontiers] Evaluating frontiers: " << counter << ", evaluation: " << value << endl;
     counter++;
   }
 

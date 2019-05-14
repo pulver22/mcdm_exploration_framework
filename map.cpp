@@ -323,7 +323,7 @@ namespace dummy{
         for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex, navBufferSize);
              !nav_iterator.isPastEnd(); ++nav_iterator)
         {
-          std::cout << "[Map.cpp@updatePathPlanningGrid] Inside : " << getGridValue((*nav_iterator)(0),(*nav_iterator)(1)) << " at " << (*nav_iterator)(0) << ", " << (*nav_iterator)(0) << endl;
+//          std::cout << "[Map.cpp@updatePathPlanningGrid] Inside : " << getGridValue((*nav_iterator)(0),(*nav_iterator)(1)) << " at " << (*nav_iterator)(0) << ", " << (*nav_iterator)(0) << endl;
           counter ++;
 
           if (isGridValueObst(*nav_iterator)) {
@@ -333,10 +333,11 @@ namespace dummy{
 
           if (isGridValueVist(*nav_iterator)) {
             countScanned++;
-//            std::cout << "[Map.cpp@updatePathPlanningGrid] 2" << endl;
           }
         }
-        if (countScanned == 0.6 * gridToPathGridScale * gridToPathGridScale) {
+
+//        std::cout << "[Map.cpp@updatePathPlanningGrid] countScanned: " << countScanned << endl;
+        if (countScanned >= 0.6 * gridToPathGridScale * gridToPathGridScale) {
           setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0),(*planning_iterator)(1));
 
           grid_map::Index ind;
@@ -346,10 +347,10 @@ namespace dummy{
           counter_planning_grid_scanned++;
 //          std::cout << "[Map.cpp@updatePathPlanningGrid] CountScanned" << endl;
         }
-        if (setToOne == 1) {
-          setPathPlanningGridValue(Map::CellValue::OBST, (*planning_iterator)(0),(*planning_iterator)(1));
-//          std::cout << "[Map.cpp@updatePathPlanningGrid] SetToOne" << endl;
-        }
+//        if (setToOne == 1) {
+//          setPathPlanningGridValue(Map::CellValue::OBST, (*planning_iterator)(0),(*planning_iterator)(1));
+////          std::cout << "[Map.cpp@updatePathPlanningGrid] SetToOne" << endl;
+//        }
 
       }
 
@@ -728,7 +729,7 @@ namespace dummy{
         {
             for(long col = 0; col < columns; ++col)
             {
-                if(isGridValueFree( grid_map::Index(col,row)))
+                if(isGridValueFree( grid_map::Index(row, col)))
                 {
                     imgNew<<  255 << " ";
                 }
@@ -752,7 +753,7 @@ namespace dummy{
           {
               for(long col = 0; col < columns; ++col)
               {
-                  if(isGridValueFree( grid_map::Index(col,row))) {
+                  if(isGridValueFree( grid_map::Index(row, col))) {
                       txt <<  col << ": " << row << endl;
                   }
               }

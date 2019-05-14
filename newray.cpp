@@ -520,7 +520,7 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
       double distance = sqrt((i - cell_i)*(i - cell_i) + (j - cell_j)*(j - cell_j));
 //      std::cout << "[newray.cpp@performSensingOperation][" << count << "] Cell: [" << i << "," << j << "], Value "<< map->getGridValue(i, j) << ", Distance: " << distance << std::endl;
       //if a cell is free and within range of the robot, generate the ray connecting the robot cell and the free cell
-      if(map->getGridValue(i, j) == 0 && distance <= range)
+      if(map->isGridValueFree( grid_map::Index(i,j)) && distance <= range)
 
       {
 
@@ -561,7 +561,7 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
             //not needed, but left anyway
             if(curX < 0 || curX > map->getNumGridRows() || curY < 0 || curY > map->getNumGridCols()) hit = 1;
 
-            if(map->getGridValue((long)curX, (long)curY) == dummy::Map::CellValue::OBST)
+            if(map->isGridValueObst( grid_map::Index(curX, curY)))
             {
               hit = 1;		//hit set to 1 if an obstacle is found
 //              std::cout << "[newray.cpp@performSensingOperation] HIT! cell: " << j << " " << i << " Hit point: " << curY << " " << curX << std::endl;
@@ -571,7 +571,7 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
             {
               map->setGridValue(dummy::Map::CellValue::VIST, i, j);
               counter++;
-//              std::cout << "[newray.cpp@performSensingOperation] Cell scanned: " << i << " " << j << std::endl;
+//              std::cout << "[newray.cpp@performSensingOperation] Cell scanned: " << i << " " << j  <<", value: "<< map->getGridValue(i, j) << std::endl;
               hit = 1;
             }
             u += 0.2;		//move forward along the ray
