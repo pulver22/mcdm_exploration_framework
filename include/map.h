@@ -372,6 +372,16 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    */
    bool  getPathPlanningPosition(double &x, double &y, long i, long j);
 
+  /**
+  * Returns the metric position (in "map" frame id) from any grid of the given i,j index
+  * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
+  * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+  * @param  i  cell row index
+  * @param  j  cell col index
+  * @return    True if position was retrieved
+  */
+   bool  getPosition(double &x, double &y, long i, long j, grid_map::GridMap *gm);
+
    /**
     * Returns the i,j index from navigation grid of the given metric position (in "map" frame id)
     * @param  x  metric position x coordinate (in "map" frame id) in m.

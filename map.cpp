@@ -278,7 +278,7 @@ namespace dummy{
       grid_map::Index navStartIndex, rfid_index;
 
       int countScanned = 0;
-      int setToFree = 0;
+      int setToOne = 0;
       double k = (this->planning_grid_.getResolution()/2) - nav_grid_.getResolution();
       int counter_planning_grid_scanned = 0;
 
@@ -294,7 +294,7 @@ namespace dummy{
 //        std::cout << "[Map.cpp@updatePathPlanningGrid] Current position(cells) in PLANNING grid = [ " << *planning_iterator << endl;
 
         countScanned = 0;
-        setToFree = 0;
+        setToOne = 0;
 
         // obtain the position of the upper-left  navigation cell INSIDE current planning cell
         upper_left_pp.x() = position_pp.x() - k;
@@ -308,7 +308,7 @@ namespace dummy{
         for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex, navBufferSize);
              !nav_iterator.isPastEnd(); ++nav_iterator)
         {
-//          std::cout << "[Map.cpp@updatePathPlanningGrid] Inside : " << nav_grid_.at("layer", *nav_iterator)  << " at " << *nav_iterator << endl;
+          std::cout << "[Map.cpp@updatePathPlanningGrid] Inside : " << nav_grid_.at("layer", *nav_iterator)  << " at " << (*nav_iterator)(0) << ", " << (*nav_iterator)(0) << endl;
           counter ++;
 
           if (nav_grid_.at("layer", *nav_iterator) == Map::CellValue::OBST) {
@@ -321,9 +321,10 @@ namespace dummy{
 //            std::cout << "[Map.cpp@updatePathPlanningGrid] 2" << endl;
           }
         }
-        if (countScanned == gridToPathGridScale * gridToPathGridScale) {
+        if (countScanned == 0.6 * gridToPathGridScale * gridToPathGridScale) {
           planning_grid_.at("layer", *planning_iterator) = Map::CellValue::VIST;
           rfid_grid_.atPosition("layer", position_pp) += power;
+          counter_planning_grid_scanned++;
 //          std::cout << "[Map.cpp@updatePathPlanningGrid] CountScanned" << endl;
         }
         if (setToOne == 1) {
