@@ -301,24 +301,24 @@ namespace dummy{
              !nav_iterator.isPastEnd(); ++nav_iterator) {
           std::cout << "[Map.cpp@updatePathPlanningGrid] Inside : " << nav_grid_.at("layer", *nav_iterator) << endl;
 
-          if (nav_grid_.at("layer", *nav_iterator) == 1) {
+          if (nav_grid_.at("layer", *nav_iterator) == Map::CellValue::OBST) {
             setToOne = 1;
 //            std::cout << "[Map.cpp@updatePathPlanningGrid] 1" << endl;
           }
 
-          if (nav_grid_.at("layer", *nav_iterator) == 2) {
+          if (nav_grid_.at("layer", *nav_iterator) == Map::CellValue::VIST) {
             countScanned++;
 //            std::cout << "[Map.cpp@updatePathPlanningGrid] 2" << endl;
           }
         }
         if (countScanned == gridToPathGridScale * gridToPathGridScale) {
-          planning_grid_.at("layer", *planning_iterator) = 2;
+          planning_grid_.at("layer", *planning_iterator) = Map::CellValue::VIST;
           rfid_grid_.atPosition("layer", position_pp) += power;
           counter_planning_grid_scanned ++ ;
 //          std::cout << "[Map.cpp@updatePathPlanningGrid] CountScanned" << endl;
         }
         if (setToOne == 1) {
-          planning_grid_.at("layer", *planning_iterator) = 1;
+          planning_grid_.at("layer", *planning_iterator) = Map::CellValue::OBST;
 //          std::cout << "[Map.cpp@updatePathPlanningGrid] SetToOne" << endl;
         }
 
@@ -342,19 +342,19 @@ namespace dummy{
       return getIndex(x, y,  i, j, &planning_grid_);
     }
 
-    int Map::getPathPlanningGridValue(long i,long j) const
+    Map::CellValue Map::getPathPlanningGridValue(long i,long j) const
     {
-        return getValue(i,j, &planning_grid_);
+        return toCellValue(getValue(i,j, &planning_grid_));
     }
 
-    int  Map::getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const
+    Map::CellValue Map::getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const
     {
-      return getValue(ps, &planning_grid_);
+      return toCellValue(getValue(ps, &planning_grid_));
     }
 
-    int Map::getPathPlanningGridValue(long i) const
+    Map::CellValue Map::getPathPlanningGridValue(long i) const
     {
-        return getValue(i, &planning_grid_);
+        return toCellValue(getValue(i, &planning_grid_));
     }
 
     int Map::getPathPlanningNumCols() const
@@ -367,30 +367,30 @@ namespace dummy{
         return getGridNumRows(&planning_grid_);
     }
 
-    bool  Map::getGridPosition(double &x, double &y, long i, long j)
+    bool Map::getGridPosition(double &x, double &y, long i, long j)
     {
       return getPosition(x, y,  i, j, &nav_grid_);
     }
 
-    bool  Map::getGridIndex(double x, double y, long &i, long &j)
+    bool Map::getGridIndex(double x, double y, long &i, long &j)
     {
       return getIndex(x, y,  i, j, &nav_grid_);
     }
 
 
-    int Map::getGridValue(long i,long j) const
+    Map::CellValue Map::getGridValue(long i,long j) const
     {
-      return getValue(i,j, &nav_grid_);
+      return toCellValue(getValue(i,j, &nav_grid_));
     }
 
-    int  Map::getGridValue(geometry_msgs::PoseStamped ps) const
+    Map::CellValue Map::getGridValue(geometry_msgs::PoseStamped ps) const
     {
-      return getValue(ps, &nav_grid_);
+        return toCellValue(getValue(ps, &nav_grid_));
     }
 
-    int Map::getGridValue(long i) const
+    Map::CellValue Map::getGridValue(long i) const
     {
-        return getValue(i, &nav_grid_);
+        return toCellValue(getValue(i, &nav_grid_));
     }
 
     long Map::getNumGridCols() const
@@ -413,19 +413,19 @@ namespace dummy{
       return getIndex(x, y,  i, j, &map_grid_);
     }
 
-    int Map::getMapValue(long i, long j)
+    Map::CellValue Map::getMapValue(long i, long j)
     {
-      return getValue(i,j, &map_grid_);
+      return toCellValue(getValue(i,j, &map_grid_));
     }
 
-    int  Map::getMapValue(geometry_msgs::PoseStamped ps) const
+    Map::CellValue Map::getMapValue(geometry_msgs::PoseStamped ps) const
     {
-      return getValue(ps, &map_grid_);
+      return toCellValue(getValue(ps, &map_grid_));
     }
 
-    int Map::getMapValue(long i) const
+    Map::CellValue Map::getMapValue(long i) const
     {
-        return getValue(i, &map_grid_);
+        return toCellValue(getValue(i, &map_grid_));
     }
 
     long Map::getNumCols()
@@ -448,17 +448,17 @@ namespace dummy{
       return getIndex(x, y,  i, j, &rfid_grid_);
     }
 
-    int Map::getRFIDGridValue(long i, long j) const
+    float Map::getRFIDGridValue(long i, long j) const
     {
       return getValue(i,j, &rfid_grid_);
     }
 
-    int Map::getRFIDGridValue(geometry_msgs::PoseStamped ps) const
+    float Map::getRFIDGridValue(geometry_msgs::PoseStamped ps) const
     {
       return getValue(ps, &rfid_grid_);
     }
 
-    int Map::getRFIDGridValue(long i) const
+    float Map::getRFIDGridValue(long i) const
     {
         return getValue(i, &rfid_grid_);
     }
@@ -517,15 +517,15 @@ namespace dummy{
 
 
 
-    int  Map::getValue(long i,long j, const grid_map::GridMap *gm) const
+    float Map::getValue(long i,long j, const grid_map::GridMap *gm) const
     {
-      int val;
+      float val;
       grid_map::Index index(i,j);
       Position position;
 
       if (gm->getPosition(index, position))
       {
-        val = (int) gm->at("layer", index);
+        val = gm->at("layer", index);
       }
       else
       {
@@ -535,9 +535,9 @@ namespace dummy{
       return val;
     }
 
-    int  Map::getValue(geometry_msgs::PoseStamped ps, const grid_map::GridMap *gm) const
+    float Map::getValue(geometry_msgs::PoseStamped ps, const grid_map::GridMap *gm) const
     {
-        double val;
+        float val;
         if (ps.header.frame_id!=gm->getFrameId())
         {
           ROS_ERROR("Pose given in different frame id: grid==[%s], point ==[%s]",ps.header.frame_id.c_str(),gm->getFrameId().c_str() );
@@ -558,10 +558,10 @@ namespace dummy{
 
           }
         }
-        return (int) val;
+        return val;
     }
 
-    int Map::getValue(long i, const  grid_map::GridMap *gm) const
+    float Map::getValue(long i, const  grid_map::GridMap *gm) const
     {
       long rows = getGridNumRows(gm);
       std::ldiv_t result = std::div(i , rows);
@@ -584,7 +584,7 @@ namespace dummy{
 
 
     // Generic (internal) setters ..............................................
-    void Map::setValue(int value, long i,long j, grid_map::GridMap *gm)
+    void Map::setValue(float value, long i,long j, grid_map::GridMap *gm)
     {
       grid_map::Index index(i,j);
       Position position;
@@ -599,7 +599,7 @@ namespace dummy{
       }
     }
 
-    void  Map::setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm)
+    void  Map::setValue(float value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm)
     {
         if (ps.header.frame_id!=gm->getFrameId())
         {
@@ -620,47 +620,47 @@ namespace dummy{
         }
     }
 
-    void Map::setValue(int value, long i, grid_map::GridMap *gm)
+    void Map::setValue(float value, long i, grid_map::GridMap *gm)
     {
       long rows = getGridNumRows(gm);
       std::ldiv_t result = std::div(i , rows);
       rows = result.quot;
       long cols = result.rem;
 
-      setValue(value, rows,cols,gm);
+      setValue( (value), rows,cols,gm);
     }
 
     // E.O. Generic (internal) setters .........................................
 
 
-    void Map::setPathPlanningGridValue(int value, int i, int j)
+    void Map::setPathPlanningGridValue(Map::CellValue value, int i, int j)
     {
-      setValue( value,  i, j, &planning_grid_);
+      setValue( toFloat(value),  i, j, &planning_grid_);
     }
 
-    void Map::setPathPlanningGridValue(int value, geometry_msgs::PoseStamped ps)
+    void Map::setPathPlanningGridValue(Map::CellValue value, geometry_msgs::PoseStamped ps)
     {
-      setValue( value, ps, &planning_grid_);
+      setValue( toFloat(value), ps, &planning_grid_);
     }
 
-    void Map::setPathPlanningGridValue(int value,long i)
+    void Map::setPathPlanningGridValue(Map::CellValue value,long i)
     {
-      setValue( value, i, &planning_grid_);
+      setValue( toFloat(value), i, &planning_grid_);
     }
 
-    void Map::setGridValue(int value, long i, long j)
+    void Map::setGridValue(Map::CellValue value, long i, long j)
     {
-      setValue( value,  i, j, &nav_grid_);
+      setValue( toFloat(value),  i, j, &nav_grid_);
     }
 
-    void Map::setGridValue(int value, geometry_msgs::PoseStamped ps)
+    void Map::setGridValue(Map::CellValue value, geometry_msgs::PoseStamped ps)
     {
-      setValue( value, ps, &nav_grid_);
+      setValue( toFloat(value), ps, &nav_grid_);
     }
 
-    void Map::setGridValue(int value,long i)
+    void Map::setGridValue(Map::CellValue value,long i)
     {
-      setValue( value, i, &nav_grid_);
+      setValue( toFloat(value), i, &nav_grid_);
     }
 
     void Map::setRFIDGridValue(float power, int i, int j)
@@ -697,7 +697,7 @@ namespace dummy{
         {
             for(long col = 0; col < columns; ++col)
             {
-                if(getGridValue(row,col) == 0)
+                if(getGridValue(row,col) == Map::CellValue::FREE)
                 {
                     imgNew<<  255 << " ";
                 }
@@ -721,7 +721,7 @@ namespace dummy{
           {
               for(long col = 0; col < columns; ++col)
               {
-                  if(getGridValue(row,col) == 0) {
+                  if(getGridValue(row,col) == Map::CellValue::FREE) {
                       txt <<  col << ": " << row << endl;
                   }
               }
@@ -770,7 +770,7 @@ namespace dummy{
       {
           for(long col = 0; col < columns; ++col)
           {
-              if(getGridValue(row,col) == 1) totalFreeCells--;
+              if(getGridValue(row,col) == Map::CellValue::OBST) totalFreeCells--;
           }
       }
       return totalFreeCells;
@@ -1051,9 +1051,9 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
 
       // get values:
       for (grid_map::GridMapIterator iterator(tempGrid); !iterator.isPastEnd(); ++iterator) {
-                if (tempGrid.at("layer",*iterator)==1)
+                if (tempGrid.at("layer",*iterator)==Map::CellValue::OBST)
                       tempGrid.at("obstacles",*iterator)=1;
-                if (tempGrid.at("layer",*iterator)==2)
+                if (tempGrid.at("layer",*iterator)==Map::CellValue::VIST)
                       tempGrid.at("explored",*iterator)=1;
       }
 
@@ -1088,7 +1088,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
     {
       int candidate = 0;
       for ( ;!iterator.isPastEnd(); ++iterator) {
-          if (planning_grid_.at("layer", *iterator)  == 0)
+          if (planning_grid_.at("layer", *iterator)  == Map::CellValue::FREE)
           {
             candidate = 1;
             break;
@@ -1126,7 +1126,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
 
               for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex, navBufferSize);
                       !nav_iterator.isPastEnd(); ++nav_iterator) {
-                           if( nav_grid_.at("layer", *nav_iterator) == 0)
+                           if( nav_grid_.at("layer", *nav_iterator) == Map::CellValue::FREE)
                            {
                               candidate = 1;
                               break;
@@ -1221,7 +1221,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                 planning_grid_.getPosition(*lin_iterator, rayPos);
                                 rayIndex = (*lin_iterator);
                                 // if an obstacle is found, end
-                                if(getPathPlanningGridValue(rayIndex(0),rayIndex(1)) == 1)
+                                if(getPathPlanningGridValue(rayIndex(0),rayIndex(1)) == Map::CellValue::OBST)
                                 {
                                   hit =  true;
                                   ROS_DEBUG("[map.cpp@findCandidatePositions] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
@@ -1273,7 +1273,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                 !iterator.isPastEnd(); ++iterator) {
 
                   // If cell is empty
-                  if( nav_grid_.at("layer", *iterator) == 0)
+                  if( nav_grid_.at("layer", *iterator) == Map::CellValue::FREE)
                   {
                       nav_grid_.getPosition(*iterator, candidatePos);
 
@@ -1296,7 +1296,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                     nav_grid_.getPosition(*lin_iterator, rayPos);
                                     rayIndex=(*lin_iterator);
                                     // if an obstacle is found, end
-                                    if(nav_grid_.at("layer", *iterator) == 1)
+                                    if(nav_grid_.at("layer", *iterator) == Map::CellValue::OBST)
                                     {
                                       hit =  true;
                                       ROS_DEBUG("[map.cpp@getSensingTime] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
@@ -1343,7 +1343,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                 !iterator.isPastEnd(); ++iterator) {
 
                   // If cell is empty
-                  if( nav_grid_.at("layer", *iterator) == 0)
+                  if( nav_grid_.at("layer", *iterator) == Map::CellValue::FREE)
                   {
                       nav_grid_.getPosition(*iterator, candidatePos);
 
@@ -1366,7 +1366,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                     nav_grid_.getPosition(*lin_iterator, rayPos);
                                     rayIndex=(*lin_iterator);
                                     // if an obstacle is found, end
-                                    if(nav_grid_.at("layer", *iterator) == 1)
+                                    if(nav_grid_.at("layer", *iterator) == Map::CellValue::OBST)
                                     {
                                       hit =  true;
                                       ROS_DEBUG("[map.cpp@performSensingOperation] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
@@ -1408,7 +1408,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                   !iterator.isPastEnd(); ++iterator) {
 
                     // If cell is empty
-                    if( nav_grid_.at("layer", *iterator) == 0)
+                    if( nav_grid_.at("layer", *iterator) == Map::CellValue::FREE)
                     {
                         nav_grid_.getPosition(*iterator, candidatePos);
 
@@ -1431,7 +1431,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                       nav_grid_.getPosition(*lin_iterator, rayPos);
                                       rayIndex=(*lin_iterator);
                                       // if an obstacle is found, end
-                                      if(nav_grid_.at("layer", *iterator) == 1)
+                                      if(nav_grid_.at("layer", *iterator) == Map::CellValue::OBST)
                                       {
                                         hit =  true;
                                         ROS_DEBUG("[map.cpp@getInformationGain] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
@@ -1469,6 +1469,49 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
         return x - M_PI;
     }
 
+    float  Map::toFloat( Map::CellValue value) const
+    {
+      float floatVal=-1.0;
 
+      switch(value)
+      {
+        case Map::CellValue::FREE:
+           floatVal=0.0;
+          break;
+        case Map::CellValue::OBST:
+           floatVal=1.0;
+          break;
+        case Map::CellValue::VIST:
+           floatVal=2.0;
+          break;
+        default:
+          ROS_FATAL("[Map@toFloat] INVALID CASTING REQUESTED...");
+          break;
+      }
+      return floatVal;
+    }
 
+    Map::CellValue  Map::toCellValue( float floatVal) const
+    {
+      Map::CellValue value;
+
+      if(floatVal==0.0)
+      {
+        value=Map::CellValue::FREE;
+      }
+      else if (floatVal==1.0)
+      {
+        value=Map::CellValue::OBST;
+      }
+      else if (floatVal==2.0)
+      {
+        value=Map::CellValue::VIST;
+      }
+      else
+      {
+        ROS_FATAL("[Map@toCellValue] INVALID CASTING REQUESTED... %3.3f",floatVal);
+      }
+
+      return value;
+    }
 }

@@ -20,6 +20,11 @@ class Map
 {
 
 public:
+  typedef enum CellValue{
+    FREE = 0,
+    OBST = 1,
+    VIST = 2
+  } CellValue;
 
 
    /**
@@ -51,21 +56,21 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @param  value  navigation grid value
    */
-  void setGridValue(int value, long i, long j);
+  void setGridValue(Map::CellValue value, long i, long j);
 
   /**
    * Set a navigation grid cell value
    * @param  ps point in "map" frame_id
    * @param  value  navigation grid value
    */
-  void setGridValue(int value, geometry_msgs::PoseStamped ps);
+  void setGridValue(Map::CellValue value, geometry_msgs::PoseStamped ps);
 
   /**
    * Set a navigation grid cell value
    * @param  i ith element (as vector)
    * @param  value  navigation grid value
    */
-  void setGridValue(int value, long i);
+  void setGridValue(Map::CellValue value, long i);
 
   /**
    * Return navigation grid cell value
@@ -73,16 +78,16 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   navigation grid value
    */
-  int getGridValue(long i, long j) const;
+  Map::CellValue getGridValue(long i, long j) const;
 
   /**
    * Return navigation grid cell value
    * @param  i ith element (as vector)
    * @return   navigation grid value
    */
-  int getGridValue(long i) const;
+  Map::CellValue getGridValue(long i) const;
 
-  int getGridValue(geometry_msgs::PoseStamped ps) const;
+  Map::CellValue getGridValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Return map grid cell value
@@ -90,11 +95,11 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   map grid value
    */
-  int getMapValue(long i, long j);
+  Map::CellValue getMapValue(long i, long j);
 
-  int getMapValue(long i) const;
+  Map::CellValue getMapValue(long i) const;
 
-  int getMapValue(geometry_msgs::PoseStamped ps) const;
+  Map::CellValue getMapValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Get number of Rows (height) in navigation grid
@@ -183,21 +188,21 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   path planning grid value
    */
-  int getPathPlanningGridValue(long i,long j) const;
+  Map::CellValue getPathPlanningGridValue(long i,long j) const;
 
   /**
    * Return path planning grid cell value at given position
    * @param  ps point in "map" frame_id
    * @return   path planning grid value
    */
-  int getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const;
+  Map::CellValue getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Return path planning grid cell value at given position
    * @param  i ith element (as vector)
    * @return   path planning grid value
    */
-  int getPathPlanningGridValue(long i) const;
+  Map::CellValue getPathPlanningGridValue(long i) const;
 
   /**
    * Set a path planning grid cell value
@@ -205,21 +210,21 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @param  value  path planning grid value
    */
-  void setPathPlanningGridValue(int value, int i, int j);
+  void setPathPlanningGridValue(Map::CellValue value, int i, int j);
 
   /**
   * Set a path planning grid cell value
   * @param  ps point in "map" frame_id
   * @param  value  path planning grid value
   */
-  void setPathPlanningGridValue(int value, geometry_msgs::PoseStamped ps);
+  void setPathPlanningGridValue(Map::CellValue value, geometry_msgs::PoseStamped ps);
 
   /**
   * Set a path planning grid cell value
   * @param  i ith element (as vector)
   * @param  value  path planning grid value
   */
-  void setPathPlanningGridValue(int value, long i);
+  void setPathPlanningGridValue(Map::CellValue value, long i);
 
   /**
    * Get number of Cols (width) in path planning grid
@@ -301,7 +306,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   RFID grid value
    */
-  int getRFIDGridValue(long i,long j) const;
+  float getRFIDGridValue(long i,long j) const;
 
 
   /**
@@ -309,14 +314,14 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  i ith element (as vector)
    * @return   RFID grid value
    */
-  int getRFIDGridValue(long i) const;
+  float getRFIDGridValue(long i) const;
 
   /**
    * Return RFID grid cell value
    * @param  ps point in "map" frame_id
    * @return   RFID grid value
    */
-  int getRFIDGridValue(geometry_msgs::PoseStamped ps) const;
+  float getRFIDGridValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Get number of Cols (width) in  RFID grid cell
@@ -703,7 +708,7 @@ private:
   * @param  gm  grid_map to retrieve
   * @return     grid value at indexes
   */
-  int  getValue(long i,long j, const grid_map::GridMap *gm) const;
+  float  getValue(long i,long j, const grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
@@ -711,14 +716,14 @@ private:
   * @param  gm  grid_map to retrieve
   * @return     grid value at pose stamped
   */
-  int  getValue(geometry_msgs::PoseStamped ps, const  grid_map::GridMap *gm) const;
+  float  getValue(geometry_msgs::PoseStamped ps, const  grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
   * @param  i ith element (as vector)
   * @return   navigation grid value
   */
-  int getValue(long i, const  grid_map::GridMap *gm) const;
+  float getValue(long i, const  grid_map::GridMap *gm) const;
 
   /**
   * Set a grid cell value
@@ -727,7 +732,7 @@ private:
   * @param  j col index
   * @param  gm  grid_map to retrieve
   */
-  void setValue(int value, long i,long j, grid_map::GridMap *gm) ;
+  void setValue(float value, long i,long j, grid_map::GridMap *gm) ;
 
   /**
   * Set a grid cell value
@@ -735,14 +740,14 @@ private:
   * @param  ps  Pose stamped in "map" frame_id
   * @param  gm  grid_map to retrieve
   */
-  void setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) ;
+  void setValue(float value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) ;
 
   /**
   * Set a grid cell value
   * @param  value value to store
   * @param  i ith element (as vector)
   */
-  void setValue(int value, long i, grid_map::GridMap *gm) ;
+  void setValue(float value, long i, grid_map::GridMap *gm) ;
 
   /**
    * Get number of Cols (width) in grid_map
@@ -782,6 +787,10 @@ private:
    * @return   -pi,pi wrapped angle
    */
   double  constrainAnglePI(double x);
+
+
+  Map::CellValue  toCellValue( float floatVal) const;
+  float  toFloat( Map::CellValue value) const;
 
 };
 }

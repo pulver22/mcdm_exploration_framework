@@ -150,7 +150,7 @@ void NewRay::findCandidatePositions(dummy::Map *map, long posX, long posY, int o
               //not needed, but left anyway
               if(curX < 0 || curX > map->getPathPlanningNumRows() || curY < 0 || curY > map->getPathPlanningNumCols()) hit = 1;
 
-              if(map->getPathPlanningGridValue((long)curX, (long)curY) == 1)
+              if(map->getPathPlanningGridValue((long)curX, (long)curY) == dummy::Map::CellValue::OBST)
               {
                 hit = 1;		//hit set to 1 if an obstacle is found
 //                std::cout << "[newRay.cpp@findCandidatePositions]HIT! cell: " << j << " " << i << " Hit point: " << curY << " " << curX << std::endl;
@@ -257,7 +257,7 @@ void NewRay::findCandidatePositions2(dummy::Map &map, long posX, long posY, int 
               //not needed, but left anyway
               if(curX < 0 || curX > map.getPathPlanningNumRows() || curY < 0 || curY > map.getPathPlanningNumCols()) hit = 1;
 
-              if(map.getPathPlanningGridValue((long)curX, (long)curY) == 1)
+              if(map.getPathPlanningGridValue((long)curX, (long)curY) == dummy::Map::CellValue::OBST)
               {
                 hit = 1;		//hit set to 1 if an obstacle is found
                 //std::cout << "HIT! cell: " << j << " " << i << " Hit point: " << curY << " " << curX << std::endl;
@@ -375,7 +375,7 @@ std::pair<double,double> NewRay::getSensingTime(const dummy::Map &map, long posX
             //not needed, but left anyway
             if(curX < 0 || curX > map.getNumGridRows() || curY < 0 || curY > map.getNumGridCols()) hit = 1;
 
-            if(map.getGridValue((long)curX, (long)curY) == 1)
+            if(map.getGridValue((long)curX, (long)curY) == dummy::Map::CellValue::OBST)
             {
               hit = 1;		//hit set to 1 if an obstacle is found
 //              std::cout << "HIT! cell: " << j << " " << i << " Hit point: " << curY << " " << curX << std::endl;
@@ -510,7 +510,7 @@ int NewRay::performSensingOperation(dummy::Map *map, long posX, long posY, int o
             //not needed, but left anyway
             if(curX < 0 || curX > map->getNumGridRows() || curY < 0 || curY > map->getNumGridCols()) hit = 1;
 
-            if(map->getGridValue((long)curX, (long)curY) == 1)
+            if(map->getGridValue((long)curX, (long)curY) == dummy::Map::CellValue::OBST)
             {
               hit = 1;		//hit set to 1 if an obstacle is found
 //              std::cout << "[newray.cpp@performSensingOperation] HIT! cell: " << j << " " << i << " Hit point: " << curY << " " << curX << std::endl;
@@ -518,7 +518,7 @@ int NewRay::performSensingOperation(dummy::Map *map, long posX, long posY, int o
 
             if((long)curX == i && (long)curY == j)	//if the free cell is reached, set its value to 2 and stop the ray
             {
-              map->setGridValue(2, i, j);
+              map->setGridValue(dummy::Map::CellValue::VIST, i, j);
               counter++;
 //              std::cout << "[newray.cpp@performSensingOperation] Cell scanned: " << (int)curY << " " << (int)curX << std::endl;
               hit = 1;
@@ -624,7 +624,7 @@ int NewRay::getInformationGain(const dummy::Map &map, long posX, long posY, int 
               //break;
             }
 
-            if(map.getGridValue((long)curX, (long)curY) == 1)
+            if(map.getGridValue((long)curX, (long)curY) == dummy::Map::CellValue::OBST)
             {
               hit = 1;		//hit set to 1 if an obstacle is found
               //std::cout << "HIT! cell: " << j << " " << i << " Hit point: " << curY << " " << curX << std::endl;
@@ -733,7 +733,7 @@ void NewRay::calculateInfoGainSensingTime (const dummy::Map &map, long posX, lon
             //not needed, but left anyway
             if(curX < 0 || curX > map.getNumGridRows() || curY < 0 || curY > map.getNumGridCols()) hit = 1;
 
-            if(map.getGridValue((long)curX, (long)curY) == 1)
+            if(map.getGridValue((long)curX, (long)curY) == dummy::Map::CellValue::OBST)
             {
               hit = 1;		//hit set to 1 if an obstacle is found
               //std::cout << "HIT! cell: " << j << " " << i << " Hit point: " << curY << " " << curX << std::endl;
