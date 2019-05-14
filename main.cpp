@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
                     newSensedCells = sensedCells + ray.performSensingOperation(&map,x,y,orientation,FOV,range, target.getScanAngles().first, target.getScanAngles().second);
                     map.updatePathPlanningGrid(x, y, range, 0.0);
                     totalAngle += target.getScanAngles().second - target.getScanAngles().first;
-                    ray.findCandidatePositions(map,x,y,orientation,FOV,range);
+                    ray.findCandidatePositions(&map,x,y,orientation,FOV,range);
                     vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
                     ray.emptyCandidatePositions();
 
@@ -829,7 +829,7 @@ void pushInitialPositions(dummy::Map map, int x, int y, int orientation, int ran
 {
     NewRay ray;
     MCDMFunction function;
-    ray.findCandidatePositions(map,x,y,orientation ,FOV,range);
+    ray.findCandidatePositions(&map,x,y,orientation ,FOV,range);
     vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
     ray.emptyCandidatePositions();
     list<Pose> frontiers;

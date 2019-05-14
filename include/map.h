@@ -20,6 +20,11 @@ class Map
 {
 
 public:
+  typedef enum CellValue{
+    FREE = 0,
+    OBST = 1,
+    VIST = 2
+  } CellValue;
 
 
    /**
@@ -51,21 +56,21 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @param  value  navigation grid value
    */
-  void setGridValue(int value, long i, long j);
+  void setGridValue(Map::CellValue value, long i, long j);
 
   /**
    * Set a navigation grid cell value
    * @param  ps point in "map" frame_id
    * @param  value  navigation grid value
    */
-  void setGridValue(int value, geometry_msgs::PoseStamped ps);
+  void setGridValue(Map::CellValue value, geometry_msgs::PoseStamped ps);
 
   /**
    * Set a navigation grid cell value
    * @param  i ith element (as vector)
    * @param  value  navigation grid value
    */
-  void setGridValue(int value, long i);
+  void setGridValue(Map::CellValue value, long i);
 
   /**
    * Return navigation grid cell value
@@ -73,16 +78,16 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   navigation grid value
    */
-  int getGridValue(long i, long j) const;
+  Map::CellValue getGridValue(long i, long j) const;
 
   /**
    * Return navigation grid cell value
    * @param  i ith element (as vector)
    * @return   navigation grid value
    */
-  int getGridValue(long i) const;
+  Map::CellValue getGridValue(long i) const;
 
-  int getGridValue(geometry_msgs::PoseStamped ps) const;
+  Map::CellValue getGridValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Return map grid cell value
@@ -90,11 +95,11 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   map grid value
    */
-  int getMapValue(long i, long j);
+  Map::CellValue getMapValue(long i, long j);
 
-  int getMapValue(long i) const;
+  Map::CellValue getMapValue(long i) const;
 
-  int getMapValue(geometry_msgs::PoseStamped ps) const;
+  Map::CellValue getMapValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Get number of Rows (height) in navigation grid
@@ -183,21 +188,21 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   path planning grid value
    */
-  int getPathPlanningGridValue(long i,long j) const;
+  Map::CellValue getPathPlanningGridValue(long i,long j) const;
 
   /**
    * Return path planning grid cell value at given position
    * @param  ps point in "map" frame_id
    * @return   path planning grid value
    */
-  int getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const;
+  Map::CellValue getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Return path planning grid cell value at given position
    * @param  i ith element (as vector)
    * @return   path planning grid value
    */
-  int getPathPlanningGridValue(long i) const;
+  Map::CellValue getPathPlanningGridValue(long i) const;
 
   /**
    * Set a path planning grid cell value
@@ -205,21 +210,21 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @param  value  path planning grid value
    */
-  void setPathPlanningGridValue(int value, int i, int j);
+  void setPathPlanningGridValue(Map::CellValue value, int i, int j);
 
   /**
   * Set a path planning grid cell value
   * @param  ps point in "map" frame_id
   * @param  value  path planning grid value
   */
-  void setPathPlanningGridValue(int value, geometry_msgs::PoseStamped ps);
+  void setPathPlanningGridValue(Map::CellValue value, geometry_msgs::PoseStamped ps);
 
   /**
   * Set a path planning grid cell value
   * @param  i ith element (as vector)
   * @param  value  path planning grid value
   */
-  void setPathPlanningGridValue(int value, long i);
+  void setPathPlanningGridValue(Map::CellValue value, long i);
 
   /**
    * Get number of Cols (width) in path planning grid
@@ -301,7 +306,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   RFID grid value
    */
-  int getRFIDGridValue(long i,long j) const;
+  float getRFIDGridValue(long i,long j) const;
 
 
   /**
@@ -309,14 +314,14 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  i ith element (as vector)
    * @return   RFID grid value
    */
-  int getRFIDGridValue(long i) const;
+  float getRFIDGridValue(long i) const;
 
   /**
    * Return RFID grid cell value
    * @param  ps point in "map" frame_id
    * @return   RFID grid value
    */
-  int getRFIDGridValue(geometry_msgs::PoseStamped ps) const;
+  float getRFIDGridValue(geometry_msgs::PoseStamped ps) const;
 
   /**
    * Get number of Cols (width) in  RFID grid cell
@@ -438,16 +443,124 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   bool  getRFIDIndex(double x, double y, long &i, long &j);
 
 
-/**
- * Returns the metric position (in "map" frame id) from grid of the given i,j index
- * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
- * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
- * @param  i  cell row index
- * @param  j  cell col index
- * @param  gm grid map where we operate
- * @return    True if position was retrieved
- */
-bool getPosition(double &x, double &y, long i, long j, grid_map::GridMap *gm);
+  void plotPathPlanningGridColor(std::string fileURI);
+
+  void plotGridColor(std::string fileURI);
+
+  // ...........................................................................
+  // following methods were at newray.cpp ......................................
+  // ...........................................................................
+
+  /**
+   * Check if a path planning cell is candidate: is next to an empty cell
+   * @param  i   cell row index in pathplanning grid
+   * @param  j   cell col index in pathplanning grid
+   * @return     1 == cell is adjacent to at least one free cell, 0 otherwise
+   */
+  int isCandidate(long i,long  j);
+
+  int planning_iterate_func(grid_map::SubmapIterator iterator);
+
+  /**
+   * Like isCandidate, but inside each of the surrounding path planning cells,
+   *       checks if any of the corresponding nav cells are empty
+   * @param  i   cell row index in pathplanning grid
+   * @param  j   cell col index in pathplanning grid
+   * @return     1 == cell is adjacent to at least one free nav cell, 0 otherwise
+   */
+  int isCandidate2(long i,long  j);
+
+  int nav_iterate_func(grid_map::SubmapIterator iterator);
+
+  int isCandidate_inner(long i, long j, int mode);
+
+  void findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+  void calculateInfoGainSensingTime (double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+  /**
+   * Given a starting point and heading, updates candidatePositions.
+   * Candidate positions  are:
+   *        -  closer to starter point than range
+   *        -  within a given FOV from starting heading.
+   *        -  free from obstacles between them and starting point
+   *        -  "Candidate" as in function isCandidate.
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  range_m      Max. distance to consider in m.
+   */
+  void findCandidatePositions(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+
+
+  /**
+   * This function is exactly as findCandidatePositions but using Candidate2
+   * Given a starting point and heading, updates candidatePositions.
+   * Candidate positions  are:
+   *        -  closer to starter point than range
+   *        -  within a given FOV from starting heading.
+   *        -  free from obstacles between them and starting point
+   *        -  "Candidate2" as in function isCandidate.
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  range_m      Max. distance to consider in m.
+   */
+  void findCandidatePositions2(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+  /**
+   * Returns candidate positions: path planning cell indexes list built with findCandidatePositions or  findCandidatePositions2
+   */
+  vector< std::pair<long,long>> getCandidatePositions();
+
+  /**
+   * Clears candidate positions (built with findCandidatePositions or  findCandidatePositions2)
+   */
+  void emptyCandidatePositions();
+
+  /**
+   * Calculate the sensing time of a possible scanning operation, at nav grid level.
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  range_m      Max. distance to consider in m.
+   * @return pair         Minimum FOV required to scan all the free cells from the considered pose
+   */
+  std::pair<double,double> getSensingTime(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+
+
+  /**
+   * Perform the sensing operation by setting the value of the free cell scanned to 2
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians) [UNUSED]
+   * @param  range_m      Max. distance to consider in m.
+   * @param  minAngle_rad Min angle from current heading (in radians) to consider in scan
+   * @param  maxAngle_rad Max angle from current heading (in radians) to consider in scan
+   * @return int          Number of modified cells at nav grid.
+   */
+  int performSensingOperation(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m, double minAngle_rad, double maxAngle_rad);
+
+
+  /**
+   * Returns number of free cells in scanning area at nav grid
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  range_m      Max. distance to consider in m.
+   * @return int          Number of free cells at nav grid area.
+   */
+  int getInformationGain(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+  // ...........................................................................
+  // End of methos previously at newray.cpp ....................................
+  // ...........................................................................
+
 
 protected:
 
@@ -536,9 +649,6 @@ protected:
   // number of cols of the  path planning grid
   int numPathPlanningGridCols;
 
-  // TODO: meaningful description here
-  std::vector<std::pair<int, int> > edgePoints;
-
   // Number of cells in navigation grid that are not == 1
   long totalFreeCells;
 
@@ -566,6 +676,9 @@ protected:
 
 private:
 
+  // TODO: meaningful description here
+  std::vector<std::pair<long, long> > edgePoints;
+
   /**
    * Returns the i,j index from grid of the given metric position (in "map" frame id)
    * @param  x  metric position x coordinate (in "map" frame id) in m.
@@ -584,8 +697,7 @@ private:
   * @param  gm  grid_map to retrieve
   * @return     grid value at indexes
   */
-  int  getValue(long i,long j, const grid_map::GridMap *gm) const;
-  int  getValue(long i,long j, grid_map::GridMap *gm) const;
+  float  getValue(long i,long j, const grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
@@ -593,14 +705,14 @@ private:
   * @param  gm  grid_map to retrieve
   * @return     grid value at pose stamped
   */
-  int  getValue(geometry_msgs::PoseStamped ps, const  grid_map::GridMap *gm) const;
+  float  getValue(geometry_msgs::PoseStamped ps, const  grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
   * @param  i ith element (as vector)
   * @return   navigation grid value
   */
-  int getValue(long i, const  grid_map::GridMap *gm) const;
+  float getValue(long i, const  grid_map::GridMap *gm) const;
 
   /**
   * Set a grid cell value
@@ -609,7 +721,7 @@ private:
   * @param  j col index
   * @param  gm  grid_map to retrieve
   */
-  void setValue(int value, long i,long j, grid_map::GridMap *gm) ;
+  void setValue(float value, long i,long j, grid_map::GridMap *gm) ;
 
   /**
   * Set a grid cell value
@@ -617,14 +729,14 @@ private:
   * @param  ps  Pose stamped in "map" frame_id
   * @param  gm  grid_map to retrieve
   */
-  void setValue(int value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) ;
+  void setValue(float value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) ;
 
   /**
   * Set a grid cell value
   * @param  value value to store
   * @param  i ith element (as vector)
   */
-  void setValue(int value, long i, grid_map::GridMap *gm) ;
+  void setValue(float value, long i, grid_map::GridMap *gm) ;
 
   /**
    * Get number of Cols (width) in grid_map
@@ -657,6 +769,20 @@ private:
   cv::Mat binarizeImage(cv::Mat imageCV);
 
   void plotMyGrid(std::string fileURI, const grid_map::GridMap * gm);
+
+  void plotMyGridColor(std::string fileURI, const grid_map::GridMap * gm);
+
+  /**
+   * constraints angle into -pi,pi range
+   * @param  x angle in radians
+   * @return   -pi,pi wrapped angle
+   */
+  double  constrainAnglePI(double x);
+
+
+  Map::CellValue  toCellValue( float floatVal) const;
+  float  toFloat( Map::CellValue value) const;
+
 };
 }
 
