@@ -323,27 +323,31 @@ namespace dummy{
         for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex, navBufferSize);
              !nav_iterator.isPastEnd(); ++nav_iterator)
         {
-          std::cout << "[Map.cpp@updatePathPlanningGrid] Inside : " << nav_grid_.at("layer", *nav_iterator)  << " at " << (*nav_iterator)(0) << ", " << (*nav_iterator)(0) << endl;
+          std::cout << "[Map.cpp@updatePathPlanningGrid] Inside : " << getGridValue((*nav_iterator)(0),(*nav_iterator)(1)) << " at " << (*nav_iterator)(0) << ", " << (*nav_iterator)(0) << endl;
           counter ++;
 
-          if (nav_grid_.at("layer", *nav_iterator) == Map::CellValue::OBST) {
+          if (isGridValueObst(*nav_iterator)) {
             setToOne = 1;
 //            std::cout << "[Map.cpp@updatePathPlanningGrid] 1" << endl;
           }
 
-          if (nav_grid_.at("layer", *nav_iterator) == Map::CellValue::VIST) {
+          if (isGridValueVist(*nav_iterator)) {
             countScanned++;
 //            std::cout << "[Map.cpp@updatePathPlanningGrid] 2" << endl;
           }
         }
         if (countScanned == 0.6 * gridToPathGridScale * gridToPathGridScale) {
-          planning_grid_.at("layer", *planning_iterator) = Map::CellValue::VIST;
-          rfid_grid_.atPosition("layer", position_pp) += power;
+          setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0),(*planning_iterator)(1));
+
+          grid_map::Index ind;
+          rfid_grid_.getIndex(position_pp, ind);
+          setRFIDGridValue(power, ind(0), ind(1));
+
           counter_planning_grid_scanned++;
 //          std::cout << "[Map.cpp@updatePathPlanningGrid] CountScanned" << endl;
         }
         if (setToOne == 1) {
-          planning_grid_.at("layer", *planning_iterator) = Map::CellValue::OBST;
+          setPathPlanningGridValue(Map::CellValue::OBST, (*planning_iterator)(0),(*planning_iterator)(1));
 //          std::cout << "[Map.cpp@updatePathPlanningGrid] SetToOne" << endl;
         }
 
@@ -546,12 +550,12 @@ namespace dummy{
     float Map::getValue(long i,long j, const grid_map::GridMap *gm) const
     {
       float val;
-      grid_map::Index index(i,j);
+      grid_map::Index ind(i,j);
       Position position;
 
-      if (gm->getPosition(index, position))
+      if (gm->getPosition( ind, position))
       {
-        val = gm->at("layer", index);
+        val = gm->at("layer", ind);
       }
       else
       {
@@ -612,13 +616,13 @@ namespace dummy{
     // Generic (internal) setters ..............................................
     void Map::setValue(float value, long i,long j, grid_map::GridMap *gm)
     {
-      grid_map::Index index(i,j);
+      grid_map::Index ind(i,j);
       Position position;
 
-      if (gm->getPosition(index, position))
+      if (gm->getPosition( ind, position))
       {
 //        cout << "Set value: " << value <<" at index: [" << i << "," << j <<"]" << endl;
-        (gm->at("layer", index)) = value;
+        (gm->at("layer", ind)) = value;
       }
       else
       {
@@ -724,7 +728,7 @@ namespace dummy{
         {
             for(long col = 0; col < columns; ++col)
             {
-                if(getGridValue(row,col) == Map::CellValue::FREE)
+                if(isGridValueFree( grid_map::Index(col,row)))
                 {
                     imgNew<<  255 << " ";
                 }
@@ -748,7 +752,7 @@ namespace dummy{
           {
               for(long col = 0; col < columns; ++col)
               {
-                  if(getGridValue(row,col) == Map::CellValue::FREE) {
+                  if(isGridValueFree( grid_map::Index(col,row))) {
                       txt <<  col << ": " << row << endl;
                   }
               }
@@ -797,7 +801,7 @@ namespace dummy{
       {
           for(long col = 0; col < columns; ++col)
           {
-              if(getGridValue(row,col) == Map::CellValue::OBST) totalFreeCells--;
+              if(isGridValueObst( grid_map::Index(col,row))) totalFreeCells--;
           }
       }
       return totalFreeCells;
@@ -1111,11 +1115,11 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
   	   return isCandidate_inner( i,  j, 1);
     }
 
-    int Map::planning_iterate_func(grid_map::SubmapIterator iterator)
+    int Map::planning_iterate_func(grid_map::SubmapIterator planning_iterator)
     {
       int candidate = 0;
-      for ( ;!iterator.isPastEnd(); ++iterator) {
-          if (planning_grid_.at("layer", *iterator)  == Map::CellValue::FREE)
+      for ( ;!planning_iterator.isPastEnd(); ++planning_iterator) {
+          if (isPathPlanningGridValueFree(*planning_iterator))
           {
             candidate = 1;
             break;
@@ -1153,7 +1157,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
 
               for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex, navBufferSize);
                       !nav_iterator.isPastEnd(); ++nav_iterator) {
-                           if( nav_grid_.at("layer", *nav_iterator) == Map::CellValue::FREE)
+                           if( isGridValueFree(*nav_iterator))
                            {
                               candidate = 1;
                               break;
@@ -1248,7 +1252,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                 planning_grid_.getPosition(*lin_iterator, rayPos);
                                 rayIndex = (*lin_iterator);
                                 // if an obstacle is found, end
-                                if(getPathPlanningGridValue(rayIndex(0),rayIndex(1)) == Map::CellValue::OBST)
+                                if(isPathPlanningGridValueObst(rayIndex))
                                 {
                                   hit =  true;
                                   ROS_DEBUG("[map.cpp@findCandidatePositions] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
@@ -1296,13 +1300,13 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
       maxFOV =   FOV_rad/2;
 
       // Iterate cells over a circle ARC with radius range, center pos in nav planning grid and FOV angle
-      for (grid_map::CircleIterator iterator(nav_grid_, centerPos, range_m);
-                !iterator.isPastEnd(); ++iterator) {
+      for (grid_map::CircleIterator nav_iterator(nav_grid_, centerPos, range_m);
+                !nav_iterator.isPastEnd(); ++nav_iterator) {
 
                   // If cell is empty
-                  if( nav_grid_.at("layer", *iterator) == Map::CellValue::FREE)
+                  if( isGridValueFree(*nav_iterator))
                   {
-                      nav_grid_.getPosition(*iterator, candidatePos);
+                      nav_grid_.getPosition(*nav_iterator, candidatePos);
 
                       // relative cell position respect to center
                       rel_x=candidatePos.x()-pos_X_m;
@@ -1314,7 +1318,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
 
                       // cell is also inside FOV arc
                       if (std::abs(rel_a)<=(FOV_rad/2)){
-                              candidateIndex=(*iterator);
+                              candidateIndex=(*nav_iterator);
                               hit = false;
                               // trace a ray betwen that cell and robot cell:
                               for (grid_map::LineIterator lin_iterator(nav_grid_, candidatePos, centerPos);
@@ -1323,7 +1327,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                     nav_grid_.getPosition(*lin_iterator, rayPos);
                                     rayIndex=(*lin_iterator);
                                     // if an obstacle is found, end
-                                    if(nav_grid_.at("layer", *iterator) == Map::CellValue::OBST)
+                                    if(isGridValueObst(*nav_iterator))
                                     {
                                       hit =  true;
                                       ROS_DEBUG("[map.cpp@getSensingTime] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
@@ -1366,13 +1370,13 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
       bool hit;
 
       // Iterate cells over a circle ARC with radius range, center pos in nav planning grid and FOV angle
-      for (grid_map::CircleIterator iterator(nav_grid_, centerPos, range_m);
-                !iterator.isPastEnd(); ++iterator) {
+      for (grid_map::CircleIterator nav_iterator(nav_grid_, centerPos, range_m);
+                !nav_iterator.isPastEnd(); ++nav_iterator) {
 
                   // If cell is empty
-                  if( nav_grid_.at("layer", *iterator) == Map::CellValue::FREE)
+                  if( isGridValueFree(*nav_iterator))
                   {
-                      nav_grid_.getPosition(*iterator, candidatePos);
+                      nav_grid_.getPosition(*nav_iterator, candidatePos);
 
                       // relative cell position respect to center
                       rel_x=candidatePos.x()-pos_X_m;
@@ -1384,7 +1388,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
 
                       // cell is also inside FOV arc
                       if ( ( rel_a <= maxAngle_rad )  & ( rel_a >= minAngle_rad ) )  {
-                              candidateIndex=(*iterator);
+                              candidateIndex=(*nav_iterator);
                               hit = false;
                               // trace a ray betwen that cell and robot cell:
                               for (grid_map::LineIterator lin_iterator(nav_grid_, candidatePos, centerPos);
@@ -1393,7 +1397,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                     nav_grid_.getPosition(*lin_iterator, rayPos);
                                     rayIndex=(*lin_iterator);
                                     // if an obstacle is found, end
-                                    if(nav_grid_.at("layer", *iterator) == Map::CellValue::OBST)
+                                    if(isGridValueObst(*nav_iterator))
                                     {
                                       hit =  true;
                                       ROS_DEBUG("[map.cpp@performSensingOperation] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
@@ -1405,7 +1409,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                               //if the free cell is reached, set its value to 2 and stop the ray
                               if(!hit)
                               {
-                                nav_grid_.at("layer", *iterator) = 2;
+                                setGridValue(Map::CellValue::VIST, (*nav_iterator)(0),(*nav_iterator)(1));
                                 modifiedCells++;
                                 ROS_DEBUG("[map.cpp@performSensingOperation] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
                                           rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
@@ -1431,13 +1435,13 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
         bool hit;
 
         // Iterate cells over a circle ARC with radius range, center pos in nav planning grid and FOV angle
-        for (grid_map::CircleIterator iterator(nav_grid_, centerPos, range_m);
-                  !iterator.isPastEnd(); ++iterator) {
+        for (grid_map::CircleIterator nav_iterator(nav_grid_, centerPos, range_m);
+                  !nav_iterator.isPastEnd(); ++nav_iterator) {
 
                     // If cell is empty
-                    if( nav_grid_.at("layer", *iterator) == Map::CellValue::FREE)
+                    if( isGridValueFree(*nav_iterator))
                     {
-                        nav_grid_.getPosition(*iterator, candidatePos);
+                        nav_grid_.getPosition(*nav_iterator, candidatePos);
 
                         // relative cell position respect to center
                         rel_x=candidatePos.x()-pos_X_m;
@@ -1449,7 +1453,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
 
                         // cell is also inside FOV arc
                         if (std::abs(rel_a)<=(FOV_rad/2)){
-                                candidateIndex=(*iterator);
+                                candidateIndex=(*nav_iterator);
                                 hit = false;
                                 // trace a ray betwen that cell and robot cell:
                                 for (grid_map::LineIterator lin_iterator(nav_grid_, candidatePos, centerPos);
@@ -1458,7 +1462,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                       nav_grid_.getPosition(*lin_iterator, rayPos);
                                       rayIndex=(*lin_iterator);
                                       // if an obstacle is found, end
-                                      if(nav_grid_.at("layer", *iterator) == Map::CellValue::OBST)
+                                      if(isGridValueObst(*nav_iterator))
                                       {
                                         hit =  true;
                                         ROS_DEBUG("[map.cpp@getInformationGain] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
@@ -1541,4 +1545,33 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
 
       return value;
     }
+
+
+bool Map::isGridValueObst( grid_map::Index ind)
+{
+	return ( getGridValue( ind(0), ind(1) ) == Map::CellValue::OBST );
+}
+
+
+bool Map::isGridValueVist( grid_map::Index ind)
+{
+	return ( getGridValue( ind(0), ind(1) ) == Map::CellValue::VIST );
+}
+
+
+bool Map::isGridValueFree( grid_map::Index ind)
+{
+	return ( getGridValue( ind(0), ind(1) ) == Map::CellValue::FREE );
+}
+
+bool Map::isPathPlanningGridValueFree( grid_map::Index ind)
+{
+	return ( getPathPlanningGridValue( ind(0), ind(1) ) == Map::CellValue::FREE );
+}
+
+
+bool Map::isPathPlanningGridValueObst( grid_map::Index ind)
+{
+	return ( getPathPlanningGridValue( ind(0), ind(1) ) == Map::CellValue::OBST );
+}
 }

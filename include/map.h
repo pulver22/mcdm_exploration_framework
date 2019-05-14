@@ -572,6 +572,18 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   // ...........................................................................
 
 
+
+  bool isGridValueObst( grid_map::Index ind);
+
+  bool isGridValueVist( grid_map::Index ind);
+
+  bool isGridValueFree( grid_map::Index ind);
+
+  bool isPathPlanningGridValueFree( grid_map::Index ind);
+
+  bool isPathPlanningGridValueObst( grid_map::Index ind);
+
+
 protected:
 
   /**
