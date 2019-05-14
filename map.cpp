@@ -67,6 +67,7 @@ namespace dummy{
       double  minValue;
       double  maxValue;
 
+      // grayscale opencv mat where 0 are free and 1 are obstacles.
       imageCV = binarizeImage(imageCV);
 
       // grid size in pixels
@@ -101,8 +102,22 @@ namespace dummy{
       sensor_msgs::ImagePtr imageROS = cv_bridge::CvImage(std_msgs::Header(), format, imageCV).toImageMsg();
       GridMapRosConverter::addLayerFromImage(*imageROS, "layer", tempMap);
 
+      encodeGrid(&tempMap,1,0);
+
       map_grid_ = tempMap;
       printGridData("map", &map_grid_ );
+    }
+
+    void Map::encodeGrid(grid_map::GridMap *gm, int obstValue, int freeValue)
+    {
+      for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
+                if (gm->at("layer",*iterator)==obstValue)
+                      gm->at("layer",*iterator)=Map::CellValue::OBST;
+                if (gm->at("layer",*iterator)==freeValue)
+                      gm->at("layer",*iterator)=Map::CellValue::FREE;
+                else //free by default
+                      gm->at("layer",*iterator)=Map::CellValue::FREE;
+      }
     }
 
     void Map::createMap(int width,int height, double resolution , vector<int> data, geometry_msgs::Pose origin)

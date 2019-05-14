@@ -792,7 +792,7 @@ private:
 
   Map::CellValue  toCellValue( float floatVal) const;
   float  toFloat( Map::CellValue value) const;
-
+  void encodeGrid(grid_map::GridMap *gm, int obstValue, int freeValue);
 };
 }
 
