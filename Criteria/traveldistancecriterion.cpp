@@ -20,31 +20,28 @@
 #include "PathFinding/astar.h"
 
 
-
 TravelDistanceCriterion::TravelDistanceCriterion(double weight)
-	: Criterion(TRAVEL_DISTANCE, weight,false)
-{
+    : Criterion(TRAVEL_DISTANCE, weight, false) {
 
 }
 
 
-TravelDistanceCriterion::~TravelDistanceCriterion()
-{
+TravelDistanceCriterion::~TravelDistanceCriterion() {
 
 }
 
-double TravelDistanceCriterion::evaluate( Pose &p, dummy::Map &map)
-{
-    //cout << "travel " << endl;
-    Astar astar;
-    Pose robotPosition = map.getRobotPosition();
-    //double distance = robotPosition.getDistance(p);
-    string path = astar.pathFind(robotPosition.getX(),robotPosition.getY(),p.getX(),p.getY(),map);
-    double distance = astar.lenghtPath(path);
-    //cout << "alive after calling a*" << endl;
-    Criterion::insertEvaluation(p, distance);
-    
-    return distance;
+double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map) {
+  //cout << "travel " << endl;
+  Astar astar;
+  Pose robotPosition = map->getRobotPosition();
+  //double distance = robotPosition.getDistance(p);
+//  cout << " [travelDistanceCriterion.cpp@Evaluate] [posX, posY] = [" << p.getX() << "," << p.getY() << "]" << endl;
+  string path = astar.pathFind(robotPosition.getX(), robotPosition.getY(), p.getX(), p.getY(), map);
+  double distance = astar.lenghtPath(path);
+  //cout << "alive after calling a*" << endl;
+  Criterion::insertEvaluation(p, distance);
+
+  return distance;
 }
 
 /*

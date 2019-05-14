@@ -14,7 +14,7 @@ InformationGainCriterion::~InformationGainCriterion()
 {
 }
 
-double InformationGainCriterion::evaluate(Pose &p, dummy::Map &map)
+double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map)
 {
 
     long px = p.getX();
@@ -179,7 +179,11 @@ double InformationGainCriterion::evaluate(Pose &p, dummy::Map &map)
 */
     NewRay ray;
     //Map *map2 = &map;
-    double unExploredMap=(double)ray.getInformationGain(map,px,py,orientation,angle,range);
+//    cout << " [informationGainCriterion.cpp@Evaluate][1] [posX, posY] = [" << px << "," << py << "]" << endl;
+    double x_meter, y_meter;
+    map->getPathPlanningPosition(x_meter , y_meter, px, py);
+//    cout << " [informationGainCriterion.cpp@Evaluate][2] [posX, posY] = [" << x_meter << "," << y_meter << "]" << endl;
+    double unExploredMap=(double)ray.getInformationGain(map, x_meter, y_meter, orientation, angle, range);
     /*
     if (unExploredMap >= 0.5) {
 	Criterion::insertEvaluation(p,unExploredMap);

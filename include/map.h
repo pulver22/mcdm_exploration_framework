@@ -438,6 +438,16 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   bool  getRFIDIndex(double x, double y, long &i, long &j);
 
 
+/**
+ * Returns the metric position (in "map" frame id) from grid of the given i,j index
+ * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
+ * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+ * @param  i  cell row index
+ * @param  j  cell col index
+ * @param  gm grid map where we operate
+ * @return    True if position was retrieved
+ */
+bool getPosition(double &x, double &y, long i, long j, grid_map::GridMap *gm);
 
 protected:
 
@@ -568,17 +578,6 @@ private:
   bool getIndex(double x, double y, long &i, long &j, grid_map::GridMap *gm);
 
   /**
-   * Returns the metric position (in "map" frame id) from grid of the given i,j index
-   * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
-   * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
-   * @param  i  cell row index
-   * @param  j  cell col index
-   * @param  gm grid map where we operate
-   * @return    True if position was retrieved
-   */
-  bool getPosition(double &x, double &y, long i, long j, grid_map::GridMap *gm);
-
-  /**
   * Get a grid cell value
   * @param  i row index
   * @param  j col index
@@ -586,6 +585,7 @@ private:
   * @return     grid value at indexes
   */
   int  getValue(long i,long j, const grid_map::GridMap *gm) const;
+  int  getValue(long i,long j, grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
@@ -649,6 +649,8 @@ private:
    * @param gm    grid_map
    */
   void printErrorReason(grid_map::Position point, const grid_map::GridMap *gm) const;
+
+  void printScannedCells();
 
   void printGridData(std::string grid_name , const grid_map::GridMap *gm );
 

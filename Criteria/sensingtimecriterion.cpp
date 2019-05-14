@@ -33,7 +33,7 @@ SensingTimeCriterion::~SensingTimeCriterion()
 
 }
 
-double SensingTimeCriterion::SensingTimeCriterion::evaluate(Pose &p,dummy::Map &map)
+double SensingTimeCriterion::SensingTimeCriterion::evaluate(Pose &p,dummy::Map* map)
 {
    NewRay ray;
     double sensingTime;
@@ -54,9 +54,12 @@ double SensingTimeCriterion::SensingTimeCriterion::evaluate(Pose &p,dummy::Map &
     
     
     
-    
+//    cout << " [sensingTimeCriterion.cpp@Evaluate] [posX, posY] = [" << p.getX() << "," << p.getY() << "]" << endl;
+    double x_meter, y_meter;
+    map->getPathPlanningPosition(x_meter , y_meter, p.getX(), p.getY());
+//    cout << " [sensingTimeCriterion.cpp@Evaluate][2] [posX, posY] = [" << x_meter << "," << y_meter << "]" << endl;
     //sensingTime = ray.getSensingTime(map,p.getX(),p.getY(),p.getOrientation(),p.getFOV(),p.getRange());
-    p.setScanAngles(ray.getSensingTime(map,p.getX(),p.getY(),p.getOrientation(),p.getFOV(),p.getRange()));
+    p.setScanAngles(ray.getSensingTime(map, x_meter, y_meter, p.getOrientation(), p.getFOV(), p.getRange()));
     double minPhi = p.getScanAngles().first;
     double maxPhi = p.getScanAngles().second;
    

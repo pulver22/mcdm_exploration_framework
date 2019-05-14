@@ -221,7 +221,7 @@ int main ( int argc, char **argv )
       double rxPower = 0;
       std::pair<int, int> relTagCoord;
       long i, j;
-
+      long cell_i, cell_j;
       do
       {
         // If we are doing "forward" navigation towards cells never visited before
@@ -247,8 +247,9 @@ int main ( int argc, char **argv )
           string encoding = to_string ( target.getX() ) + to_string ( target.getY() );
           visitedCell.emplace ( encoding,0 );
           // Get the sensing time required for scanning
-          target.setScanAngles ( ray.getSensingTime ( map,x,y,orientation,FOV,range ) );
+          target.setScanAngles ( ray.getSensingTime ( &map,x,y,orientation,FOV,range ) );
           // Perform a scanning operation
+//          map.getGridIndex(x, y, cell_i, cell_j);
           newSensedCells = sensedCells + ray.performSensingOperation ( &map, x, y, orientation, FOV, range, target.getScanAngles().first, target.getScanAngles().second );
           // Calculate the scanning angle
           double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
@@ -260,10 +261,15 @@ int main ( int argc, char **argv )
 //            double rxPower = received_power_friis(relTagCoord.first, relTagCoord.second, freq, txtPower);
 //            double phase = phaseDifference(relTagCoord.first, relTagCoord.second, freq);
           // Update the path planning and RFID map
-          cout << endl << "[pure_navigation.cpp]" << map.getGridValue(target.getX() + 1, target.getY() + 1) << endl;
-          map.updatePathPlanningGrid ( x, y, range, rxPower - SENSITIVITY);
+//          cout << endl << "[pure_navigation.cpp]" << map.getGridValue(target.getX() + 1, target.getY() + 1) << endl;
+
+          map.getPathPlanningIndex(x, y, cell_i, cell_j);
+//          range = range / costresolution;
+          map.updatePathPlanningGrid ( cell_i, cell_j, range, rxPower - SENSITIVITY);
 //            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
           // Search for new candidate position
+//          map.getGridIndex(x, y, cell_i, cell_j);
+
           ray.findCandidatePositions ( &map, x, y, orientation, FOV, range );
           vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
           cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
@@ -323,7 +329,7 @@ int main ( int argc, char **argv )
           if ( candidatePosition.size() == 0 )
           {
             // Find candidates
-            ray.findCandidatePositions2 ( map,x,y,orientation,FOV,range );
+            ray.findCandidatePositions2 ( &map,x,y,orientation,FOV,range );
             candidatePosition = ray.getCandidatePositions();
             ray.emptyCandidatePositions();
 
@@ -410,7 +416,7 @@ int main ( int argc, char **argv )
             unexploredFrontiers = frontiers;
 
             // Evaluate the frontiers and return a list of <frontier, evaluation> pairs
-            EvaluationRecords *record = function.evaluateFrontiers ( frontiers,map,threshold );
+            EvaluationRecords *record = function.evaluateFrontiers ( frontiers, &map, threshold );
             nearCandidates = record->getFrontiers();
 
             // If there are candidate positions
@@ -433,18 +439,18 @@ int main ( int argc, char **argv )
                 p.header.frame_id = "map";
                 p.header.stamp = ros::Time::now();
                 //NOTE: as before, Y in map are X in image
-                if (resolution != costresolution){// && resolution != costresolution) {
-                  //NOTE: full resolution
-                  cout << " [Marker] Full resolution" << endl;
-                  p.point.y = - float(target.getX() + costorigin.position.y / costresolution) * costresolution;
-                  p.point.x = - float(map.getPathPlanningNumRows() - target.getY() + costorigin.position.x / costresolution) * costresolution;
-
-                } else {
+//                if (resolution != costresolution){// && resolution != costresolution) {
+//                  //NOTE: full resolution
+//                  cout << " [Marker] Full resolution" << endl;
+//                  p.point.y = - float(target.getX() + costorigin.position.y / costresolution) * costresolution;
+//                  p.point.x = - float(map.getPathPlanningNumRows() - target.getY() + costorigin.position.x / costresolution) * costresolution;
+//
+//                } else {
                   //NOTE: 1mx1m
                   cout << " [Marker] 1mx1m" << endl;
-                  p.point.x = (target.getX());//* costresolution;
-                  p.point.y = (target.getY());// * costresolution;
-                }
+                  p.point.x = (target.getX()) + costorigin.position.x;//* costresolution;
+                  p.point.y = (target.getY()) + costorigin.position.y;// * costresolution;
+//                }
                 cout << "   (" << p.point.x << "," << p.point.y << ")" << endl;
 
 //                if (resolution == costresolution)
@@ -464,7 +470,7 @@ int main ( int argc, char **argv )
                 double orientZ = (double) (target.getOrientation() * PI / (2 * 180));
                 double orientW = (double) (target.getOrientation() * PI / (2 * 180));
 
-                string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(),map );
+                string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(), &map );
                 float travel_distance = astar.lenghtPath(path);
                 cout << "Target is at " << astar.lenghtPath(path) << " cells from the robot" << endl;
                 cout << "Resolution : " << resolution << endl;
@@ -502,7 +508,7 @@ int main ( int argc, char **argv )
                   // Remove the current position from possible candidates
                   cleanPossibleDestination2 ( nearCandidates,target );
                   // Get the list of new candidate position with associated evaluation
-                  record = function.evaluateFrontiers ( nearCandidates,map,threshold );
+                  record = function.evaluateFrontiers ( nearCandidates, &map,threshold );
                   // If there are candidate positions
                   if ( record->size() != 0 )
                   {
@@ -614,7 +620,7 @@ int main ( int argc, char **argv )
           //NOTE; calculate path and turnings between actual position and goal
           cout<< function.getEncodedKey ( target,1 ) << endl;
           // Calculate the distance between the previous robot pose and the next one (target)
-          string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(),map );
+          string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(), &map );
           // Update the overall covered distance
           travelledDistance = travelledDistance + astar.lenghtPath( path );
           cout << "BT: " << astar.lenghtPath ( path ) << endl;
@@ -627,7 +633,7 @@ int main ( int argc, char **argv )
           previous = target;
 
           // Calculate how much time it takes to scan the current area
-          target.setScanAngles ( ray.getSensingTime ( map,x,y,orientation,FOV,range ) );
+          target.setScanAngles ( ray.getSensingTime ( &map,x,y,orientation,FOV,range ) );
           // Get the scanning angle
           double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanned angle
@@ -644,7 +650,7 @@ int main ( int argc, char **argv )
           // Remove the current pose from the list of possible candidate cells
           cleanPossibleDestination2 ( nearCandidates,target );
           // Get the list of the candidate cells with their evaluation
-          EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates,map,threshold );
+          EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates, &map, threshold );
 
           // If there are candidate cells
           if ( record->size() != 0 )
@@ -675,7 +681,7 @@ int main ( int argc, char **argv )
                 // Remove the destination from the candidate list
                 cleanPossibleDestination2 ( nearCandidates,target );
                 // Get the candidates with their evaluation
-                EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates,map,threshold );
+                EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates, &map, threshold );
                 // Select the new destination
                 std::pair<Pose,double> result = function.selectNewPose ( record );
                 target = result.first;
@@ -828,7 +834,7 @@ void pushInitialPositions ( dummy::Map map, int x, int y, int orientation, int r
     frontiers.push_back ( p3 );
     frontiers.push_back ( p4 );
   }
-  EvaluationRecords *record = function.evaluateFrontiers ( frontiers,map,threshold );
+  EvaluationRecords *record = function.evaluateFrontiers ( frontiers, &map, threshold );
   list<Pose>nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string,list<Pose>> pair = make_pair ( actualPose,nearCandidates );
@@ -857,7 +863,7 @@ void calculateDistance(list<Pose> history, dummy::Map& map, Astar* astar)
   {
 //        cout << function->getEncodedKey(*it,1) << endl; // print cell in the tabulist
     std::list<Pose>::iterator it2 = next ( it,1 );
-    string path = astar->pathFind ( ( *it2 ).getX(), ( *it2 ).getY(), ( *it ).getX(), ( *it ).getY(), map );
+    string path = astar->pathFind ( ( *it2 ).getX(), ( *it2 ).getY(), ( *it ).getX(), ( *it ).getY(), &map );
     travelledDistance = travelledDistance + astar->lenghtPath ( path );
     numOfTurning = numOfTurning + astar->getNumberOfTurning ( path );
     //cout << astar.lengthPath ( path ) << endl;
@@ -884,7 +890,7 @@ void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPo
   std::pair<string,list<Pose>> pair = make_pair ( actualPose, *nearCandidates );
   graph2->push_back ( pair );
   // Calculate the path from the previous robot pose to the current one
-  string path = astar->pathFind ( target->getX(), target->getY(), previous->getX(), previous->getY(), *map );
+  string path = astar->pathFind ( target->getX(), target->getY(), previous->getX(), previous->getY(), map );
 //  cout << "1: " << *travelledDistance << endl;
   // Update the distance counting
   *travelledDistance = *travelledDistance + astar->lenghtPath(path);
