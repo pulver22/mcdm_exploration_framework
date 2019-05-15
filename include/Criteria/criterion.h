@@ -34,7 +34,7 @@ class Criterion
 	~Criterion();
 	
 	//Other methods
-	virtual double evaluate( Pose &p, dummy::Map *map) {};
+	virtual double evaluate( Pose &p, dummy::Map *map, ros::ServiceClient* path_client) {};
 	double getEvaluation(Pose &p) const;
 	void insertEvaluation(Pose &p, double value);
 	void clean();

@@ -97,10 +97,10 @@ void NewRay::findCandidatePositions(dummy::Map *map, double posX_meter, double p
   }
   if(endingPhi > 2*PI) add2pi = 1;
 
-  std::cout << std::endl << "[newRay.cpp@findCandidatePositions] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
-  std::cout << "[newray.cpp@findCandidatePositions] [posX, posY](cells): " << cell_i << ", " << cell_j <<std::endl;
-  std::cout << "[newray.cpp@findCandidatePositions] Range (cells): " << range << std::endl;
-  std::cout << "[newray.cpp@findCandidatePositions] gridToPathGridScale: " << gridToPathGridScale << std::endl;
+//  std::cout << std::endl << "[newRay.cpp@findCandidatePositions] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
+//  std::cout << "[newray.cpp@findCandidatePositions] [posX, posY](cells): " << cell_i << ", " << cell_j <<std::endl;
+//  std::cout << "[newray.cpp@findCandidatePositions] Range (cells): " << range << std::endl;
+//  std::cout << "[newray.cpp@findCandidatePositions] gridToPathGridScale: " << gridToPathGridScale << std::endl;
 
   //select the portion of map to be scanned
   long minI = cell_i - range;
@@ -112,7 +112,7 @@ void NewRay::findCandidatePositions(dummy::Map *map, double posX_meter, double p
   if(minJ < 0) minJ = 0;
   if(maxI > map->getPathPlanningNumRows()) maxI = map->getPathPlanningNumRows();
   if(maxJ > map->getPathPlanningNumCols()) maxJ = map->getPathPlanningNumCols();
-  cout << "[newray.cpp@findCandidatePositions] [minI, minJ]: " << minI << "," << minJ << ", [maxI, maxJ]: " << maxI << ", " << maxJ << endl;
+//  cout << "[newray.cpp@findCandidatePositions] [minI, minJ]: " << minI << "," << minJ << ", [maxI, maxJ]: " << maxI << ", " << maxJ << endl;
 
   double x_meter, y_meter;
 
@@ -173,9 +173,9 @@ void NewRay::findCandidatePositions(dummy::Map *map, double posX_meter, double p
               {
                 std::pair<long,long> temp = std::make_pair(i, j);
                 NewRay::edgePoints.push_back(temp);
-                std::cout << "[newRay.cpp@findCandidatePositions]Cell scanned: " << (int)curY << " " << (int)curX << std::endl;
+//                std::cout << "[newRay.cpp@findCandidatePositions]Cell scanned: " << (int)curY << " " << (int)curX << std::endl;
                 map->getPathPlanningPosition(x_meter, y_meter, i, j);
-                std::cout << "[newRay.cpp@findCandidatePositions]   Cell scanned: " << x_meter << " " << y_meter << std::endl;
+//                std::cout << "[newRay.cpp@findCandidatePositions]   Cell scanned: " << x_meter << " " << y_meter << std::endl;
                 hit = 1;
               }
               u += 0.2;		//move forward along the ray
@@ -487,10 +487,10 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
 
 
   std::cout << endl;
-  std::cout << "[newray.cpp@performSensingOperation] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
-  std::cout << "[newray.cpp@performSensingOperation] [posX, posY](cells): " << cell_i << ", " << cell_j <<std::endl;
-  std::cout << "[newray.cpp@performSensingOperation] Range (cells): " << range << std::endl;
-  std::cout << "[newray.cpp@performSensingOperation] gridToPathGridScale: " << gridToPathGridScale << std::endl;
+//  std::cout << "[newray.cpp@performSensingOperation] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
+//  std::cout << "[newray.cpp@performSensingOperation] [posX, posY](cells): " << cell_i << ", " << cell_j <<std::endl;
+//  std::cout << "[newray.cpp@performSensingOperation] Range (cells): " << range << std::endl;
+//  std::cout << "[newray.cpp@performSensingOperation] gridToPathGridScale: " << gridToPathGridScale << std::endl;
 
   //select the portion of map to be scanned
 //  long minI = posX*gridToPathGridScale + gridToPathGridScale/2 - range*gridToPathGridScale;

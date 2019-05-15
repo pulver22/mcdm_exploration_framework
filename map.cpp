@@ -276,11 +276,11 @@ namespace dummy{
       if (maxY_pp > numPathPlanningGridCols - 1) maxY_pp = numPathPlanningGridCols - 1;
 
       std::cout << endl;
-      std::cout << "[Map.cpp@updatePathPlanningGrid] rangeInCells_pp = " << rangeInCells_pp << endl;
-      std::cout << "[Map.cpp@updatePathPlanningGrid] [numPathPlanningGridRows, numPathPlanningGridCols] = [" << numPathPlanningGridRows << "," << numPathPlanningGridCols << "]" << endl;
-      std::cout << "[Map.cpp@updatePathPlanningGrid] [cellX_pp, cellY_pp] = [" << cellX_pp << "," << cellY_pp << "]" << endl;
-      std::cout << "[Map.cpp@updatePathPlanningGrid] [minX_pp, maxX_pp] = [" << minX_pp << "," << maxX_pp << "]" << endl;
-      std::cout << "[Map.cpp@updatePathPlanningGrid] [minY_pp, maxY_pp] = [" << minY_pp << "," << maxY_pp << "]" << endl;
+//      std::cout << "[Map.cpp@updatePathPlanningGrid] rangeInCells_pp = " << rangeInCells_pp << endl;
+//      std::cout << "[Map.cpp@updatePathPlanningGrid] [numPathPlanningGridRows, numPathPlanningGridCols] = [" << numPathPlanningGridRows << "," << numPathPlanningGridCols << "]" << endl;
+//      std::cout << "[Map.cpp@updatePathPlanningGrid] [cellX_pp, cellY_pp] = [" << cellX_pp << "," << cellY_pp << "]" << endl;
+//      std::cout << "[Map.cpp@updatePathPlanningGrid] [minX_pp, maxX_pp] = [" << minX_pp << "," << maxX_pp << "]" << endl;
+//      std::cout << "[Map.cpp@updatePathPlanningGrid] [minY_pp, maxY_pp] = [" << minY_pp << "," << maxY_pp << "]" << endl;
 
       grid_map::Index planningStartIndex(minX_pp, minX_pp);
       grid_map::Index planningBufferSize(2 * rangeInCells_pp, 2 * rangeInCells_pp);

@@ -20,6 +20,7 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetMap.h>
 #include <costmap_2d/costmap_2d_ros.h>
+#include <nav_msgs/GetPlan.h>
 //mfc ...
 #include <ros/console.h>
 //mfc ...
@@ -31,7 +32,7 @@ using namespace dummy;
 bool contains ( std::list< Pose >& list, Pose& p );
 void cleanPossibleDestination2 ( std::list< Pose > &possibleDestinations, Pose& p );
 void pushInitialPositions ( dummy::Map map, int x, int y, int orientation,  int range, int FOV, double threshold,
-                            string actualPose, vector< pair< string, list< Pose > > > *graph2 );
+                            string actualPose, vector< pair< string, list< Pose > > > *graph2, ros::ServiceClient* path_client );
 double calculateScanTime ( double scanAngle );
 void calculateDistance(list<Pose> list, dummy::Map& map, Astar* astar);
 Pose createFromInitialPose ( Pose pose, int variation, int range, int FOV );
@@ -47,6 +48,7 @@ void move(float x, float y, float orW, float orZ, int resolution, int costresolu
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
 Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, double initFov, int initRange);
+double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 vector<int> occdata;
@@ -63,6 +65,7 @@ int statusPTU, prevStatusPTU;
 double timeOfScanning = 0;
 bool btMode = false;
 double min_robot_speed = 0.1;
+nav_msgs::GetPlan path;
 
 
 // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm 100 75 5 0 15 180 0.95 0.12
@@ -93,6 +96,9 @@ int main ( int argc, char **argv )
   ros::init(argc, argv, "mcdm_exploration_framework_node");
   ros::NodeHandle nh;
   ros::ServiceClient map_service_client_ = nh.serviceClient<nav_msgs::GetMap>("static_map");
+  ros::ServiceClient path_client = nh.serviceClient<nav_msgs::GetPlan>("/move_base/make_plan",true);
+  double path_len;
+  bool path_srv_call;
   nav_msgs::GetMap srv_map;
   //ros::Publisher grid_pub = nh.advertise<nav_msgs::OccupancyGrid>("mcdm_grid", 1000);
   ros::Publisher moveBasePub = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 1000);
@@ -159,7 +165,7 @@ int main ( int argc, char **argv )
 
       cout << "   Resolution: " << resolution << "\n   Costresolution: " << costresolution << endl;
 
-      dummy::Map map = dummy::Map(resolution, costresolution, costwidth, costheight, occdata, costorigin);
+      dummy::Map map = dummy::Map(costresolution, costresolution, costwidth, costheight, occdata, costorigin);
       ROS_DEBUG("Map created correctly");
 
       map.plotPathPlanningGridColor("/tmp/pathplanning_start.png");
@@ -228,6 +234,7 @@ int main ( int argc, char **argv )
       std::pair<int, int> relTagCoord;
       long i, j;
       long cell_i, cell_j;
+      double targetX_meter, targetY_meter;
       do
       {
 
@@ -240,12 +247,20 @@ int main ( int argc, char **argv )
         {
           // At every iteration, the current pose of the robot is taken from the TF-tree
           Pose target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
-          cout << "[Current Pose]: " << target.getY() << ", " << target.getX()<<" m. " << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
+          cout << "[Current Pose]: " << target.getX() << ", " << target.getY()<<" m. " << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
 //            cout << "[Tmp]: " << tmp_target.getY() << ", " << tmp_target.getX() << ", " << (tmp_target.getOrientation() + 360 ) % 360 << ", " << tmp_target.getFOV() <<", " << tmp_target.getRange() << endl;
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           cout << "[Current CELL INDEX in PathPlanningGrid]: " << i << ", " << j << endl;
+          map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
+          cout << "[Current POSITION in PathPlanningGrid]: " << targetX_meter << ", " << targetY_meter << endl;
           map.getGridIndex(target.getX(), target.getY(), i, j);
           cout << "[Current CELL INDEX in NavigationGrid]: " << i << ", " << j << endl;
+
+          // Update starting point in the path
+          path.request.start.header.frame_id = "map";
+          path.request.start.pose.position.x = targetX_meter;
+          path.request.start.pose.position.y = targetY_meter;
+          path.request.start.pose.orientation.w = 1;
 
 
           long x = target.getX();
@@ -332,7 +347,7 @@ int main ( int argc, char **argv )
             graph2.pop_back();
             actualPose = function.getEncodedKey ( target,0 );
             // Add to the graph the initial positions and the candidates from there (calculated inside the function)
-            pushInitialPositions ( map, x, y, orientation, range, FOV, threshold, actualPose, &graph2 );
+            pushInitialPositions ( map, x, y, orientation, range, FOV, threshold, actualPose, &graph2, &path_client );
           }
 
 
@@ -430,7 +445,7 @@ int main ( int argc, char **argv )
             unexploredFrontiers = frontiers;
 
             // Evaluate the frontiers and return a list of <frontier, evaluation> pairs
-            EvaluationRecords *record = function.evaluateFrontiers ( frontiers, &map, threshold );
+            EvaluationRecords *record = function.evaluateFrontiers ( frontiers, &map, threshold, &path_client );
             nearCandidates = record->getFrontiers();
 
             // If there are candidate positions
@@ -462,10 +477,13 @@ int main ( int argc, char **argv )
 //                } else {
                   //NOTE: 1mx1m
                   cout << " [Marker] 1mx1m" << endl;
-                  p.point.x = (target.getX()) + costorigin.position.x;//* costresolution;
-                  p.point.y = (target.getY()) + costorigin.position.y;// * costresolution;
+                  map.getPathPlanningPosition(targetX_meter, targetY_meter, target.getX(), target.getY());
+                  p.point.x = targetX_meter;
+                  p.point.y = targetY_meter;
+//                  p.point.x = (target.getX()) + costorigin.position.x;//* costresolution;
+//                  p.point.y = (target.getY()) + costorigin.position.y;// * costresolution;
 //                }
-                cout << "   (" << p.point.x << "," << p.point.y << ")" << endl;
+                  cout << "   (" << p.point.x << "," << p.point.y << ")" << endl;
 
 //                if (resolution == costresolution)
 //                {
@@ -484,17 +502,43 @@ int main ( int argc, char **argv )
                 double orientZ = (double) (target.getOrientation() * PI / (2 * 180));
                 double orientW = (double) (target.getOrientation() * PI / (2 * 180));
 
-                string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(), &map );
-                float travel_distance = astar.lenghtPath(path);
-                cout << "Target is at " << astar.lenghtPath(path) << " cells from the robot" << endl;
-                cout << "Resolution : " << resolution << endl;
-                float time_travel = travel_distance / min_robot_speed;
+//                string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(), &map );
+//                float travel_distance = astar.lenghtPath(path);
+//                cout << "Path is : " << path << endl;
+//                cout << "Target is at " << astar.lenghtPath(path) << " cells from the robot" << endl;
+
+                // Update the destination point with the target
+                path.request.goal.header.frame_id = "map";
+                path.request.goal.pose.position.x = targetX_meter;
+                path.request.goal.pose.position.y = targetY_meter;
+                path.request.goal.pose.orientation.w = 1;
+                cout << "[PATH-START] = (" << path.request.start.pose.position.x << ", " << path.request.start.pose.position.x << ")" << endl;
+                cout << "[PATH-GOAL] = (" << path.request.goal.pose.position.x << ", " << path.request.goal.pose.position.y << ")" << endl;
+                path_srv_call = path_client.call(path);
+                if(path_srv_call){
+                  // calculate path length
+                  path_len = getPathLen(path.response.plan.poses);
+                  if (path_len<1e3)
+                  {
+                    ROS_INFO("Path len is [%3.3f m.]",path_len);
+                  }
+                  else
+                  {
+                    ROS_INFO("Path len is infinite");
+                    path_len = 1000;
+                  }
+                } else {
+                  ROS_INFO("Service call failed! ");
+                }
+
+//                cout << "Resolution : " << resolution << endl;
+                float time_travel = 5* path_len / min_robot_speed;
                 if (resolution == 0)
                 {
-                  travel_distance = travel_distance * costresolution;
-                  time_travel = travel_distance / min_robot_speed;
+                  path_len = path_len * costresolution;
+                  time_travel = 5 * path_len / min_robot_speed;
                 }
-                cout << "Target is at " << travel_distance << " cells from the robot" << endl;
+                cout << "Target is at " << path_len << " cells from the robot" << endl;
 
 
 
@@ -522,7 +566,7 @@ int main ( int argc, char **argv )
                   // Remove the current position from possible candidates
                   cleanPossibleDestination2 ( nearCandidates,target );
                   // Get the list of new candidate position with associated evaluation
-                  record = function.evaluateFrontiers ( nearCandidates, &map,threshold );
+                  record = function.evaluateFrontiers ( nearCandidates, &map,threshold , &path_client);
                   // If there are candidate positions
                   if ( record->size() != 0 )
                   {
@@ -535,6 +579,7 @@ int main ( int argc, char **argv )
                     scan = false;
                     // Set that we are now in backtracking
                     btMode = true;
+                    cout << "[BT1] 1" << endl;
                   }
                     // If there are no more candidate position from the last position in the graph
                   else
@@ -546,6 +591,7 @@ int main ( int argc, char **argv )
                     graph2.pop_back();
                     target = record->getPoseFromEncoding ( targetString );
                     scan = false;
+                    cout << "[BT1] 2" << endl;
                   }
                 }
                   // ... if the graph still does not present anymore candidate positions for its last pose
@@ -634,12 +680,36 @@ int main ( int argc, char **argv )
           //NOTE; calculate path and turnings between actual position and goal
           cout<< function.getEncodedKey ( target,1 ) << endl;
           // Calculate the distance between the previous robot pose and the next one (target)
-          string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(), &map );
-          // Update the overall covered distance
-          travelledDistance = travelledDistance + astar.lenghtPath( path );
-          cout << "BT: " << astar.lenghtPath ( path ) << endl;
+//          string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(), &map );
+//          // Update the overall covered distance
+//          travelledDistance = travelledDistance + astar.lenghtPath( path );
+//          cout << "BT: " << astar.lenghtPath ( len_path ) << endl;
           // Update the overall number of turnings
-          numOfTurning = numOfTurning + astar.getNumberOfTurning ( path );
+//          numOfTurning = numOfTurning + astar.getNumberOfTurning ( path );
+          map.getPathPlanningPosition(targetX_meter, targetY_meter, target.getX(), target.getY());
+          path.request.goal.header.frame_id = "map";
+          path.request.goal.pose.position.x = targetX_meter;
+          path.request.goal.pose.position.y = targetY_meter;
+          path.request.goal.pose.orientation.w = 1;
+          cout << " (x, y) = (" << x << "," << y << "), (targetX_meter, targetY_meter) = (" << targetX_meter << "," << targetY_meter << ")" << endl;
+          cout << "[BT: PATH-START] = (" << path.request.start.pose.position.x << ", " << path.request.start.pose.position.x << ")" << endl;
+          cout << "[BT: PATH-GOAL] = (" << path.request.goal.pose.position.x << ", " << path.request.goal.pose.position.y << ")" << endl;
+          path_srv_call = path_client.call(path);
+          if(path_srv_call){
+            // calculate path length
+            path_len = getPathLen(path.response.plan.poses);
+            if (path_len<1e3)
+            {
+              ROS_INFO("BT: Path len is [%3.3f m.]",path_len);
+            }
+            else
+            {
+              ROS_INFO("BT: Path len is infinite");
+            }
+          } else {
+            ROS_INFO("BT: Service call failed! ");
+          }
+
 
           string encoding = to_string ( target.getX() ) + to_string ( target.getY() );
           visitedCell.emplace ( encoding,0 );
@@ -664,7 +734,7 @@ int main ( int argc, char **argv )
           // Remove the current pose from the list of possible candidate cells
           cleanPossibleDestination2 ( nearCandidates,target );
           // Get the list of the candidate cells with their evaluation
-          EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates, &map, threshold );
+          EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates, &map, threshold, &path_client );
 
           // If there are candidate cells
           if ( record->size() != 0 )
@@ -695,7 +765,7 @@ int main ( int argc, char **argv )
                 // Remove the destination from the candidate list
                 cleanPossibleDestination2 ( nearCandidates,target );
                 // Get the candidates with their evaluation
-                EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates, &map, threshold );
+                EvaluationRecords *record = function.evaluateFrontiers ( nearCandidates, &map, threshold, &path_client );
                 // Select the new destination
                 std::pair<Pose,double> result = function.selectNewPose ( record );
                 target = result.first;
@@ -828,7 +898,7 @@ void cleanPossibleDestination2 ( std::list< Pose >& possibleDestinations, Pose& 
 }
 
 
-void pushInitialPositions ( dummy::Map map, int x, int y, int orientation, int range, int FOV, double threshold, string actualPose, vector< pair< string, list< Pose > > >* graph2 )
+void pushInitialPositions ( dummy::Map map, int x, int y, int orientation, int range, int FOV, double threshold, string actualPose, vector< pair< string, list< Pose > > >* graph2, ros::ServiceClient* path_client )
 {
   NewRay ray;
   MCDMFunction function;
@@ -848,7 +918,7 @@ void pushInitialPositions ( dummy::Map map, int x, int y, int orientation, int r
     frontiers.push_back ( p3 );
     frontiers.push_back ( p4 );
   }
-  EvaluationRecords *record = function.evaluateFrontiers ( frontiers, &map, threshold );
+  EvaluationRecords *record = function.evaluateFrontiers ( frontiers, &map, threshold, path_client );
   list<Pose>nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string,list<Pose>> pair = make_pair ( actualPose,nearCandidates );
@@ -1106,4 +1176,25 @@ void move(float x, float y, float orZ, float orW, int resolution, int costresolu
     ROS_INFO("The base failed to move");
 
   cout << endl;
+}
+
+
+double getPathLen(std::vector<geometry_msgs::PoseStamped> poses)
+{
+  double len=0;
+  geometry_msgs::Point p1, p2;
+  int npoints = poses.size();
+  ROS_INFO("Path has [%d] points",npoints);
+  if(npoints>0){
+    for (int i=1;i<npoints;i++){
+      p1=poses[i].pose.position;
+      p2=poses[i-1].pose.position;
+      len += sqrt(pow(p1.x - p2.x, 2) +   pow(p1.y - p2.y, 2) );
+    }
+  } else {
+    len=std::numeric_limits<double>::max();
+    ROS_INFO("Empty path. Len set to infinite... ");
+  }
+
+  return len;
 }

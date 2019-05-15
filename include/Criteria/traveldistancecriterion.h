@@ -27,7 +27,8 @@ class TravelDistanceCriterion :  public Criterion
     public:
 	TravelDistanceCriterion(double weight);
 	~TravelDistanceCriterion();
-	double evaluate( Pose &p, dummy::Map* map);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient* path_client);
+  double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
 	//only for testing purpose
 	//void insertEvaluation(Pose &p, double value);
 };

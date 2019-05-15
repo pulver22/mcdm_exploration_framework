@@ -75,7 +75,7 @@ double getPathLen(std::vector<geometry_msgs::PoseStamped> poses)
   return len;
 }
 
-int main0(int argc,char **argv){
+int main(int argc,char **argv){
   double len;
   ros::Time ping,pong,loop_pong,loop_ping;
   bool srv_call;
@@ -147,7 +147,7 @@ return 0;
 
 
 
-int main(int argc,char **argv){
+int main0(int argc,char **argv){
   double resolution;
   grid_map::GridMap map(vector<string>({"layer"}));
   grid_map::GridMap modifiedMap(vector<string>({"layer"}));
