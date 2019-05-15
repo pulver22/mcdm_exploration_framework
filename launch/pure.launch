@@ -10,11 +10,18 @@
   <env name="ROSCONSOLE_CONFIG_FILE"
     value="$(find mcdm_exploration_framework)/config/custom_rosconsole.conf"/>
 
+  <!-- Launch the grid map visualizer: can be removed after debug!-->
+  <node pkg="grid_map_visualization" type="grid_map_visualization" name="nav_grid_visualization_debug" output="screen">
+      <rosparam command="load" file="$(find mcdm_exploration_framework)/config/visualization.yaml" />
+  </node>
 
+  <!-- Launch the grid map visualizer: can be removed after debug!-->
+  <node pkg="grid_map_visualization" type="grid_map_visualization" name="plan_grid_visualization_debug" output="screen">
+      <rosparam command="load" file="$(find mcdm_exploration_framework)/config/visualization2.yaml" />
+  </node>
 
   <!-- base bringup-->
   <node pkg="mcdm_exploration_framework" type="pure_navigation" name="ric" output="screen" args="180 3 0.9 0.01 1">
-
   </node>
 
 </launch>

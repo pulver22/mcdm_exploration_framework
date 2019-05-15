@@ -107,6 +107,8 @@ int main ( int argc, char **argv )
   ros::Subscriber costmap_update_sub;
   ros::Rate r(1);
 
+  ros::Publisher gridPub = nh.advertise<grid_map_msgs::GridMap>("nav_grid_debug", 1, true);
+  ros::Publisher planningPub = nh.advertise<grid_map_msgs::GridMap>("planning_grid_debug", 1, true);
 
 
   ROS_INFO("Waiting for move_base action server to come up");
@@ -237,6 +239,9 @@ int main ( int argc, char **argv )
       double targetX_meter, targetY_meter;
       do
       {
+
+        gridPub.publish(map.toMessageGrid());
+        planningPub.publish(map.toMessagePathPlanning());
 
         map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
 

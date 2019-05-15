@@ -583,6 +583,9 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
 
   bool isPathPlanningGridValueObst( grid_map::Index ind);
 
+  grid_map_msgs::GridMap toMessagePathPlanning();
+
+  grid_map_msgs::GridMap toMessageGrid();
 
 protected:
 
@@ -793,6 +796,8 @@ private:
   void plotMyGrid(std::string fileURI, const grid_map::GridMap * gm);
 
   void plotMyGridColor(std::string fileURI, const grid_map::GridMap * gm);
+
+  grid_map_msgs::GridMap toMessage(grid_map::GridMap *gm);
 
   /**
    * constraints angle into -pi,pi range

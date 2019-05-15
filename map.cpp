@@ -1575,4 +1575,33 @@ bool Map::isPathPlanningGridValueObst( grid_map::Index ind)
 {
 	return ( getPathPlanningGridValue( ind(0), ind(1) ) == Map::CellValue::OBST );
 }
+
+grid_map_msgs::GridMap Map::toMessagePathPlanning()
+{
+  return toMessage(&planning_grid_);
+}
+
+grid_map_msgs::GridMap Map::toMessageGrid()
+{
+  return toMessage(&nav_grid_);
+}
+
+grid_map_msgs::GridMap Map::toMessage(grid_map::GridMap *gm)
+{
+    grid_map_msgs::GridMap message;
+    ros::Time time = ros::Time::now();
+    gm->add("elevation", (*gm)["layer"]);
+    gm->setBasicLayers({"elevation"});
+
+    for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
+              if (gm->at("elevation",*iterator)==Map::CellValue::FREE)
+                    gm->at("elevation",*iterator)=NAN;
+    }
+
+    gm->setTimestamp(time.toNSec());
+    GridMapRosConverter::toMessage(*gm, message);
+
+    return message;
+}
+
 }
