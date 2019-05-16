@@ -444,7 +444,7 @@ namespace dummy{
       ROS_DEBUG("Submap boundaries position: [%3.3f, %3.3f], [%3.3f, %3.3f], [%3.3f, %3.3f], [%3.3f, %3.3f]", topLeftP.x(),topLeftP.y(),  topRightP.x(),topRightP.y(),  bottomRightP.x(),bottomRightP.y(),  bottomLeftP.x(),bottomLeftP.y()  );
     }
 
-    void Map::updatePathPlanningGrid(float posX, float posY, int rangeInMeters) {
+    void Map::updatePathPlanningGrid(float posX, float posY, float rangeInMeters) {
       float rangeInCells_pp;
       int numVistNavCellsPerPathCell;
       double k;
@@ -459,11 +459,9 @@ namespace dummy{
       grid_map::Index navBufferSize;
 
       // get the boundaries of the planning submap
-      rangeInCells_pp = rangeInMeters/planning_grid_.getResolution();
+      rangeInCells_pp = (int) std::ceil(rangeInMeters/planning_grid_.getResolution());
       planningBufferSize = grid_map::Index(2 * rangeInCells_pp, 2 * rangeInCells_pp);
       upper_left_pp=Position(posX-rangeInMeters,posY-rangeInMeters);
-
-
 
       // this is the number of navigation cells inside a planning cell
       navBufferSize = grid_map::Index(gridToPathGridScale, gridToPathGridScale);

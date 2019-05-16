@@ -260,7 +260,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   * @param posY          Center of the update box, y coord
   * @param rangeInMeters Half length of the square (radius?) in meters
   */
-  void updatePathPlanningGrid(float posX, float posY, int rangeInMeters);
+  void updatePathPlanningGrid(float posX, float posY, float rangeInMeters);
 
 
   /**
