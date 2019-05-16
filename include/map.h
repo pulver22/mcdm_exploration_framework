@@ -38,7 +38,8 @@ public:
    * @param resolution Map resolution [m./cell]
    */
   Map(std::ifstream& infile, float resolution);
-
+  
+  Map(float plan_resolution,  nav_msgs::OccupancyGrid occupancyGrid );
    /**
    *  Creates Map using provided data vector and parameters
    * @param plan_resolution     planning grid resolution [m./cell] (should be greater than nav resolution)
@@ -591,6 +592,9 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   void countGridCells(long *n_obsts, long *n_free, long *n_vist, long *n_others);
 
 protected:
+
+  void createMap(nav_msgs::OccupancyGrid occupancyGrid);
+
 
   /**
   * creates map grid from input stream

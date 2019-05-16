@@ -8,6 +8,28 @@ namespace dummy{
 
     }
 
+
+    Map::Map(float plan_resolution,  nav_msgs::OccupancyGrid occupancyGrid ):map_grid_(vector<string>({"layer"})), nav_grid_(vector<string>({"layer"})), planning_grid_(vector<string>({"layer"})), rfid_grid_(vector<string>({"layer"}))
+    {
+      Map::createMap(occupancyGrid);
+      plotMyGrid("/tmp/initial_map.pgm", &map_grid_);
+
+      Map::createGrid(map_grid_.getResolution());
+      plotMyGrid("/tmp/initial_nav.pgm", &nav_grid_);
+      Map::createNewMap();
+
+      Map::createPathPlanningGrid(plan_resolution);
+      plotMyGrid("/tmp/initial_planning.pgm", &planning_grid_);
+
+      // once both are created, we can obtain the ratio
+      gridToPathGridScale = planning_grid_.getResolution()/nav_grid_.getResolution();
+      ROS_ASSERT_MSG(gridToPathGridScale >= 1, "[Map.cpp@map] Planning resolution lower than navigation resolution = %3.3f", gridToPathGridScale);
+
+
+      Map::createRFIDGrid(map_grid_.getResolution());
+      ROS_DEBUG("[Map.cpp@map] map created from OccupancyGrid");
+    }
+
     Map::Map(std::ifstream& infile, float resolution):map_grid_(vector<string>({"layer"})), nav_grid_(vector<string>({"layer"})), planning_grid_(vector<string>({"layer"})), rfid_grid_(vector<string>({"layer"}))
     {
       Map::createMap(infile);
@@ -34,6 +56,19 @@ namespace dummy{
 
       Map::createRFIDGrid(map_resolution);
       ROS_DEBUG("[Map.cpp@map] map created from data vector");
+    }
+
+
+    void Map::createMap(nav_msgs::OccupancyGrid occupancyGrid)
+        {
+          GridMapRosConverter::fromOccupancyGrid(occupancyGrid, "layer", map_grid_);
+
+          float maxValue = map_grid_.get("layer").maxCoeffOfFinites();
+          float minValue = map_grid_.get("layer").minCoeffOfFinites();
+          encodeGrid(&map_grid_,maxValue,minValue);
+
+          printGridData("map", &map_grid_ );
+
     }
 
     void Map::createMap(std::ifstream& infile)
@@ -1683,7 +1718,6 @@ grid_map_msgs::GridMap Map::toMessage(grid_map::GridMap *gm)
 
     gm->setTimestamp(time.toNSec());
     GridMapRosConverter::toMessage(*gm, message);
-
     return message;
 }
 

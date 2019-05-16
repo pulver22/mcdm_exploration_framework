@@ -167,7 +167,8 @@ int main ( int argc, char **argv )
 
       cout << "   Resolution: " << resolution << "\n   Costresolution: " << costresolution << endl;
 
-      dummy::Map map = dummy::Map(costresolution, costresolution, costwidth, costheight, occdata, costorigin);
+      //dummy::Map map = dummy::Map(costresolution, costresolution, costwidth, costheight, occdata, costorigin);
+      dummy::Map map = dummy::Map(resolution,costmap_grid);
       ROS_DEBUG("Map created correctly");
 
       map.plotPathPlanningGridColor("/tmp/pathplanning_start.png");
@@ -1105,7 +1106,7 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   if(costmapReceived == 0)
   {
     ROS_INFO("CALLBACK FIRST!");
-    //costmap_grid = msg.get();
+    costmap_grid = *msg;
     costresolution = msg->info.resolution;
     costwidth = msg->info.width;
     costheight = msg->info.height;
@@ -1118,7 +1119,6 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
     std::cout << "height " << msg->info.height << " width " << msg->info.width << " resolution " << msg->info.resolution << std::endl;
     costmapReceived = 1;
   }
-
 }
 
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg)
