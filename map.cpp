@@ -106,18 +106,39 @@ namespace dummy{
 
       map_grid_ = tempMap;
       printGridData("map", &map_grid_ );
+
+
     }
 
     void Map::encodeGrid(grid_map::GridMap *gm, int obstValue, int freeValue)
     {
+      long n_obsts=0;
+      long n_free=0;
+      long n_others=0;
+      long total=0;
       for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
                 if (gm->at("layer",*iterator)==obstValue)
-                      gm->at("layer",*iterator)=Map::CellValue::OBST;
-                if (gm->at("layer",*iterator)==freeValue)
-                      gm->at("layer",*iterator)=Map::CellValue::FREE;
+                {
+                    gm->at("layer",*iterator)=Map::CellValue::OBST;
+                    n_obsts++;
+                }
+                else if (gm->at("layer",*iterator)==freeValue)
+                {
+                    gm->at("layer",*iterator)=Map::CellValue::FREE;
+                    n_free++;
+                }
                 else //free by default
-                      gm->at("layer",*iterator)=Map::CellValue::FREE;
+                {
+                    gm->at("layer",*iterator)=Map::CellValue::FREE;
+                    n_others++;
+                }
       }
+
+      total = n_obsts + n_free + n_others;
+      ROS_DEBUG("[Map.cpp@encodeGrid] Encoded grid with %3.3f %% of free cells and %3.3f %% of occupied cells", 100.0*n_free/(1.0 *total),100.0*n_obsts/(1.0 *total));
+      if (n_others)
+        ROS_ERROR("[Map.cpp@encodeGrid] Found %3.3f %% undefined cells, casted to free space", 100.0*n_others/(1.0 *total));
+
     }
 
     void Map::createMap(int width,int height, double resolution , vector<int> data, geometry_msgs::Pose origin)
@@ -175,6 +196,7 @@ namespace dummy{
     cv::Mat Map::binarizeImage(cv::Mat mImg)
     {
       // how many different values does it have?
+      ROS_DEBUG("[Map.cpp@binarize] Input grid values:");
       std::vector<uchar> diffValues;
       for (int y = 0; y < mImg.rows; ++y)
       {
@@ -185,7 +207,7 @@ namespace dummy{
 
               if ( std::find(diffValues.begin(), diffValues.end(), value) == diffValues.end() ){
                   diffValues.push_back(value);
-                  ROS_DEBUG("[Map.cpp@binarize] Map val 0x%x",value);
+                  ROS_DEBUG("[Map.cpp@binarize] \t 0x%x",value);
               }
           }
       }
@@ -217,6 +239,10 @@ namespace dummy{
             {
               ROS_ERROR("[Map.cpp@createMap] \t\t [0x%x]==[%d] ",diffValues[i],diffValues[i]);
             }
+        }
+        else
+        {
+              ROS_DEBUG("[Map.cpp@createMap] Input image only has [%lu] different values: ",diffValues.size());
         }
 
       }
@@ -994,6 +1020,13 @@ namespace dummy{
 
     void Map::printGridData(std::string grid_name , const grid_map::GridMap *gm )
     {
+      long n_obsts=0;
+      long n_free=0;
+      long n_others=0;
+      long n_vist=0;
+      long total=0;
+
+
       int nRow = gm->getSize()(0);
       int nCol = gm->getSize()(1);
       grid_map::Index topLeftI(0,0);
@@ -1018,6 +1051,35 @@ namespace dummy{
       ROS_DEBUG(" \t\t topRight cell: [%d, %d] == [%3.3f, %3.3f] m.", topRightI.x(), topRightI.y(), topRightP.x(), topRightP.y()  );
       ROS_DEBUG(" \t\t bottomRight cell: [%d, %d] == [%3.3f, %3.3f] m.", bottomRightI.x(),bottomRightI.y(), bottomRightP.x(),bottomRightP.y()  );
       ROS_DEBUG(" \t\t bottomLeft cell: [%d, %d] == [%3.3f, %3.3f] m.",bottomLeftI.x(),bottomLeftI.y(),bottomLeftP.x(),bottomLeftP.y()  );
+
+      for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
+                if (gm->at("layer",*iterator)==Map::CellValue::OBST)
+                {
+                    n_obsts++;
+                }
+                else if (gm->at("layer",*iterator)==Map::CellValue::FREE)
+                {
+                    n_free++;
+                }
+                else if (gm->at("layer",*iterator)==Map::CellValue::VIST)
+                {
+                    n_vist++;
+                }
+                else //free by default?
+                {
+                    n_others++;
+                }
+      }
+
+      total = n_obsts + n_free + n_vist + n_others;
+      ROS_DEBUG("[Map.cpp@printGridData] Grid has %3.3f %% of free cells, %3.3f %% of occupied cells and  %3.3f %% of visited cells", 100.0*n_free/(1.0 *total),100.0*n_obsts/(1.0 *total),100.0*n_vist/(1.0 *total));
+      if (n_others)
+        ROS_ERROR("[Map.cpp@printGridData] Found %3.3f %% undefined cells", 100.0*n_others/(1.0 *total));
+
+
+      // .............................................................
+
+
 
     }
 
