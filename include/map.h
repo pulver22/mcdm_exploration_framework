@@ -38,7 +38,7 @@ public:
    * @param resolution Map resolution [m./cell]
    */
   Map(std::ifstream& infile, float resolution);
-  
+
   Map(float plan_resolution,  nav_msgs::OccupancyGrid occupancyGrid );
    /**
    *  Creates Map using provided data vector and parameters
@@ -253,6 +253,15 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   * @param power          Unused...
   */
   void updatePathPlanningGrid(int cellX, int cellY, int rangeInCells, double power);
+
+  /**
+  * Iterates over pathplanning-grid in a square and updates according to values in navigation grid
+  * @param posX          Center of the update box, x coord
+  * @param posY          Center of the update box, y coord
+  * @param rangeInMeters Half length of the square (radius?) in meters
+  */
+  void updatePathPlanningGrid(float posX, float posY, int rangeInMeters);
+
 
   /**
   * @brief Map::getRelativeTagCoord calculate the relative position of the RFID tag wrt the antenna
@@ -818,7 +827,10 @@ private:
   float  toFloat( Map::CellValue value) const;
   void encodeGrid(grid_map::GridMap *gm, int obstValue, int freeValue);
   void countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others, const grid_map::GridMap *gm );
+  void printSubmapBoundaries(  grid_map::Index startIndex,   grid_map::Index bufferSize, const grid_map::GridMap *gm) const;
 
+  // percentage of nav cells inside a planning cell that need to be visited before marking the planning cell as visited.
+  float PLANNING_VISIT_RATIO = 0.6;
 };
 }
 

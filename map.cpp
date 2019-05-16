@@ -326,6 +326,7 @@ namespace dummy{
       printGridData("rfid",&rfid_grid_ );
     }
 
+
     void Map::updatePathPlanningGrid(int cellX_pp, int cellY_pp, int rangeInCells_pp, double power) {
       int minX_pp = cellX_pp - rangeInCells_pp;
       int maxX_pp = cellX_pp + rangeInCells_pp;
@@ -417,6 +418,103 @@ namespace dummy{
 
       std::cout << "[Map.cpp@updatePathPlanningGrid] PlanningGrid scanned cells: " << counter_planning_grid_scanned << endl;
     }
+
+
+    void Map::printSubmapBoundaries(  grid_map::Index startIndex,   grid_map::Index bufferSize, const grid_map::GridMap *gm) const
+    {
+      int rowInc;
+      int colInc;
+      grid_map::Index indexInc;
+      grid_map::Index topLeftI;
+      grid_map::Index topRightI;
+      grid_map::Index bottomRightI;
+      grid_map::Index bottomLeftI;
+
+      indexInc = bufferSize - grid_map::Index(1,1);
+      topLeftI=startIndex;
+      topRightI=startIndex + grid_map::Index(0,indexInc(1));
+      bottomRightI=startIndex + indexInc;
+      bottomLeftI=startIndex+ grid_map::Index(indexInc(0),0);
+
+      grid_map::Position topLeftP,topRightP,bottomRightP,bottomLeftP;
+      gm->getPosition(topLeftI, topLeftP);
+      gm->getPosition(topRightI, topRightP);
+      gm->getPosition(bottomRightI, bottomRightP);
+      gm->getPosition(bottomLeftI, bottomLeftP);
+      ROS_DEBUG("Submap boundaries position: [%3.3f, %3.3f], [%3.3f, %3.3f], [%3.3f, %3.3f], [%3.3f, %3.3f]", topLeftP.x(),topLeftP.y(),  topRightP.x(),topRightP.y(),  bottomRightP.x(),bottomRightP.y(),  bottomLeftP.x(),bottomLeftP.y()  );
+    }
+
+    void Map::updatePathPlanningGrid(float posX, float posY, int rangeInMeters) {
+      float rangeInCells_pp;
+      int numVistNavCellsPerPathCell;
+      double k;
+      int numVistPathCell;
+
+      grid_map::Index planningStartIndex;
+      grid_map::Index planningBufferSize;
+      Position upper_left_pp;
+      Position position_pp;
+
+      grid_map::Index navStartIndex;
+      grid_map::Index navBufferSize;
+
+      // get the boundaries of the planning submap
+      rangeInCells_pp = rangeInMeters/planning_grid_.getResolution();
+      planningBufferSize = grid_map::Index(2 * rangeInCells_pp, 2 * rangeInCells_pp);
+      upper_left_pp=Position(posX-rangeInMeters,posY-rangeInMeters);
+
+
+
+      // this is the number of navigation cells inside a planning cell
+      navBufferSize = grid_map::Index(gridToPathGridScale, gridToPathGridScale);
+
+      // distance from the center of a planning grid cell to the center
+      // of the furthest navigation cell. IN METERS
+      k = (planning_grid_.getResolution()/2) - nav_grid_.getResolution();
+
+      numVistPathCell = 0;
+
+      printSubmapBoundaries(planningStartIndex, planningBufferSize, &planning_grid_);
+
+      // iterate over the submap in the planning grid (lower res)
+      for (grid_map::SubmapIterator planning_iterator(planning_grid_, planningStartIndex, planningBufferSize);
+           !planning_iterator.isPastEnd(); ++planning_iterator)
+      {
+
+        //get the centre of the current planning cell
+        planning_grid_.getPosition(*planning_iterator, position_pp);
+
+        numVistNavCellsPerPathCell = 0;
+
+        // obtain the position of the upper-left  navigation cell INSIDE current planning cell
+        upper_left_pp.x() = position_pp.x() - k;
+        upper_left_pp.y() = position_pp.y() - k;
+
+        // and corresponding index in nav_grid_
+        nav_grid_.getIndex(upper_left_pp, navStartIndex);
+
+        for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex, navBufferSize);
+             !nav_iterator.isPastEnd(); ++nav_iterator)
+        {
+
+          if (isGridValueVist(*nav_iterator))
+          {
+            numVistNavCellsPerPathCell++;
+          }
+        }
+
+        if (numVistNavCellsPerPathCell >= Map::PLANNING_VISIT_RATIO * gridToPathGridScale * gridToPathGridScale)
+        {
+          setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0),(*planning_iterator)(1));
+          numVistPathCell++;
+        }
+
+      }
+
+      ROS_DEBUG("[Map.cpp@updatePathPlanningGrid] PlanningGrid scanned cells: %d", numVistPathCell);
+    }
+
+
 
     float Map::getGridToPathGridScale() const
     {
@@ -1029,6 +1127,8 @@ namespace dummy{
     }
 
 
+
+
     string Map::type2str(int type)
     {
         string r;
@@ -1616,7 +1716,9 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
     }
 
     double  Map::constrainAnglePI(double x){
+        // remove full turns of 2pi
         x = fmod(x + M_PI,2*M_PI);
+        // x will be between 0 and 2pi
         if (x < 0)
             x += 2*M_PI;
         return x - M_PI;
