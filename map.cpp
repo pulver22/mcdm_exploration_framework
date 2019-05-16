@@ -1052,25 +1052,7 @@ namespace dummy{
       ROS_DEBUG(" \t\t bottomRight cell: [%d, %d] == [%3.3f, %3.3f] m.", bottomRightI.x(),bottomRightI.y(), bottomRightP.x(),bottomRightP.y()  );
       ROS_DEBUG(" \t\t bottomLeft cell: [%d, %d] == [%3.3f, %3.3f] m.",bottomLeftI.x(),bottomLeftI.y(),bottomLeftP.x(),bottomLeftP.y()  );
 
-      for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
-                if (gm->at("layer",*iterator)==Map::CellValue::OBST)
-                {
-                    n_obsts++;
-                }
-                else if (gm->at("layer",*iterator)==Map::CellValue::FREE)
-                {
-                    n_free++;
-                }
-                else if (gm->at("layer",*iterator)==Map::CellValue::VIST)
-                {
-                    n_vist++;
-                }
-                else //free by default?
-                {
-                    n_others++;
-                }
-      }
-
+      countCells(&n_obsts, &n_free, &n_vist, &n_others,gm);
       total = n_obsts + n_free + n_vist + n_others;
       ROS_DEBUG("[Map.cpp@printGridData] Grid has %3.3f %% of free cells, %3.3f %% of occupied cells and  %3.3f %% of visited cells", 100.0*n_free/(1.0 *total),100.0*n_obsts/(1.0 *total),100.0*n_vist/(1.0 *total));
       if (n_others)
@@ -1080,6 +1062,33 @@ namespace dummy{
       // .............................................................
 
 
+
+    }
+
+      void Map::countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others, const grid_map::GridMap *gm )
+      {
+         *n_obsts=0;
+         *n_free=0;
+         *n_others=0;
+         *n_vist=0;
+      for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
+                if (gm->at("layer",*iterator)==Map::CellValue::OBST)
+                {
+                    (*n_obsts)++;
+                }
+                else if (gm->at("layer",*iterator)==Map::CellValue::FREE)
+                {
+                    (*n_free)++;
+                }
+                else if (gm->at("layer",*iterator)==Map::CellValue::VIST)
+                {
+                    (*n_vist)++;
+                }
+                else
+                {
+                    (*n_others)++;
+                }
+      }
 
     }
 

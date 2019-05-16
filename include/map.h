@@ -586,6 +586,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   grid_map_msgs::GridMap toMessagePathPlanning();
 
   grid_map_msgs::GridMap toMessageGrid();
+  void countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others, const grid_map::GridMap *gm );
 
 protected:
 
