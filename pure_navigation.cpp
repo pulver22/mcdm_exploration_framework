@@ -85,7 +85,7 @@ int main ( int argc, char **argv )
     ROS_INFO("Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n- Threshold (%3.3f)\n- Resolution: (%3.3f)",
              atof(argv[1]),atoi(argv[2]),atof(argv[3]),atof(argv[4]),atof(argv[5]));
   }
-  // sets console output to debug mode...
+//   sets console output to debug mode...
 //  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) )
 //  {
 //   ros::console::notifyLoggerLevelsChanged();
@@ -241,12 +241,7 @@ int main ( int argc, char **argv )
       do
       {
 
-        gridPub.publish(map.toMessageGrid());
-        planningPub.publish(map.toMessagePathPlanning());
 
-        map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
-
-        map.plotGridColor("/tmp/nav_lastLoop.png");
 
         // If we are doing "forward" navigation towards cells never visited before
         if ( btMode == false )
@@ -261,6 +256,9 @@ int main ( int argc, char **argv )
           cout << "[Current POSITION in PathPlanningGrid]: " << targetX_meter << ", " << targetY_meter << endl;
           map.getGridIndex(target.getX(), target.getY(), i, j);
           cout << "[Current CELL INDEX in NavigationGrid]: " << i << ", " << j << endl;
+
+          newSensedCells = sensedCells + ray.performSensingOperation ( &map, 5.0, 3.0, 90, 180, 3, -1.8, 1.8 );
+          gridPub.publish(map.toMessageGrid());
 
           // Update starting point in the path
           path.request.start.header.frame_id = "map";
@@ -283,6 +281,7 @@ int main ( int argc, char **argv )
           // Perform a scanning operation
 //          map.getGridIndex(x, y, cell_i, cell_j);
           newSensedCells = sensedCells + ray.performSensingOperation ( &map, x, y, orientation, FOV, range, target.getScanAngles().first, target.getScanAngles().second );
+//          newSensedCells = sensedCells + map.performSensingOperation ( x, y, (orientation * 180 / 3.14) , (FOV * 180 / 3.14), 3, target.getScanAngles().first, target.getScanAngles().second );
           // Calculate the scanning angle
           double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanning time
@@ -301,6 +300,11 @@ int main ( int argc, char **argv )
 //            myGrid.addEllipse(rxPower - SENSITIVITY, map.getNumGridCols() - target.getX(),  target.getY(), target.getOrientation(), -0.5, 7.0);
           // Search for new candidate position
 //          map.getGridIndex(x, y, cell_i, cell_j);
+
+          gridPub.publish(map.toMessageGrid());
+          planningPub.publish(map.toMessagePathPlanning());
+          map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
+          map.plotGridColor("/tmp/nav_lastLoop.png");
 
           ray.findCandidatePositions ( &map, x, y, orientation, FOV, range );
           vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
