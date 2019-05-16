@@ -586,7 +586,9 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   grid_map_msgs::GridMap toMessagePathPlanning();
 
   grid_map_msgs::GridMap toMessageGrid();
-  void countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others, const grid_map::GridMap *gm );
+
+  void countPathPlanningCells(long *n_obsts, long *n_free, long *n_vist, long *n_others);
+  void countGridCells(long *n_obsts, long *n_free, long *n_vist, long *n_others);
 
 protected:
 
@@ -808,9 +810,11 @@ private:
   double  constrainAnglePI(double x);
 
 
-  Map::CellValue  toCellValue( float floatVal) const;
+  Map::CellValue toCellValue( float floatVal) const;
   float  toFloat( Map::CellValue value) const;
   void encodeGrid(grid_map::GridMap *gm, int obstValue, int freeValue);
+  void countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others, const grid_map::GridMap *gm );
+
 };
 }
 

@@ -1065,6 +1065,18 @@ namespace dummy{
 
     }
 
+
+    void Map::countGridCells(long *n_obsts, long *n_free, long *n_vist, long *n_others)
+    {
+      countCells(n_obsts, n_free, n_vist, n_others, &nav_grid_ );
+    }
+
+    void Map::countPathPlanningCells(long *n_obsts, long *n_free, long *n_vist, long *n_others)
+    {
+      countCells(n_obsts, n_free, n_vist, n_others, &planning_grid_);
+    }
+
+
       void Map::countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others, const grid_map::GridMap *gm )
       {
          *n_obsts=0;
