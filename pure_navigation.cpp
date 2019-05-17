@@ -464,6 +464,7 @@ int main ( int argc, char **argv )
               // Set the previous pose equal to the current one (represented by target)
               previous = target;
               // Select the new robot destination from the list of candidates
+
               std::pair<Pose,double> result = function.selectNewPose ( record );
               target = result.first;
               // If the selected destination does not appear among the cells already visited

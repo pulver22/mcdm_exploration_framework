@@ -172,7 +172,7 @@ namespace dummy{
       total = n_obsts + n_free + n_others;
       ROS_DEBUG("[Map.cpp@encodeGrid] Encoded grid with %3.3f %% of free cells and %3.3f %% of occupied cells", 100.0*n_free/(1.0 *total),100.0*n_obsts/(1.0 *total));
       if (n_others)
-        ROS_ERROR("[Map.cpp@encodeGrid] Found %3.3f %% undefined cells, casted to free space", 100.0*n_others/(1.0 *total));
+        ROS_WARN("[Map.cpp@encodeGrid] Found %3.3f %% undefined cells, CASTED to free space", 100.0*n_others/(1.0 *total));
 
     }
 
@@ -297,8 +297,9 @@ namespace dummy{
 
       GridMapCvProcessing::changeResolution(map_grid_, nav_grid_, resolution);
 
-      //cv::resize(src, dst, Size(), 0.5, 0.5, cv::CV_INTER_AREA);
-
+      float maxValue = nav_grid_.get("layer").maxCoeffOfFinites();
+      float minValue = nav_grid_.get("layer").minCoeffOfFinites();
+      encodeGrid(&nav_grid_,maxValue,minValue);
 
       Map::numGridRows = nav_grid_.getSize()(0);
       Map::numGridCols = nav_grid_.getSize()(1);
@@ -311,6 +312,11 @@ namespace dummy{
       ROS_DEBUG("[Map.cpp@createGrid] creating planning grid with resolution %3.3f",resolution);
 
       GridMapCvProcessing::changeResolution(map_grid_, planning_grid_, resolution);
+
+      float maxValue = planning_grid_.get("layer").maxCoeffOfFinites();
+      float minValue = planning_grid_.get("layer").minCoeffOfFinites();
+      encodeGrid(&planning_grid_,maxValue,minValue);
+
       Map::numPathPlanningGridRows = planning_grid_.getSize()(0);
       Map::numPathPlanningGridCols = planning_grid_.getSize()(1);
       printGridData("plan",&planning_grid_ );

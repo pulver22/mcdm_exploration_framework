@@ -454,8 +454,8 @@ std::pair<double,double> NewRay::getSensingTime(dummy::Map *map, double posX_met
   std::pair<double, double> angles;
   angles.first = minPhi;
   angles.second = maxPhi;
-  cout << "[newRay.cpp@getSensingTime] orientation: " << orientation << endl;
-  cout << "[newRay.cpp@getSensingTime] scanning angle.first: " << minPhi << ", scanning_angle.second: " << maxPhi << endl;
+  //cout << "[newRay.cpp@getSensingTime] orientation: " << orientation << endl;
+  //cout << "[newRay.cpp@getSensingTime] scanning angle.first: " << minPhi << ", scanning_angle.second: " << maxPhi << endl;
   return angles;
 }
 
@@ -472,13 +472,13 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
   range = range * gridToPathGridScale;
 
   int counter = 0;
-  std::cout << "[newray.cpp@performSensingOperation] firstAngle: " << firstAngle << " secondAngle: " << lastAngle <<std::endl;
+  //std::cout << "[newray.cpp@performSensingOperation] firstAngle: " << firstAngle << " secondAngle: " << lastAngle <<std::endl;
 
   //set the correct FOV orientation
   double startingPhi = firstAngle+orientation*PI/180.0; //orientation*PI/180 - FOV/2;
   double endingPhi = lastAngle+orientation*PI/180.0; //orientation*PI/180 + FOV/2;
   int add2pi = 0;
-  std::cout << "[newray.cpp@performSensingOperation] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
+  //std::cout << "[newray.cpp@performSensingOperation] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
   if(startingPhi <= 0)
   {
     add2pi = 1;
@@ -487,7 +487,7 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
   }
 
   if(endingPhi > 2*PI) add2pi = 1;
-  std::cout << "[newray.cpp@performSensingOperation] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
+  //std::cout << "[newray.cpp@performSensingOperation] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
 //  std::cout << endl;
 //  std::cout << "[newray.cpp@performSensingOperation] StartingPhi: " << startingPhi << " EndingPhi: " << endingPhi <<std::endl;
 //  std::cout << "[newray.cpp@performSensingOperation] [posX, posY](cells): " << cell_i << ", " << cell_j <<std::endl;
@@ -512,7 +512,7 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
 
   double tmp_x, tmp_y;
 
-  cout << "[newray.cpp@performSensingOperation] [minI, minJ]: " << minI << "," << minJ << ", [maxI, maxJ]: " << maxI << ", " << maxJ << endl;
+  //cout << "[newray.cpp@performSensingOperation] [minI, minJ]: " << minI << "," << minJ << ", [maxI, maxJ]: " << maxI << ", " << maxJ << endl;
 
   //scan the cells in the selected portion of the map
   int count = 0;
@@ -577,7 +577,7 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
             if((long)curX == i && (long)curY == j)	//if the free cell is reached, set its value to 2 and stop the ray
             {
 
-              std::cout << "[newray.cpp@performSensingOperation] Cell scanned: " << i << " " << j  <<", value: "<< map->getGridValue(i, j) << std::endl;
+              //std::cout << "[newray.cpp@performSensingOperation] Cell scanned: " << i << " " << j  <<", value: "<< map->getGridValue(i, j) << std::endl;
               map->setGridValue(dummy::Map::CellValue::VIST, i, j);
               map-> getGridPosition(tmp_x, tmp_y, i, j);
               counter++;
@@ -591,7 +591,7 @@ int NewRay::performSensingOperation(dummy::Map *map, double posX_meter, double p
       }
     }
   }
-  std::cout << "[newray.cpp@performSensingOperation] Totals cells scanned: " << counter << std::endl;
+  //std::cout << "[newray.cpp@performSensingOperation] Totals cells scanned: " << counter << std::endl;
   return counter;
 }
 
@@ -728,4 +728,3 @@ void NewRay::setGridToPathGridScale(float value)
 {
   gridToPathGridScale = value;
 }
-
