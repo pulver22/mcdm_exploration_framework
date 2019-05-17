@@ -3,7 +3,7 @@
 #include <iostream>
 using namespace std;
 
-Pose::Pose(long aX,long aY, int orientation, int range, double FOV)
+Pose::Pose(float aX, float aY, float orientation, int range, double FOV)
 {
   Pose::aX = aX;
   Pose::aY = aY;
@@ -28,17 +28,17 @@ double Pose::getDistance( Pose& pose)
   return std::sqrt((aX - pose.getX())*(aX - pose.getX()) + (aY - pose.getY())*(aY - pose.getY()));
 }
 
-long Pose::getX()
+float Pose::getX()
 {
   return aX;
 }
 
-long int Pose::getY()
+float Pose::getY()
 {
   return aY;
 }
 
-int Pose::getOrientation()
+float Pose::getOrientation()
 {
   return orientation;
 }

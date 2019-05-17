@@ -534,7 +534,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   /**
    * Returns candidate positions: path planning cell indexes list built with findCandidatePositions or  findCandidatePositions2
    */
-  vector< std::pair<long,long>> getCandidatePositions();
+  vector< std::pair<float,float>> getCandidatePositions();
 
   /**
    * Clears candidate positions (built with findCandidatePositions or  findCandidatePositions2)
@@ -718,7 +718,7 @@ protected:
 private:
 
   // TODO: meaningful description here
-  std::vector<std::pair<long, long> > edgePoints;
+  std::vector<std::pair<float, float> > edgePoints;
 
   /**
    * Returns the i,j index from grid of the given metric position (in "map" frame id)

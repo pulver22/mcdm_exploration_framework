@@ -313,7 +313,7 @@ void NewRay::emptyCandidatePositions()
 //calculate the sensing time of a possible scanning operation, returns the minimum FOV required to scan all the free cells from the considered pose
 //ATTENTION: the FOV is always centered in the orientation of the robot
 //ATTENTION: in order to optimize the computing time, this method should be fused with the information gain one
-std::pair<double,double> NewRay::getSensingTime(dummy::Map *map, double posX_meter, double posY_meter, int orientation, double FOV, int range)
+std::pair<double,double> NewRay::getSensingTime(dummy::Map *map, double posX_meter, double posY_meter, float orientation, double FOV, int range)
 {
 
   NewRay::numGridRows = map->getNumGridRows();
@@ -330,8 +330,8 @@ std::pair<double,double> NewRay::getSensingTime(dummy::Map *map, double posX_met
   int phiFound = 0;	//set to 1 if at least a cell can be scanned
 
   //set the correct FOV orientation
-  double startingPhi = orientation*PI/180 - FOV/2;
-  double endingPhi = orientation*PI/180 + FOV/2;
+  double startingPhi = orientation - FOV/2;
+  double endingPhi = orientation + FOV/2;
   int add2pi = 0;
 
   if(startingPhi <= 0)
@@ -450,6 +450,9 @@ std::pair<double,double> NewRay::getSensingTime(dummy::Map *map, double posX_met
 
   return value;
   */
+
+
+
   // return sensingTime;
   std::pair<double, double> angles;
   angles.first = minPhi;
@@ -718,7 +721,7 @@ int NewRay::getInformationGain(dummy::Map *map, double posX_meter, double posY_m
       }
     }
   }
-  //std::cout << "Number of rays: " << raycounter << std::endl;
+  std::cout << "Number of free cells: " << counter << std::endl;
   return counter;	//return the number of free cells
 
   // return this->informationGain;

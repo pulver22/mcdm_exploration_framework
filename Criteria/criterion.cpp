@@ -103,6 +103,7 @@ double Criterion::getEvaluation(Pose &p) const
     string pose = record->getEncodedKey(p);
     double value = evaluation.at(pose);
     delete record;
+//    cout << "Value: " << value << endl;
     return value;
     
 }

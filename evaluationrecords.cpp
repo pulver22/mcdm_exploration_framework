@@ -59,29 +59,28 @@ int EvaluationRecords::size()
 
 
 
-list<Pose> EvaluationRecords::getFrontiers() 
-{
-    
-    vector<string> list;
-    list.reserve(evaluations.size());
+list<Pose> EvaluationRecords::getFrontiers() {
 
-    for(unordered_map<string,double>::iterator it = evaluations.begin(); it != evaluations.end(); it++ ) {
-	list.push_back((*it).first);
-	
-    } 
-    
-    std::list<Pose> toRet ;
+  vector<string> list;
+  list.reserve(evaluations.size());
 
-    for(vector<string>::iterator it = list.begin(); it != list.end(); it++){
-	// create a pose object for every string string in the list
-	
-	string s = *it;
-	Pose p = getPoseFromEncoding(s);
-	
-	toRet.push_back(p);
-    }
+  for (unordered_map<string, double>::iterator it = evaluations.begin(); it != evaluations.end(); it++) {
+    list.push_back((*it).first);
 
-    return toRet;
+  }
+
+  std::list<Pose> toRet;
+
+  for (vector<string>::iterator it = list.begin(); it != list.end(); it++) {
+    // create a pose object for every string string in the list
+
+    string s = *it;
+    Pose p = getPoseFromEncoding(s);
+
+    toRet.push_back(p);
+  }
+
+  return toRet;
 }
 
 

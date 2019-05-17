@@ -31,14 +31,14 @@ using namespace std;
 using namespace dummy;
 bool contains ( std::list< Pose >& list, Pose& p );
 void cleanPossibleDestination2 ( std::list< Pose > &possibleDestinations, Pose& p );
-void pushInitialPositions ( dummy::Map map, int x, int y, int orientation,  int range, int FOV, double threshold,
+void pushInitialPositions ( dummy::Map map, float x, float y, float orientation,  int range, int FOV, double threshold,
                             string actualPose, vector< pair< string, list< Pose > > > *graph2, ros::ServiceClient* path_client );
 double calculateScanTime ( double scanAngle );
 void calculateDistance(list<Pose> list, dummy::Map& map, Astar* astar);
-Pose createFromInitialPose ( Pose pose, int variation, int range, int FOV );
+Pose createFromInitialPose ( Pose pose, float variation, int range, int FOV );
 void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPose, list<Pose>* nearCandidates, vector<pair<string,list<Pose>>>* graph2,
                        dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int encodedKeyValue, Astar* astar , long* numConfiguration,
-                       double* totalAngle, double * travelledDistance, int* numOfTurning , double scanAngle);
+                       double* totalAngle, double * travelledDistance, int* numOfTurning , double scanAngle, ros::ServiceClient* path_client);
 list<Pose> cleanHistory(vector<string>* history, EvaluationRecords* record_history);
 void printResult(long newSensedCells, long totalFreeCells, double precision, long numConfiguration, double travelledDistance,
                  int numOfTurning, double totalAngle, double totalScanTime);
@@ -194,11 +194,9 @@ int main ( int argc, char **argv )
       Pose start_pose = getCurrentPose( resolution, costresolution, &map, initFov, initRange);
       Pose target = start_pose;
       Pose previous = target;
-      cout << "[AFTER]Initial position in the image frame: " << target.getY() << "," << target.getX()
-           << " m. "<< endl;
-      Pose invertedInitial = createFromInitialPose(start_pose, 180, initRange, initFov);
-      Pose eastInitial = createFromInitialPose(start_pose, 90, initRange, initFov);
-      Pose westInitial = createFromInitialPose(start_pose, 270, initRange, initFov);
+      Pose invertedInitial = createFromInitialPose(start_pose, PI, initRange, initFov);
+      Pose eastInitial = createFromInitialPose(start_pose, PI/2, initRange, initFov);
+      Pose westInitial = createFromInitialPose(start_pose, 3*PI/2, initRange, initFov);
 
       long numConfiguration = 1;
       vector<pair<string, list<Pose>>> graph2;
@@ -215,7 +213,7 @@ int main ( int argc, char **argv )
       double totalAngle = 0;
       unordered_map<string, int> visitedCell;
       vector<string> history;
-      history.push_back(function.getEncodedKey(target, 1));
+//      history.push_back(function.getEncodedKey(target, 1));
       //amount of time the robot should do nothing for scanning the environment ( final value expressed in second)
       unsigned int microseconds = 5 * 1000 * 1000;
       //cout << "total free cells in the main: " << totalFreeCells << endl;
@@ -257,7 +255,7 @@ int main ( int argc, char **argv )
           map.getGridIndex(target.getX(), target.getY(), i, j);
           cout << "[Current CELL INDEX in NavigationGrid]: " << i << ", " << j << endl;
 
-          newSensedCells = sensedCells + ray.performSensingOperation ( &map, 5.0, 3.0, 90, 180, 3, -1.8, 1.8 );
+//          newSensedCells = sensedCells + ray.performSensingOperation ( &map, 5.0, 3.0, 90, 180, 3, -1.8, 1.8 );
           gridPub.publish(map.toMessageGrid());
 
           // Update starting point in the path
@@ -267,9 +265,9 @@ int main ( int argc, char **argv )
           path.request.start.pose.orientation.w = 1;
 
 
-          long x = target.getX();
-          long y = target.getY();
-          int orientation = (target.getOrientation() + 360) % 360;  // cast orientation in [0, 360]
+          float x = target.getX();
+          float y = target.getY();
+          float orientation = target.getOrientation() ;  // cast orientation in [0, 360]
           int range = target.getRange();
           double FOV = target.getFOV();
           string actualPose = function.getEncodedKey ( target,0 );
@@ -277,11 +275,11 @@ int main ( int argc, char **argv )
           string encoding = to_string ( target.getX() ) + to_string ( target.getY() );
           visitedCell.emplace ( encoding,0 );
           // Get the sensing time required for scanning
-          target.setScanAngles ( ray.getSensingTime ( &map,x,y,orientation,FOV,range ) );
+          target.setScanAngles ( map.getSensingTime ( x,y, orientation, FOV, range ) );
           // Perform a scanning operation
 //          map.getGridIndex(x, y, cell_i, cell_j);
-          newSensedCells = sensedCells + ray.performSensingOperation ( &map, x, y, orientation, FOV, range, target.getScanAngles().first, target.getScanAngles().second );
-//          newSensedCells = sensedCells + map.performSensingOperation ( x, y, (orientation * 180 / 3.14) , (FOV * 180 / 3.14), 3, target.getScanAngles().first, target.getScanAngles().second );
+//          newSensedCells = sensedCells + ray.performSensingOperation ( &map, x, y, orientation, FOV, range, target.getScanAngles().first, target.getScanAngles().second );
+          newSensedCells = sensedCells + map.performSensingOperation ( x, y, orientation  , FOV , range, target.getScanAngles().first, target.getScanAngles().second);
           // Calculate the scanning angle
           double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanning time
@@ -306,10 +304,10 @@ int main ( int argc, char **argv )
           map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
           map.plotGridColor("/tmp/nav_lastLoop.png");
 
-          ray.findCandidatePositions ( &map, x, y, orientation, FOV, range );
-          vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
+          map.findCandidatePositions ( x, y, orientation, FOV, range );
+          vector<pair<float, float> >candidatePosition = map.getCandidatePositions();
           cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
-          ray.emptyCandidatePositions();
+          map.emptyCandidatePositions();
           cout << " Candidate cleaned!" << endl;
 
           if (scan)
@@ -365,9 +363,9 @@ int main ( int argc, char **argv )
           if ( candidatePosition.size() == 0 )
           {
             // Find candidates
-            ray.findCandidatePositions2 ( &map,x,y,orientation,FOV,range );
-            candidatePosition = ray.getCandidatePositions();
-            ray.emptyCandidatePositions();
+            map.findCandidatePositions2 ( x, y, orientation, FOV, range );
+            candidatePosition = map.getCandidatePositions();
+            map.emptyCandidatePositions();
 
             cout << "No other candidate position" << endl;
             cout << "----- BACKTRACKING -----" << endl;
@@ -430,17 +428,17 @@ int main ( int argc, char **argv )
             // need to convert from a <int,int pair> to a Pose with also orientation,laser range and angle
             list<Pose> frontiers;
             // For every candidate positio, create 8 pose with a different orientation each and consider them as frontiers
-            vector<pair<long,long> >::iterator it =candidatePosition.begin();
+            vector<pair<float, float> >::iterator it = candidatePosition.begin();
             for ( it; it != candidatePosition.end(); it++ )
             {
               Pose p1 = Pose ( ( *it ).first, ( *it ).second,0 ,range,FOV );
-              Pose p2 = Pose ( ( *it ).first, ( *it ).second,45,range,FOV );
-              Pose p3 = Pose ( ( *it ).first, ( *it ).second,90,range,FOV );
-              Pose p4 = Pose ( ( *it ).first, ( *it ).second,135,range,FOV );
-              Pose p5 = Pose ( ( *it ).first, ( *it ).second,180,range,FOV );
-              Pose p6 = Pose ( ( *it ).first, ( *it ).second,225,range,FOV );
-              Pose p7 = Pose ( ( *it ).first, ( *it ).second,270,range,FOV );
-              Pose p8 = Pose ( ( *it ).first, ( *it ).second,315,range,FOV );
+              Pose p2 = Pose ( ( *it ).first, ( *it ).second,PI/4,range,FOV );
+              Pose p3 = Pose ( ( *it ).first, ( *it ).second,PI/2,range,FOV );
+              Pose p4 = Pose ( ( *it ).first, ( *it ).second,3*PI/4,range,FOV );
+              Pose p5 = Pose ( ( *it ).first, ( *it ).second,PI,range,FOV );
+              Pose p6 = Pose ( ( *it ).first, ( *it ).second,5*PI/4,range,FOV );
+              Pose p7 = Pose ( ( *it ).first, ( *it ).second,3*PI/2,range,FOV );
+              Pose p8 = Pose ( ( *it ).first, ( *it ).second,7*PI/4,range,FOV );
               frontiers.push_back ( p1 );
               frontiers.push_back(p2);
               frontiers.push_back ( p3 );
@@ -457,6 +455,8 @@ int main ( int argc, char **argv )
             // Evaluate the frontiers and return a list of <frontier, evaluation> pairs
             EvaluationRecords *record = function.evaluateFrontiers ( frontiers, &map, threshold, &path_client );
             nearCandidates = record->getFrontiers();
+            cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
+            cout << "Size of record: " << record->size() << endl;
 
             // If there are candidate positions
             if ( record->size() != 0 )
@@ -473,7 +473,7 @@ int main ( int argc, char **argv )
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                  &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                                  &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle, &path_client);
                 //---------------------------PRINT GOAL POSITION
                 geometry_msgs::PointStamped p;
                 p.header.frame_id = "map";
@@ -488,9 +488,9 @@ int main ( int argc, char **argv )
 //                } else {
                   //NOTE: 1mx1m
                   cout << " [Marker] 1mx1m" << endl;
-                  map.getPathPlanningPosition(targetX_meter, targetY_meter, target.getX(), target.getY());
-                  p.point.x = targetX_meter;
-                  p.point.y = targetY_meter;
+//                  map.getPathPlanningPosition(targetX_meter, targetY_meter, target.getX(), target.getY());
+                  p.point.x = target.getX();
+                  p.point.y = target.getY();
 //                  p.point.x = (target.getX()) + costorigin.position.x;//* costresolution;
 //                  p.point.y = (target.getY()) + costorigin.position.y;// * costresolution;
 //                }
@@ -586,7 +586,7 @@ int main ( int argc, char **argv )
                     target = result.first;
                     encodedKeyValue = 1;
                     updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                      &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                                      &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle, &path_client);
                     scan = false;
                     // Set that we are now in backtracking
                     btMode = true;
@@ -728,7 +728,7 @@ int main ( int argc, char **argv )
           previous = target;
 
           // Calculate how much time it takes to scan the current area
-          target.setScanAngles ( ray.getSensingTime ( &map,x,y,orientation,FOV,range ) );
+          target.setScanAngles ( map.getSensingTime ( x, y, orientation, FOV, range ) );
           // Get the scanning angle
           double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanned angle
@@ -759,7 +759,7 @@ int main ( int argc, char **argv )
               // Add it to the list of visited cells as first-view
               encodedKeyValue = 1;
               updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                                &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle, &path_client);
               // Leave the backtracking branch
               btMode = false;
               nearCandidates.clear();
@@ -784,7 +784,7 @@ int main ( int argc, char **argv )
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                  &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                                  &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle, &path_client);
               }
                 // ...otherwise, if there are no more candidates
               else
@@ -798,7 +798,7 @@ int main ( int argc, char **argv )
                 // Add it to the history of cell as already more than once
                 encodedKeyValue = 2;
                 updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                                  &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                                  &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle, &path_client);
                 // Leave backtracking
                 btMode = false;
                 // Clear candidate list
@@ -818,7 +818,7 @@ int main ( int argc, char **argv )
             // Add it in history as cell visited more than once
             encodedKeyValue = 2;
             updatePathMetrics(&count, &target, &previous, actualPose, &nearCandidates, &graph2, &map, &function,
-                              &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle);
+                              &tabuList, &history, encodedKeyValue, &astar, &numConfiguration, &totalAngle, &travelledDistance, &numOfTurning, scanAngle, &path_client);
             // Leave backtracking
             btMode = false;
             cout << "[BT-MODE3] Go back to previous positions in the graph" << endl;
@@ -909,15 +909,15 @@ void cleanPossibleDestination2 ( std::list< Pose >& possibleDestinations, Pose& 
 }
 
 
-void pushInitialPositions ( dummy::Map map, int x, int y, int orientation, int range, int FOV, double threshold, string actualPose, vector< pair< string, list< Pose > > >* graph2, ros::ServiceClient* path_client )
+void pushInitialPositions ( dummy::Map map, float x, float y, float orientation, int range, int FOV, double threshold, string actualPose, vector< pair< string, list< Pose > > >* graph2, ros::ServiceClient* path_client )
 {
   NewRay ray;
   MCDMFunction function;
-  ray.findCandidatePositions ( &map,x,y,orientation ,FOV,range );
-  vector<pair<long,long> >candidatePosition = ray.getCandidatePositions();
-  ray.emptyCandidatePositions();
+  map.findCandidatePositions ( x,y,orientation ,FOV,range );
+  vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
+  map.emptyCandidatePositions();
   list<Pose> frontiers;
-  vector<pair<long,long> >::iterator it =candidatePosition.begin();
+  vector<pair<float,float>>::iterator it =candidatePosition.begin();
   for ( it; it != candidatePosition.end(); it++ )
   {
     Pose p1 = Pose ( ( *it ).first, ( *it ).second,0 ,range,FOV );
@@ -941,9 +941,9 @@ double calculateScanTime ( double scanAngle )
   return ( -7.2847174296449998e-006*scanAngle*scanAngle*scanAngle + 2.2131847908245512e-003*scanAngle*scanAngle + 1.5987873410233613e-001*scanAngle + 10 );
 }
 
-Pose createFromInitialPose ( Pose pose, int variation, int range, int FOV )
+Pose createFromInitialPose ( Pose pose, float variation, int range, int FOV )
 {
-  Pose tmp = Pose ( pose.getX(), pose.getY(), ( pose.getOrientation() + variation ) %360,FOV,range );
+  Pose tmp = Pose ( pose.getX(), pose.getY(), pose.getOrientation() + variation , FOV, range );
   return tmp;
 }
 
@@ -971,8 +971,11 @@ void calculateDistance(list<Pose> history, dummy::Map& map, Astar* astar)
 
 void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPose, list<Pose>* nearCandidates, vector<pair<string,list<Pose>>>* graph2,
                        dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int encodedKeyValue, Astar* astar , long* numConfiguration,
-                       double* totalAngle, double* travelledDistance, int* numOfTurning , double scanAngle)
+                       double* totalAngle, double* travelledDistance, int* numOfTurning , double scanAngle, ros::ServiceClient* path_client)
 {
+
+  nav_msgs::GetPlan path;
+  double path_len;
   // Add it to the list of visited cells as first-view
   history->push_back ( function->getEncodedKey ( *target, encodedKeyValue ) );
 //  cout << function->getEncodedKey ( *target,1 ) << endl;
@@ -985,13 +988,38 @@ void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPo
   std::pair<string,list<Pose>> pair = make_pair ( actualPose, *nearCandidates );
   graph2->push_back ( pair );
   // Calculate the path from the previous robot pose to the current one
-  string path = astar->pathFind ( target->getX(), target->getY(), previous->getX(), previous->getY(), map );
+  //  string path = astar->pathFind ( target->getX(), target->getY(), previous->getX(), previous->getY(), map );
+  path.request.start.header.frame_id = "map";
+  path.request.start.pose.position.x = previous->getX();
+  path.request.start.pose.position.y = previous->getY();
+  path.request.start.pose.orientation.w = 1;
+  path.request.goal.header.frame_id = "map";
+  path.request.goal.pose.position.x = target->getX();
+  path.request.goal.pose.position.y = target->getX();
+  path.request.goal.pose.orientation.w = 1;
+//  cout << " (x_start, y_start) = (" << robotPosition.getX() << "," << robotPosition.getY() << "), (x_goal, y_goal) = (" << goalX_meter << "," << goalY_meter << ")" << endl;
+  bool path_srv_call = path_client->call(path);
+  if(path_srv_call){
+    // calculate path length
+    path_len = getPathLen(path.response.plan.poses);
+//    if (path_len<1e3)
+//    {
+//      ROS_INFO("Path len is [%3.3f m.]",path_len);
+//    }
+//    else
+//    {
+//      ROS_INFO("Path len is infinite");
+//      path_len = 1000;
+//    }
+  } else {
+    ROS_INFO("Path_finding Service call failed! ");
+  }
 //  cout << "1: " << *travelledDistance << endl;
   // Update the distance counting
-  *travelledDistance = *travelledDistance + astar->lenghtPath(path);
+  *travelledDistance = *travelledDistance + path_len;
 //  cout << "2: " << *travelledDistance << endl;
   // Update the turning counting
-  *numOfTurning = *numOfTurning + astar->getNumberOfTurning(path);
+//  *numOfTurning = *numOfTurning + astar->getNumberOfTurning(path);
   // Update the scanning angle
   *totalAngle += scanAngle;
   // Update the number of configurations of the robot along the task
@@ -1067,8 +1095,8 @@ Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, dou
   tf::pointTFToMsg(start_position, start_pose.pose.position);
   tf::quaternionTFToMsg(start_orientation, start_pose.pose.orientation);
 
-  double initX = start_pose.pose.position.x;
-  double initY = start_pose.pose.position.y;
+  float initX = start_pose.pose.position.x;
+  float initY = start_pose.pose.position.y;
   tf::Quaternion quat = tf::Quaternion(start_pose.pose.orientation.x, start_pose.pose.orientation.y,
                                        start_pose.pose.orientation.z, start_pose.pose.orientation.w);
   tfScalar angle = 2 * atan2(quat[2], quat[3]);
@@ -1083,25 +1111,25 @@ Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, dou
   //ATTENTION: should be adapted for cells different from 1mx1m
   //convert from map frame to image
   tf::Vector3 pose = tf::Vector3(initX, initY, 0.0);
-  if (resolution >= 0 && resolution < 1 && resolution != costresolution)
-  {
-    //full resolution and scaling
-    cout << "Full resolution and scaling" << endl;
-    pose = pose / costresolution;
-//    cout << "[BEFORE]Initial position in the Gazebo frame: " << pose.getX() * costresolution<< "," << pose.getY() * costresolution << endl;
-    Pose initialPose = Pose(map->getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y / costresolution, (long) pose.getX() - costorigin.position.x / costresolution,
-                            initOrientation, initRange, initFov);
-    return initialPose;
-  }
-  else
-  {
+//  if (resolution >= 0 && resolution < 1 && resolution != costresolution)
+//  {
+//    //full resolution and scaling
+//    cout << "Full resolution and scaling" << endl;
+//    pose = pose / costresolution;
+////    cout << "[BEFORE]Initial position in the Gazebo frame: " << pose.getX() * costresolution<< "," << pose.getY() * costresolution << endl;
+//    Pose initialPose = Pose(map->getPathPlanningNumRows() - (long) pose.getY() + costorigin.position.y / costresolution, (long) pose.getX() - costorigin.position.x / costresolution,
+//                            initOrientation, initRange, initFov);
+//    return initialPose;
+//  }
+//  else
+//  {
     //1mx1m
-    cout << endl << "1mx1m" << endl;
+//    cout << endl << "1mx1m" << endl;
     //cout << "[BEFORE]Initial position in the image frame: " << pose.getX()<< "," << map.getPathPlanningNumRows() - (long)pose.getY() << endl;
     //NOTE: Y in map are X in image
-    Pose initialPose = Pose( (long) pose.getX() , (long) pose.getY(), initOrientation, initRange, initFov);
+  Pose initialPose = Pose( pose.getX() , pose.getY(), angle, initRange, initFov);
     return initialPose;
-  }
+//  }
 
 }
 

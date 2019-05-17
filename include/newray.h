@@ -20,7 +20,7 @@ public:
   int isCandidate(dummy::Map *map, double cell_i, double cell_j);
   int isCandidate2(dummy::Map *map, double cell_i, double cell_j);
   std::vector<std::pair<long, long> > getCandidatePositions();
-  pair< double, double > getSensingTime(dummy::Map *map, double posX_meter, double posY_meter, int orientation, double FOV, int range);
+  pair< double, double > getSensingTime(dummy::Map *map, double posX_meter, double posY_meter, float orientation, double FOV, int range);
   int performSensingOperation(dummy::Map *map, double posX_meter, double posY_meter, int orientation, double FOV, int range, double firstAngle, double lastAngle);
   void emptyCandidatePositions();
   int getInformationGain(dummy::Map *map, double posX_meter, double posY_meter, int orientation, double FOV, int range);

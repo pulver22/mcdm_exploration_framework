@@ -50,25 +50,29 @@ double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map, ros::ServiceC
   path.request.start.pose.position.x = robotPosition.getX();
   path.request.start.pose.position.y = robotPosition.getY();
   path.request.start.pose.orientation.w = 1;
-  map->getPathPlanningPosition(goalX_meter, goalY_meter, p.getX(), p.getY());
+//  map->getPathPlanningPosition(goalX_meter, goalY_meter, p.getX(), p.getY());
   path.request.goal.header.frame_id = "map";
-  path.request.goal.pose.position.x = goalX_meter;
-  path.request.goal.pose.position.y = goalX_meter;
+  path.request.goal.pose.position.x = p.getX();
+  path.request.goal.pose.position.y = p.getY();
   path.request.goal.pose.orientation.w = 1;
 //  cout << " (x_start, y_start) = (" << robotPosition.getX() << "," << robotPosition.getY() << "), (x_goal, y_goal) = (" << goalX_meter << "," << goalY_meter << ")" << endl;
   bool path_srv_call = path_client->call(path);
   if(path_srv_call){
     // calculate path length
     path_len = getPathLen(path.response.plan.poses);
-//    if (path_len<1e3)
-//    {
+    if (isnan(path_len) or path_len < 0.001)
+    {
+      path_len = 0;
+    }
+    else if (path_len<1e3)
+    {
 //      ROS_INFO("Path len is [%3.3f m.]",path_len);
-//    }
-//    else
-//    {
+    }
+    else
+    {
 //      ROS_INFO("Path len is infinite");
-//      path_len = 1000;
-//    }
+      path_len = 1000;
+    }
   } else {
     ROS_INFO("Path_finding Service call failed! ");
   }

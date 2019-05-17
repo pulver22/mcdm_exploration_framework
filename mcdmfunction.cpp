@@ -69,6 +69,7 @@ double MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map, ros::ServiceClie
 
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
+//    cout << "Criterion: " << i << " : " << c->getName() <<  endl;
     c->evaluate(p, map, path_client);
   }
 
@@ -134,6 +135,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers, dummy::Map *ma
     double infoGainImportance;
     bool dobreak = false;
     Pose f = *i;
+//    cout << "\nFrontier coord = (" << f.getX() << "," << f.getY() << ")" << endl;
 
     // order criteria depending on the considered frontier
     sort(activeCriteria.begin(), activeCriteria.end(), CriterionComparator(f));
@@ -170,37 +172,48 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers, dummy::Map *ma
       if (k == activeCriteria.begin())
       {
         c = (*k);
-        finalValue += c->getEvaluation(f) * weight;
+
+        double eval = c->getEvaluation(f);
+        if (eval <= 0.0001 or isnan(eval))  eval = 0;
+        finalValue += eval * weight;
+//        cout << "nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
 
 
-        if ((c->getName() == "informationGain") && (c->getEvaluation(f) == 0))
-        {
-          //cout << "alive" << endl;
-          dobreak = true;
-          break;
-        }
+//        if (c->getEvaluation(f) <= 0)
+//        {
+//          //cout << "alive" << endl;
+//          dobreak = true;
+//          break;
+//        }
         //
       } else
       {
         c = (*k);
-        double tmpValue = c->getEvaluation(f) - lastCrit->getEvaluation(f);
+
+        double eval = c->getEvaluation(f);
+        if (eval <= 0.0001 or isnan(eval))  eval = 0;
+        double eval2 = lastCrit->getEvaluation(f);
+        if (eval2 <= 0.0001 or isnan(eval))  eval2 = 0;
+
+        double tmpValue = eval - eval2;
         finalValue += tmpValue * weight;
-        //cout << c->getName() << "," << c->getWeight() <<","<< c->getEvaluation(f) << endl;
+//        cout << "nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
 
 
         //cout << tmpValue <<"," << weight<<endl;
-        if ((c->getName() == "informationGain") && (c->getEvaluation(f) == 0))
-        {
-          //cout << "alive" << endl;
-          dobreak = true;
-          break;
-        }
+//        if (c->getEvaluation(f) <= 0)
+//        {
+//          //cout << "alive" << endl;
+//          dobreak = true;
+//          break;
+//        }
 
       }
       lastCrit = c;
 
     }
 
+//    cout << "Final value: " << finalValue << endl;
     if (finalValue > threshold)
     {
       toRet->putEvaluation(f, finalValue);

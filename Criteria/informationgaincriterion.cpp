@@ -17,11 +17,11 @@ InformationGainCriterion::~InformationGainCriterion()
 double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map, ros::ServiceClient* path_client)
 {
 
-    long px = p.getX();
-    long py = p.getY();
+    float px = p.getX();
+    float py = p.getY();
     //float resolution = map.getResolution();
     //Get the orientation
-    int orientation = p.getOrientation();
+    float orientation = p.getOrientation();
     int range = p.getRange();
     double angle = p.getFOV();
 /*
@@ -180,10 +180,12 @@ double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map, ros::Service
     NewRay ray;
     //Map *map2 = &map;
 //    cout << " [informationGainCriterion.cpp@Evaluate][1] [posX, posY] = [" << px << "," << py << "]" << endl;
-    double x_meter, y_meter;
-    map->getPathPlanningPosition(x_meter , y_meter, px, py);
+//    double x_meter, y_meter;
+//    map->getPathPlanningPosition(x_meter , y_meter, px, py);
 //    cout << " [informationGainCriterion.cpp@Evaluate][2] [posX, posY] = [" << x_meter << "," << y_meter << "]" << endl;
-    double unExploredMap=(double)ray.getInformationGain(map, x_meter, y_meter, orientation, angle, range);
+//  double unExploredMap = ray.getInformationGain( map, px, py, orientation, angle, range);
+  double unExploredMap = map->getInformationGain( px, py, orientation, angle, range);
+//
     /*
     if (unExploredMap >= 0.5) {
 	Criterion::insertEvaluation(p,unExploredMap);

@@ -701,7 +701,7 @@ namespace dummy{
       }
       else
       {
-        ROS_ERROR("Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
+        ROS_ERROR("[1]Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
         x=std::numeric_limits<double>::max();
         y=std::numeric_limits<double>::max();
         success=false;
@@ -723,7 +723,7 @@ namespace dummy{
       }
       else
       {
-        ROS_ERROR("Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
+        ROS_ERROR("[2]Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
         val = -1;
       }
       return val;
@@ -790,7 +790,7 @@ namespace dummy{
       }
       else
       {
-        ROS_ERROR("Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
+        ROS_ERROR("[3]Requested [%lu, %lu] index is outside grid boundaries: [0,0] - [%d, %d]", i,j,gm->getSize()(0)-1,gm->getSize()(1)-1);
       }
     }
 
@@ -1404,7 +1404,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
 
         if (!planning_grid_.getPosition(grid_map::Index(i,j), position_pp))
         {
-          ROS_ERROR("Requested [%lu, %lu] index is outside path planning grid boundaries: [0,0] - [%d, %d]", i,j,mapSize(0)-1,mapSize(1)-1);
+          ROS_ERROR("[4]Requested [%lu, %lu] index is outside path planning grid boundaries: [0,0] - [%d, %d]", i,j,mapSize(0)-1,mapSize(1)-1);
           candidate=0;
         }
         else
@@ -1447,6 +1447,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
         for (grid_map::CircleIterator iterator(planning_grid_, centerPos, range_m);
                   !iterator.isPastEnd(); ++iterator) {
                     planning_grid_.getPosition(*iterator, candidatePos);
+//                    cout << "[map.cpp@findCandidatePosition_inner] Position = " << candidatePos.x() << "," << candidatePos.y() << endl;
 
                     // relative cell position respect to center
                     rel_x=candidatePos.x()-pos_X_m;
@@ -1455,7 +1456,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                     // angle between heading and cell position
                     rel_a=std::atan2(rel_y,rel_x)-heading_rad;
                     rel_a=constrainAnglePI(rel_a);
-
+//                    cout << "[map.cpp@findCandidatePosition_inner] rel_a = " << rel_a << ", FOV_rad/2 = " << FOV_rad/2 << endl;
                     // cell is inside circle AND arc
                     if (std::abs(rel_a)<=(FOV_rad/2)){
                       // cell is candidate
@@ -1464,11 +1465,12 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                 				isOk = (isCandidate(candidateIndex(0), candidateIndex(1)) == 1);
                       if (mode==2)
                         isOk = (isCandidate2(candidateIndex(0), candidateIndex(1)) == 1);
-
+//                      cout << "[map.cpp@findCandidatePosition_inner] Cell is candidate" << endl;
                       if(isOk)
                       {
+//                          cout << "[map.cpp@findCandidatePosition_inner] is OK" << endl;
                           hit = false;
-                          // trace a ray betwen that cell and robot cell:
+                          // trace a ray between that cell and robot cell:
                           for (grid_map::LineIterator lin_iterator(planning_grid_, candidatePos, centerPos);
                               !lin_iterator.isPastEnd(); ++lin_iterator) {
 
@@ -1487,7 +1489,9 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                           // if we reach robot pose without obstacles: add cell it to pair list
                           if(!hit)
                           {
-                            std::pair<long,long> temp = std::make_pair(rayIndex(0),rayIndex(1));
+//                            double tmp_x, tmp_y;
+//                            getPathPlanningPosition(tmp_x, tmp_y, rayIndex(0), rayIndex(1));
+                            std::pair<float, float> temp = std::make_pair(rayPos(0),rayPos(1));
                             edgePoints.push_back(temp);
                             ROS_DEBUG("[map.cpp@findCandidatePositions] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
                                       rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
@@ -1498,7 +1502,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
         }
       }
 
-    vector< std::pair<long,long> > Map::getCandidatePositions()
+    vector< std::pair<float,float> > Map::getCandidatePositions()
     {
       return edgePoints;
     }
@@ -1599,6 +1603,8 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                   // If cell is empty
                   if( isGridValueFree(*nav_iterator))
                   {
+
+//                      cout << "[map.cpp@performSensingOperation] Cell is free" << endl;
                       nav_grid_.getPosition(*nav_iterator, candidatePos);
 
                       // relative cell position respect to center
@@ -1608,7 +1614,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                       // angle between heading and cell position
                       rel_a=std::atan2(rel_y,rel_x)-heading_rad;
                       rel_a=constrainAnglePI(rel_a);
-
+//                      cout << "   [map.cpp@performSensingOperation] rel_a" << rel_a << endl;
                       // cell is also inside FOV arc
                       if ( ( rel_a <= maxAngle_rad )  & ( rel_a >= minAngle_rad ) )  {
                               candidateIndex=(*nav_iterator);
@@ -1616,8 +1622,9 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                               // trace a ray betwen that cell and robot cell:
                               for (grid_map::LineIterator lin_iterator(nav_grid_, candidatePos, centerPos);
                                   !lin_iterator.isPastEnd(); ++lin_iterator) {
+//                                cout << "[map.cpp@performSensingOperation] line element [i, j] : [" << (*lin_iterator)(0) << "," << (*lin_iterator)(1) << "] = " << getGridValue((*lin_iterator)(0), (*lin_iterator)(1)) << endl;
 
-                                    nav_grid_.getPosition(*lin_iterator, rayPos);
+                                nav_grid_.getPosition(*lin_iterator, rayPos);
                                     rayIndex=(*lin_iterator);
                                     // if an obstacle is found, end
                                     if(isGridValueObst(*nav_iterator))
@@ -1652,14 +1659,14 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
     int Map::getInformationGain(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m)
     {
         int freeCells = 0;
-        ROS_DEBUG("[newray.cpp@getInformationGain]");
+        ROS_DEBUG("[map.cpp@getInformationGain]");
 
         grid_map::Index candidateIndex, rayIndex;
         grid_map::Position candidatePos, rayPos;
         double rel_y,rel_x,rel_a;
         grid_map::Position centerPos(pos_X_m,pos_Y_m);
         bool hit;
-
+//        cout << "[map.cpp@getInformationGain]Robot in (" << pos_X_m << "," << pos_Y_m << "), with orientation: " << heading_rad << endl;
         // Iterate cells over a circle ARC with radius range, center pos in nav planning grid and FOV angle
         for (grid_map::CircleIterator nav_iterator(nav_grid_, centerPos, range_m);
                   !nav_iterator.isPastEnd(); ++nav_iterator) {
@@ -1709,7 +1716,8 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                         }
                     }
           }
-          ROS_DEBUG("[newray.cpp@getInformationGain] Totals free cells in nav_grid area: %d ", freeCells);
+          ROS_DEBUG("[map.cpp@getInformationGain] Totals free cells in nav_grid area: %d ", freeCells);
+//          cout << "[map.cpp@getInformationGain] Totals free cells in nav_grid area: " << freeCells << endl;
           return freeCells;
     }
 
