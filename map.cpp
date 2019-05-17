@@ -1547,8 +1547,8 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                     if(isGridValueObst(*nav_iterator))
                                     {
                                       hit =  true;
-                                      ROS_DEBUG("[map.cpp@getSensingTime] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
-                                                  candidateIndex(0),candidateIndex(1),candidatePos(0),candidatePos(1),rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
+                                      //ROS_DEBUG("[map.cpp@getSensingTime] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
+                                      //            candidateIndex(0),candidateIndex(1),candidatePos(0),candidatePos(1),rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
                                       break;
                                     }
                               }
@@ -1559,7 +1559,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                   if(rel_a < minFOV) minFOV = rel_a;
                                   if(rel_a > maxFOV) maxFOV = rel_a;
 
-                                ROS_DEBUG("[map.cpp@findCandidatePositions] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
+                                ROS_DEBUG("[map.cpp@getSensingTime] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
                                           rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
                               }
 
@@ -1589,7 +1589,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
       // Iterate cells over a circle ARC with radius range, center pos in nav planning grid and FOV angle
       for (grid_map::CircleIterator nav_iterator(nav_grid_, centerPos, range_m);
                 !nav_iterator.isPastEnd(); ++nav_iterator) {
-                  cout << "[map.cpp@performSensingOperation] [i, j] : [" << (*nav_iterator)(0) << "," << (*nav_iterator)(1) << "] = " << getGridValue((*nav_iterator)(0), (*nav_iterator)(1)) << endl;
+                  //cout << "[map.cpp@performSensingOperation] [i, j] : [" << (*nav_iterator)(0) << "," << (*nav_iterator)(1) << "] = " << getGridValue((*nav_iterator)(0), (*nav_iterator)(1)) << endl;
                   // If cell is empty
                   if( isGridValueFree(*nav_iterator))
                   {
@@ -1619,8 +1619,8 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                       hit =  true;
 //                                      ROS_DEBUG("[map.cpp@performSensingOperation] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
 //                                                  candidateIndex(0),candidateIndex(1),candidatePos(0),candidatePos(1),rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
-                                      cout << "[map.cpp@performSensingOperation] HIT! cell [ " << candidateIndex(0) << "," << candidateIndex(1) << "] - [" <<
-                                          candidatePos(0) <<"," << candidatePos(1) << " -  Hit point: [ "<< rayIndex(0) << "," << rayIndex(1) << "] - [" << rayPos(0) <<"," << rayPos(1) << "]" << endl;
+                                      //cout << "[map.cpp@performSensingOperation] HIT! cell [ " << candidateIndex(0) << "," << candidateIndex(1) << "] - [" <<
+                                      //    candidatePos(0) <<"," << candidatePos(1) << " -  Hit point: [ "<< rayIndex(0) << "," << rayIndex(1) << "] - [" << rayPos(0) <<"," << rayPos(1) << "]" << endl;
                                       break;
                                     }
                               }
@@ -1632,14 +1632,14 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                 modifiedCells++;
 //                                ROS_DEBUG("[map.cpp@performSensingOperation] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
 //                                          rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
-                                cout << "[map.cpp@performSensingOperation] Cell scanned:  [ " << rayIndex(0) << "," << rayIndex(1) << "] - [" << rayPos(0) << "," << rayPos(1) << "]" << endl;
+                                //cout << "[map.cpp@performSensingOperation] Cell scanned:  [ " << rayIndex(0) << "," << rayIndex(1) << "] - [" << rayPos(0) << "," << rayPos(1) << "]" << endl;
                               }
 
 
                       }
                   }
         }
-        cout << "[map.cpp@performSensingOperation] Totals cells in nav_grid modified: " << modifiedCells << endl;
+        //cout << "[map.cpp@performSensingOperation] Totals cells in nav_grid modified: " << modifiedCells << endl;
         return modifiedCells;
     }
 
@@ -1762,7 +1762,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
       }
       else
       {
-        ROS_FATAL("[Map@toCellValue (%d)] INVALID CASTING REQUESTED... (%3.3f does not equal to any valid cell value)",floatVal,who.c_str());
+        ROS_FATAL("[Map@toCellValue (%s)] INVALID CASTING REQUESTED... (%3.3f does not equal to any valid cell value)",who.c_str(),floatVal);
         value=Map::CellValue::FREE;
       }
 
