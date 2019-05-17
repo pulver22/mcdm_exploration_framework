@@ -532,17 +532,17 @@ namespace dummy{
 
     Map::CellValue Map::getPathPlanningGridValue(long i,long j) const
     {
-        return toCellValue(getValue(i,j, &planning_grid_));
+        return toCellValue(getValue(i,j, &planning_grid_),"planning");
     }
 
     Map::CellValue Map::getPathPlanningGridValue(geometry_msgs::PoseStamped ps) const
     {
-      return toCellValue(getValue(ps, &planning_grid_));
+      return toCellValue(getValue(ps, &planning_grid_),"planning");
     }
 
     Map::CellValue Map::getPathPlanningGridValue(long i) const
     {
-        return toCellValue(getValue(i, &planning_grid_));
+        return toCellValue(getValue(i, &planning_grid_),"planning");
     }
 
     int Map::getPathPlanningNumCols() const
@@ -568,17 +568,17 @@ namespace dummy{
 
     Map::CellValue Map::getGridValue(long i,long j) const
     {
-      return toCellValue(getValue(i,j, &nav_grid_));
+      return toCellValue(getValue(i,j, &nav_grid_),"nav");
     }
 
     Map::CellValue Map::getGridValue(geometry_msgs::PoseStamped ps) const
     {
-        return toCellValue(getValue(ps, &nav_grid_));
+        return toCellValue(getValue(ps, &nav_grid_),"nav");
     }
 
     Map::CellValue Map::getGridValue(long i) const
     {
-        return toCellValue(getValue(i, &nav_grid_));
+        return toCellValue(getValue(i, &nav_grid_),"nav");
     }
 
     long Map::getNumGridCols() const
@@ -603,17 +603,17 @@ namespace dummy{
 
     Map::CellValue Map::getMapValue(long i, long j)
     {
-      return toCellValue(getValue(i,j, &map_grid_));
+      return toCellValue(getValue(i,j, &map_grid_),"map");
     }
 
     Map::CellValue Map::getMapValue(geometry_msgs::PoseStamped ps) const
     {
-      return toCellValue(getValue(ps, &map_grid_));
+      return toCellValue(getValue(ps, &map_grid_),"map");
     }
 
     Map::CellValue Map::getMapValue(long i) const
     {
-        return toCellValue(getValue(i, &map_grid_));
+        return toCellValue(getValue(i, &map_grid_),"map");
     }
 
     long Map::getNumCols()
@@ -1744,7 +1744,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
       return floatVal;
     }
 
-    Map::CellValue  Map::toCellValue( float floatVal) const
+    Map::CellValue  Map::toCellValue( float floatVal, std::string who) const
     {
       Map::CellValue value;
 
@@ -1762,7 +1762,8 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
       }
       else
       {
-        ROS_FATAL("[Map@toCellValue] INVALID CASTING REQUESTED... %3.3f",floatVal);
+        ROS_FATAL("[Map@toCellValue (%d)] INVALID CASTING REQUESTED... (%3.3f does not equal to any valid cell value)",floatVal,who.c_str());
+        value=Map::CellValue::FREE;
       }
 
       return value;
