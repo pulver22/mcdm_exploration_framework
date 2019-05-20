@@ -123,7 +123,7 @@ void EvaluationRecords::normalize(){
 
 string EvaluationRecords::getEncodedKey(Pose& p)
 {
-    string key =  to_string(p.getX()) + "/" + to_string( p.getY()) + "/" + to_string( (int)p.getOrientation()) + "/" + to_string(p.getRange()) +"/" + to_string(p.getFOV());
+    string key =  to_string(p.getX()) + "/" + to_string( p.getY()) + "/" + to_string( p.getOrientation()) + "/" + to_string(p.getRange()) +"/" + to_string(p.getFOV());
     return key;
 }
 
@@ -138,19 +138,19 @@ Pose EvaluationRecords::getPoseFromEncoding(string &encoding)
 	//cout << encoding << endl;
 	std::string::size_type pos = encoding.find('/');
 	x = encoding.substr(0,pos);
-	int xValue = atoi(x.c_str());
+	float xValue = atof(x.c_str());
 	//cout << x << endl;	
 	string newString = encoding.substr(pos+1,encoding.size());
 	//cout << newString << endl;
 	std::string::size_type newPos = newString.find('/');
 	y = newString.substr(0,newPos);
-	int yValue = atoi(y.c_str());
+	float yValue = atof(y.c_str());
 	//cout << y << endl;
 	newString = newString.substr(newPos+1,encoding.size());
 	//cout << newString << endl;
 	newPos = newString.find('/');
 	orientation = newString.substr(0,newPos);
-	double orientationValue = atoi(orientation.c_str());
+	float orientationValue = atof(orientation.c_str());
 	//cout << orientation << endl;
 	newString = newString.substr(newPos+1,encoding.size());
 	//cout << newString << endl;
@@ -162,7 +162,7 @@ Pose EvaluationRecords::getPoseFromEncoding(string &encoding)
 	//cout << newString << endl;
 	newPos = newString.find('/');
 	phi = newString.substr(0,newPos);
-	double phiValue = atoi(phi.c_str());
+	double phiValue = atof(phi.c_str());
 	//cout << phi << endl;
 	Pose p(xValue,yValue,orientationValue,rValue,phiValue);
 	return p;

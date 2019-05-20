@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <algorithm>
 #include "newray.h"
+#include "math.h"
+#define PI           3.14159265358979323846  /* pi */
 
 
 using namespace std;
@@ -135,7 +137,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers, dummy::Map *ma
     double infoGainImportance;
     bool dobreak = false;
     Pose f = *i;
-//    cout << "\nFrontier coord = (" << f.getX() << "," << f.getY() << ")" << endl;
+//    cout << "Frontier coord = (" << f.getX() << "," << f.getY() << ")" << endl;
 
     // order criteria depending on the considered frontier
     sort(activeCriteria.begin(), activeCriteria.end(), CriterionComparator(f));
@@ -213,7 +215,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers, dummy::Map *ma
 
     }
 
-//    cout << "Final value: " << finalValue << endl;
+//    cout << "Frontier coord = (" << f.getX() << "," << f.getY() << "), Final value: " << finalValue << endl;
     if (finalValue > threshold)
     {
       toRet->putEvaluation(f, finalValue);
@@ -243,7 +245,7 @@ pair<Pose, double> MCDMFunction::selectNewPose(EvaluationRecords *evaluationReco
 
   // i switch x and y to allow debugging graphically looking the image
   cout << "New target : " << "x = " << newTarget.getX() << ", y = " << newTarget.getY() << ", orientation = "
-       << newTarget.getOrientation() << ", Evaluation: " << value << endl;
+       << newTarget.getOrientation() << "("<< (newTarget.getOrientation() * 180 / PI) <<" deg), Evaluation: " << value << endl;
   return result;
 }
 

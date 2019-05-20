@@ -7,7 +7,8 @@
 #include "PathFinding/astar.h"
 #include "Criteria/traveldistancecriterion.h"
 #include "radio_models/propagationModel.cpp"
-# define PI           3.14159265358979323846  /* pi */
+#define _USE_MATH_DEFINES
+#include "math.h"
 #include <unistd.h>
 #include <time.h>
 #include <ctime>
@@ -17,7 +18,9 @@
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
 #include <nav_msgs/GetMap.h>
 #include <costmap_2d/costmap_2d_ros.h>
 #include <nav_msgs/GetPlan.h>
@@ -44,7 +47,7 @@ void printResult(long newSensedCells, long totalFreeCells, double precision, lon
                  int numOfTurning, double totalAngle, double totalScanTime);
 
 // ROS varies
-void move(float x, float y, float orW, float orZ, int resolution, int costresolution, float time_travel);
+void move(float x, float y, float orientation, int resolution, int costresolution, float time_travel);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
 Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, double initFov, int initRange);
@@ -146,7 +149,7 @@ int main ( int argc, char **argv )
     if (costmapReceived == 1)
     {
       double initFov = atoi(argv[1]);
-      initFov = initFov * PI / 180;
+      initFov = initFov * M_PI / 180;
       FoV = initFov;
       int initRange = atoi(argv[2]);
       sensing_range = initRange;
@@ -194,9 +197,9 @@ int main ( int argc, char **argv )
       Pose start_pose = getCurrentPose( resolution, costresolution, &map, initFov, initRange);
       Pose target = start_pose;
       Pose previous = target;
-      Pose invertedInitial = createFromInitialPose(start_pose, PI, initRange, initFov);
-      Pose eastInitial = createFromInitialPose(start_pose, PI/2, initRange, initFov);
-      Pose westInitial = createFromInitialPose(start_pose, 3*PI/2, initRange, initFov);
+      Pose invertedInitial = createFromInitialPose(start_pose, M_PI, initRange, initFov);
+      Pose eastInitial = createFromInitialPose(start_pose, M_PI/2, initRange, initFov);
+      Pose westInitial = createFromInitialPose(start_pose, 3*M_PI/2, initRange, initFov);
 
       long numConfiguration = 1;
       vector<pair<string, list<Pose>>> graph2;
@@ -246,22 +249,22 @@ int main ( int argc, char **argv )
         {
           // At every iteration, the current pose of the robot is taken from the TF-tree
           Pose target = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
-          cout << "[Current Pose]: " << target.getX() << ", " << target.getY()<<" m. " << ", " << target.getOrientation() << ", " << target.getFOV() <<", " << target.getRange() << endl;
+          cout << "[Current Pose]: " << target.getX() << ", " << target.getY()<<" m. " << ", " << target.getOrientation() << "("<< (target.getOrientation() * 180 / M_PI) <<" deg), " << target.getFOV() <<", " << target.getRange() << endl;
 //            cout << "[Tmp]: " << tmp_target.getY() << ", " << tmp_target.getX() << ", " << (tmp_target.getOrientation() + 360 ) % 360 << ", " << tmp_target.getFOV() <<", " << tmp_target.getRange() << endl;
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
-          cout << "[Current CELL INDEX in PathPlanningGrid]: " << i << ", " << j << endl;
+//          cout << "[Current CELL INDEX in PathPlanningGrid]: " << i << ", " << j << endl;
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
-          cout << "[Current POSITION in PathPlanningGrid]: " << targetX_meter << ", " << targetY_meter << endl;
+//          cout << "[Current POSITION in PathPlanningGrid]: " << targetX_meter << ", " << targetY_meter << endl;
           map.getGridIndex(target.getX(), target.getY(), i, j);
-          cout << "[Current CELL INDEX in NavigationGrid]: " << i << ", " << j << endl;
+//          cout << "[Current CELL INDEX in NavigationGrid]: " << i << ", " << j << endl;
 
 //          newSensedCells = sensedCells + ray.performSensingOperation ( &map, 5.0, 3.0, 90, 180, 3, -1.8, 1.8 );
           gridPub.publish(map.toMessageGrid());
 
           // Update starting point in the path
           path.request.start.header.frame_id = "map";
-          path.request.start.pose.position.x = targetX_meter;
-          path.request.start.pose.position.y = targetY_meter;
+          path.request.start.pose.position.x = target.getX();
+          path.request.start.pose.position.y = target.getY();
           path.request.start.pose.orientation.w = 1;
 
 
@@ -283,7 +286,7 @@ int main ( int argc, char **argv )
           // Calculate the scanning angle
           double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanning time
-          totalScanTime += calculateScanTime ( scanAngle*180/PI );
+          totalScanTime += calculateScanTime ( scanAngle*180/M_PI );
           // Calculare the relative RFID tag position to the robot position
 //            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
           // Calculate the received power and phase
@@ -305,16 +308,22 @@ int main ( int argc, char **argv )
           map.plotGridColor("/tmp/nav_lastLoop.png");
 
           map.findCandidatePositions ( x, y, orientation, FOV, range );
+//          ray.findCandidatePositions(&map, x, y, orientation, FOV, range);
           vector<pair<float, float> >candidatePosition = map.getCandidatePositions();
-          cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
+
           map.emptyCandidatePositions();
           cout << " Candidate cleaned!" << endl;
+//          for (auto it = candidatePosition.begin(); it != candidatePosition.end(); it++) {
+//            cout << (*it).first << "/" << (*it).second << endl;
+//          }
+          cout << "Size of initial candidate postions: " << candidatePosition.size() << endl;
+
 
           if (scan)
           {
             //NOTE: perform gas sensing------------
 //              offsetY_base_rmld = 0.904;
-//              tilt_angle = (atan(sensing_range / offsetY_base_rmld) * (180 / PI)) - 90;
+//              tilt_angle = (atan(sensing_range / offsetY_base_rmld) * (180 / M_PI)) - 90;
 //              //tilt_angle = -10;
 //              num_pan_sweeps = 1;
 //              num_tilt_sweeps = 1;
@@ -326,7 +335,7 @@ int main ( int argc, char **argv )
 //
 //              boost::thread mythread(scanning);
 //              mythread.join();
-//              min_pan_angle = 0;
+//              min_pan_angle = 0;F
 //              max_pan_angle = 0;
             //-------------------------------------
           }
@@ -432,13 +441,13 @@ int main ( int argc, char **argv )
             for ( it; it != candidatePosition.end(); it++ )
             {
               Pose p1 = Pose ( ( *it ).first, ( *it ).second,0 ,range,FOV );
-              Pose p2 = Pose ( ( *it ).first, ( *it ).second,PI/4,range,FOV );
-              Pose p3 = Pose ( ( *it ).first, ( *it ).second,PI/2,range,FOV );
-              Pose p4 = Pose ( ( *it ).first, ( *it ).second,3*PI/4,range,FOV );
-              Pose p5 = Pose ( ( *it ).first, ( *it ).second,PI,range,FOV );
-              Pose p6 = Pose ( ( *it ).first, ( *it ).second,5*PI/4,range,FOV );
-              Pose p7 = Pose ( ( *it ).first, ( *it ).second,3*PI/2,range,FOV );
-              Pose p8 = Pose ( ( *it ).first, ( *it ).second,7*PI/4,range,FOV );
+              Pose p2 = Pose ( ( *it ).first, ( *it ).second,M_PI/4,range,FOV );
+              Pose p3 = Pose ( ( *it ).first, ( *it ).second,M_PI/2,range,FOV );
+              Pose p4 = Pose ( ( *it ).first, ( *it ).second,3*M_PI/4,range,FOV );
+              Pose p5 = Pose ( ( *it ).first, ( *it ).second,M_PI,range,FOV );
+              Pose p6 = Pose ( ( *it ).first, ( *it ).second,5*M_PI/4,range,FOV );
+              Pose p7 = Pose ( ( *it ).first, ( *it ).second,3*M_PI/2,range,FOV );
+              Pose p8 = Pose ( ( *it ).first, ( *it ).second,7*M_PI/4,range,FOV );
               frontiers.push_back ( p1 );
               frontiers.push_back(p2);
               frontiers.push_back ( p3 );
@@ -449,14 +458,26 @@ int main ( int argc, char **argv )
               frontiers.push_back(p8);
 
             }
-
+//            cout << "Frontiers" << endl;
+//            for (auto it = frontiers.begin(); it != frontiers.end(); it++) {
+//              cout << " " << record.getEncodedKey(*it) << endl;
+//            }
             unexploredFrontiers = frontiers;
 
             // Evaluate the frontiers and return a list of <frontier, evaluation> pairs
             EvaluationRecords *record = function.evaluateFrontiers ( frontiers, &map, threshold, &path_client );
             nearCandidates = record->getFrontiers();
+
+            // Print the frontiers with the respective evaluation
             cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
-            cout << "Size of record: " << record->size() << endl;
+            unordered_map<string, double> evaluation = record->getEvaluations();
+//            for (auto it = evaluation.begin(); it != evaluation.end(); it++) {
+//              string tmp = (*it).first;
+//              double value = (*it).second;
+//              cout << tmp << " " << value << endl;
+//            }
+
+//            cout << "Size of record: " << record->size() << endl;
 
             // If there are candidate positions
             if ( record->size() != 0 )
@@ -468,6 +489,12 @@ int main ( int argc, char **argv )
               std::pair<Pose,double> result = function.selectNewPose ( record );
               target = result.first;
               // If the selected destination does not appear among the cells already visited
+              auto tabuList_it = tabuList.begin();
+              cout << "Tabulist:" << endl;
+              for ( tabuList_it; tabuList_it != tabuList.end(); tabuList_it++ )
+              {
+                cout << record->getEncodedKey(*tabuList_it) << endl;
+              }
               if ( ! contains ( tabuList,target ))
               {
                 // Add it to the list of visited cells as first-view
@@ -510,8 +537,8 @@ int main ( int argc, char **argv )
                 marker_pub.publish(p);
                 //----------------------------------------------
                 move_base_msgs::MoveBaseGoal goal;
-                double orientZ = (double) (target.getOrientation() * PI / (2 * 180));
-                double orientW = (double) (target.getOrientation() * PI / (2 * 180));
+                double orientZ = (double) (target.getOrientation() * M_PI / (2 * 180));
+                double orientW = (double) (target.getOrientation() * M_PI / (2 * 180));
 
 //                string path = astar.pathFind ( target.getX(),target.getY(),previous.getX(),previous.getY(), &map );
 //                float travel_distance = astar.lenghtPath(path);
@@ -520,10 +547,10 @@ int main ( int argc, char **argv )
 
                 // Update the destination point with the target
                 path.request.goal.header.frame_id = "map";
-                path.request.goal.pose.position.x = targetX_meter;
-                path.request.goal.pose.position.y = targetY_meter;
+                path.request.goal.pose.position.x = target.getX();
+                path.request.goal.pose.position.y = target.getY();
                 path.request.goal.pose.orientation.w = 1;
-                cout << "[PATH-START] = (" << path.request.start.pose.position.x << ", " << path.request.start.pose.position.x << ")" << endl;
+                cout << "[PATH-START] = (" << path.request.start.pose.position.x << ", " << path.request.start.pose.position.y << ")" << endl;
                 cout << "[PATH-GOAL] = (" << path.request.goal.pose.position.x << ", " << path.request.goal.pose.position.y << ")" << endl;
                 path_srv_call = path_client.call(path);
                 if(path_srv_call){
@@ -544,23 +571,23 @@ int main ( int argc, char **argv )
 
 //                cout << "Resolution : " << resolution << endl;
                 float time_travel = 5* path_len / min_robot_speed;
-                if (resolution == 0)
-                {
-                  path_len = path_len * costresolution;
-                  time_travel = 5 * path_len / min_robot_speed;
-                }
-                cout << "Target is at " << path_len << " cells from the robot" << endl;
+//                if (resolution == 0)
+//                {
+//                  path_len = path_len * costresolution;
+//                  time_travel = 5 * path_len / min_robot_speed;
+//                }
+                cout << "Target is at " << path_len << " m from the robot" << endl;
 
 
 
                 if (resolution != 0)
                 {
                   cout << "[map] 1mx1m or similar clustered map " << endl;
-                  move(p.point.x, p.point.y , sin(orientZ), cos(orientW), resolution, costresolution, time_travel);
+                  move(p.point.x, p.point.y , orientation, resolution, costresolution, time_travel);
                 } else
                 {
                   cout << "[map] Full resolution" << endl;
-                  move(p.point.x, p.point.y, sin(orientZ), cos(orientW), resolution, costresolution, time_travel);  // full resolution
+                  move(p.point.x, p.point.y, orientation, resolution, costresolution, time_travel);  // full resolution
                 }
 
                 scan = true;
@@ -600,6 +627,7 @@ int main ( int argc, char **argv )
                     // Otherwise, select as new position the last cell in the graph and then remove it from there
                     string targetString = graph2.at ( graph2.size()-1 ).first;
                     graph2.pop_back();
+                    previous = target;
                     target = record->getPoseFromEncoding ( targetString );
                     scan = false;
                     cout << "[BT1] 2" << endl;
@@ -681,6 +709,9 @@ int main ( int argc, char **argv )
           // ... otherwise, if we are doing backtracking
         else
         {
+
+          cout << "Previous: " << previous.getX() << ", " << previous.getY() << endl;
+          cout << "Target: " << target.getX() << ", " << target.getY() << endl;
           long x = target.getX();
           long y = target.getY();
           int orientation = target.getOrientation();
@@ -697,12 +728,16 @@ int main ( int argc, char **argv )
 //          cout << "BT: " << astar.lenghtPath ( len_path ) << endl;
           // Update the overall number of turnings
 //          numOfTurning = numOfTurning + astar.getNumberOfTurning ( path );
-          map.getPathPlanningPosition(targetX_meter, targetY_meter, target.getX(), target.getY());
+//          map.getPathPlanningPosition(previous.getX(), previous.getY(), target.getX(), target.getY());
+          path.request.start.header.frame_id = "map";
+          path.request.start.pose.position.x = previous.getX();
+          path.request.start.pose.position.y = previous.getY();
+          path.request.start.pose.orientation.w = 1;
           path.request.goal.header.frame_id = "map";
-          path.request.goal.pose.position.x = targetX_meter;
-          path.request.goal.pose.position.y = targetY_meter;
+          path.request.goal.pose.position.x = target.getX();
+          path.request.goal.pose.position.y = target.getY();
           path.request.goal.pose.orientation.w = 1;
-          cout << " (x, y) = (" << x << "," << y << "), (targetX_meter, targetY_meter) = (" << targetX_meter << "," << targetY_meter << ")" << endl;
+//          cout << " (x, y) = (" << x << "," << y << "), (targetX_meter, targetY_meter) = (" << targetX_meter << "," << targetY_meter << ")" << endl;
           cout << "[BT: PATH-START] = (" << path.request.start.pose.position.x << ", " << path.request.start.pose.position.x << ")" << endl;
           cout << "[BT: PATH-GOAL] = (" << path.request.goal.pose.position.x << ", " << path.request.goal.pose.position.y << ")" << endl;
           path_srv_call = path_client.call(path);
@@ -721,6 +756,27 @@ int main ( int argc, char **argv )
             ROS_INFO("BT: Service call failed! ");
           }
 
+          float time_travel = 5* path_len / min_robot_speed;
+          cout << "[BT]Target is at " << path_len << " m from the robot" << endl;
+          //---------------------------PRINT GOAL POSITION
+          geometry_msgs::PointStamped p;
+          p.header.frame_id = "map";
+          p.header.stamp = ros::Time::now();
+          p.point.x = target.getX();
+          p.point.y = target.getY();
+          cout << "   [BT]New goal in map: X = " << p.point.x << ", Y = " << p.point.y << " m. "<<endl;
+          //NOTE: not requested for testing purpose
+          //usleep(microseconds);
+          marker_pub.publish(p);
+          //----------------------------------------------
+          move_base_msgs::MoveBaseGoal goal;
+          double orientZ = (double) (target.getOrientation() * M_PI / (2 * 180));
+          double orientW = (double) (target.getOrientation() * M_PI / (2 * 180));
+          move(p.point.x, p.point.y , orientation, resolution, costresolution, time_travel);
+
+
+          scan = true;
+
 
           string encoding = to_string ( target.getX() ) + to_string ( target.getY() );
           visitedCell.emplace ( encoding,0 );
@@ -734,7 +790,7 @@ int main ( int argc, char **argv )
           // Update the overall scanned angle
           totalAngle += scanAngle;
           // ...and the overall scan time
-          totalScanTime += calculateScanTime ( scanAngle*180/PI );
+          totalScanTime += calculateScanTime ( scanAngle*180/M_PI );
           // Calculate the relative coordinate to the robot of the RFID tag
 //            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY, target.getX(), target.getY());
           // Calculate received power and phase
@@ -995,9 +1051,10 @@ void updatePathMetrics(int* count, Pose* target, Pose* previous, string actualPo
   path.request.start.pose.orientation.w = 1;
   path.request.goal.header.frame_id = "map";
   path.request.goal.pose.position.x = target->getX();
-  path.request.goal.pose.position.y = target->getX();
+  path.request.goal.pose.position.y = target->getY();
   path.request.goal.pose.orientation.w = 1;
-//  cout << " (x_start, y_start) = (" << robotPosition.getX() << "," << robotPosition.getY() << "), (x_goal, y_goal) = (" << goalX_meter << "," << goalY_meter << ")" << endl;
+  cout << " (x_start, y_start) = (" << previous->getX() << "," << previous->getY() << "), (x_goal, y_goal) = (" <<
+          target->getX() << "," << target->getY() << ")" << endl;
   bool path_srv_call = path_client->call(path);
   if(path_srv_call){
     // calculate path length
@@ -1102,9 +1159,9 @@ Pose getCurrentPose(float resolution, float costresolution, dummy::Map* map, dou
   tfScalar angle = 2 * atan2(quat[2], quat[3]);
 
   cout << endl << "Current position in the map frame:" << initX << "," << initY << " with orientation :" << angle
-       << endl;
+      << "("<< (angle * 180 / M_PI) <<" deg)"<< endl;
 
-  int initOrientation = angle * 180 / PI;
+  int initOrientation = angle * 180 / M_PI;
   cout << "Orientation after casting: " << initOrientation << endl;
 
 
@@ -1176,7 +1233,7 @@ int getIndex(int x, int y){
 }
 
 
-void move(float x, float y, float orZ, float orW, int resolution, int costresolution, float time_travel){
+void move(float x, float y, float orientation, int resolution, int costresolution, float time_travel){
   move_base_msgs::MoveBaseGoal goal;
 
   MoveBaseClient ac ("move_base", true);
@@ -1198,11 +1255,15 @@ void move(float x, float y, float orZ, float orW, int resolution, int costresolu
     goal.target_pose.pose.position.y = y; // * costresolution + costorigin.position.y;
 //  }
 
-  goal.target_pose.pose.orientation.z = orZ;
-  goal.target_pose.pose.orientation.w = orW;
+  tf::Quaternion q = tf::createQuaternionFromRPY(0.0, 0.0, orientation);
+  goal.target_pose.pose.orientation.x = q.getX();
+  goal.target_pose.pose.orientation.z = q.getY();
+  goal.target_pose.pose.orientation.y = q.getX();
+  goal.target_pose.pose.orientation.w = q.getW();
+
 
   ROS_INFO("Sending goal");
-  cout << "   [map]goal: (" << float(x) << "," << float(y) << ")" << endl;
+  cout << "   [map]goal: (" << x << "," << y << ") with orientation: " << orientation <<  endl;
   ac.sendGoal(goal);
 
   cout << "     Waiting for " << time_travel << " seconds" << endl;
@@ -1212,6 +1273,7 @@ void move(float x, float y, float orZ, float orW, int resolution, int costresolu
     ROS_INFO("I'm moving...");
   else
     ROS_INFO("The base failed to move");
+
 
   cout << endl;
 }

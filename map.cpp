@@ -1447,7 +1447,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
         for (grid_map::CircleIterator iterator(planning_grid_, centerPos, range_m);
                   !iterator.isPastEnd(); ++iterator) {
                     planning_grid_.getPosition(*iterator, candidatePos);
-//                    cout << "[map.cpp@findCandidatePosition_inner] Position = " << candidatePos.x() << "," << candidatePos.y() << endl;
+//                    cout << endl << "[map.cpp@findCandidatePosition_inner] Position = " << candidatePos.x() << "," << candidatePos.y() << endl;
 
                     // relative cell position respect to center
                     rel_x=candidatePos.x()-pos_X_m;
@@ -1460,12 +1460,13 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                     // cell is inside circle AND arc
                     if (std::abs(rel_a)<=(FOV_rad/2)){
                       // cell is candidate
+//                      cout << "[map.cpp@findCandidatePosition_inner] Cell is candidate" << endl;
                       candidateIndex = (*iterator);
                 			if (mode==1)
                 				isOk = (isCandidate(candidateIndex(0), candidateIndex(1)) == 1);
                       if (mode==2)
                         isOk = (isCandidate2(candidateIndex(0), candidateIndex(1)) == 1);
-//                      cout << "[map.cpp@findCandidatePosition_inner] Cell is candidate" << endl;
+
                       if(isOk)
                       {
 //                          cout << "[map.cpp@findCandidatePosition_inner] is OK" << endl;
@@ -1475,6 +1476,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                               !lin_iterator.isPastEnd(); ++lin_iterator) {
 
                                 planning_grid_.getPosition(*lin_iterator, rayPos);
+//                                cout <<"[map.cpp@findCandidatePositions] Pos: " << rayPos(0) << "," << rayPos(1) << endl;
                                 rayIndex = (*lin_iterator);
                                 // if an obstacle is found, end
                                 if(isPathPlanningGridValueObst(rayIndex))
@@ -1482,19 +1484,22 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                                   hit =  true;
                                   ROS_DEBUG("[map.cpp@findCandidatePositions] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
                                               candidateIndex(0),candidateIndex(1),candidatePos(0),candidatePos(1),rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
+//                                  cout << "HIT! cell" << endl;
                                   break;
                                 }
                           }
 
+//                          cout << "Going to be scanned" << endl;
                           // if we reach robot pose without obstacles: add cell it to pair list
-                          if(!hit)
+                          if(hit == false)
                           {
 //                            double tmp_x, tmp_y;
 //                            getPathPlanningPosition(tmp_x, tmp_y, rayIndex(0), rayIndex(1));
-                            std::pair<float, float> temp = std::make_pair(rayPos(0),rayPos(1));
+                            std::pair<float, float> temp = std::make_pair(candidatePos(0),candidatePos(1));
                             edgePoints.push_back(temp);
                             ROS_DEBUG("[map.cpp@findCandidatePositions] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
-                                      rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
+                                      candidateIndex(0),candidateIndex(1),candidatePos(0),candidatePos(1)  );
+                            cout <<"[map.cpp@findCandidatePositions] Cell scanned: " << candidatePos(0) << "," << candidatePos(1) << endl;
                           }
 
                       }
