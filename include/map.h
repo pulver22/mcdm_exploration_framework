@@ -813,7 +813,7 @@ private:
 
   void plotMyGridColor(std::string fileURI, const grid_map::GridMap * gm);
 
-  grid_map_msgs::GridMap toMessage(grid_map::GridMap *gm);
+  grid_map_msgs::GridMap toMessage(grid_map::GridMap *gm, bool full);
 
   /**
    * constraints angle into -pi,pi range
