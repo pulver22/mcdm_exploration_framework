@@ -22,6 +22,7 @@ public:
   void setInformationGain(int value);
   bool operator==(const Pose& p);
   void setScanAngles(std::pair<double,double> angles);
+  void setOrientation(float orientation);
   std::pair<double, double> getScanAngles();
   
   

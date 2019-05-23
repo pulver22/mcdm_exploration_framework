@@ -75,6 +75,7 @@ double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map, ros::ServiceC
     }
   } else {
     ROS_INFO("Path_finding Service call failed! ");
+    path_len = 1000;
   }
   Criterion::insertEvaluation(p, path_len);
 

@@ -1499,7 +1499,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                             edgePoints.push_back(temp);
                             ROS_DEBUG("[map.cpp@findCandidatePositions] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
                                       candidateIndex(0),candidateIndex(1),candidatePos(0),candidatePos(1)  );
-                            cout <<"[map.cpp@findCandidatePositions] Cell scanned: " << candidatePos(0) << "," << candidatePos(1) << endl;
+//                            cout <<"[map.cpp@findCandidatePositions] Cell scanned: " << candidatePos(0) << "," << candidatePos(1) << endl;
                           }
 
                       }
@@ -1834,10 +1834,10 @@ grid_map_msgs::GridMap Map::toMessage(grid_map::GridMap *gm)
     gm->add("elevation", (*gm)["layer"]);
     gm->setBasicLayers({"elevation"});
 
-    for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
-              if (gm->at("elevation",*iterator)==Map::CellValue::FREE)
-                    gm->at("elevation",*iterator)=NAN;
-    }
+//    for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd(); ++iterator) {
+//              if (gm->at("elevation",*iterator)==Map::CellValue::FREE)
+//                    gm->at("elevation",*iterator)=NAN;
+//    }
 
     gm->setTimestamp(time.toNSec());
     GridMapRosConverter::toMessage(*gm, message);

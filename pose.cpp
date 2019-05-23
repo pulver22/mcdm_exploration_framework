@@ -88,6 +88,11 @@ void Pose::setScanAngles(std::pair< double, double > angles)
   scanAngles = angles;
 }
 
+void Pose::setOrientation(float orientation)
+{
+  this->orientation = orientation;
+}
+
 std::pair<double, double> Pose::getScanAngles()
 {
   return scanAngles;

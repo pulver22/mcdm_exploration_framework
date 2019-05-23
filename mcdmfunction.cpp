@@ -215,7 +215,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers, dummy::Map *ma
 
     }
 
-//    cout << "Frontier coord = (" << f.getX() << "," << f.getY() << "), Final value: " << finalValue << endl;
+    cout << "Frontier coord = (" << f.getX() << "," << f.getY() << "), Final value: " << finalValue << endl;
     if (finalValue > threshold)
     {
       toRet->putEvaluation(f, finalValue);
@@ -241,11 +241,14 @@ pair<Pose, double> MCDMFunction::selectNewPose(EvaluationRecords *evaluationReco
       value = (*it).second;
     }//else continue;
   }
+
+  // Cast the orientation to two decimals
+  newTarget.setOrientation(roundf(newTarget.getOrientation() * 100) / 100);
   pair<Pose, double> result = make_pair(newTarget, value);
 
   // i switch x and y to allow debugging graphically looking the image
   cout << "New target : " << "x = " << newTarget.getX() << ", y = " << newTarget.getY() << ", orientation = "
-       << newTarget.getOrientation() << "("<< (newTarget.getOrientation() * 180 / PI) <<" deg), Evaluation: " << value << endl;
+       << newTarget.getOrientation()  << "("<< newTarget.getOrientation() * 180 / PI <<" deg), Evaluation: " << value << endl;
   return result;
 }
 
