@@ -1535,7 +1535,7 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                     candidateIndex = (*nav_iterator);
                     hit = false;
                     // trace a ray between that cell and robot cell:
-                    for (grid_map::LineIterator lin_iterator(nav_grid_, candidatePos, centerPos);
+                    for (grid_map::LineIterator lin_iterator(nav_grid_, centerPos, candidatePos);
                          !lin_iterator.isPastEnd(); ++lin_iterator) {
 //                                cout << "[map.cpp@performSensingOperation] line element [i, j] : [" << (*lin_iterator)(0) << "," << (*lin_iterator)(1) << "] = " << getGridValue((*lin_iterator)(0), (*lin_iterator)(1)) << endl;
 

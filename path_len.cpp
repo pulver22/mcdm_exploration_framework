@@ -55,24 +55,23 @@ void pointCallback(const geometry_msgs::PointStamped::ConstPtr& msg)
   ROS_INFO("I have [%d] points stored",storedPoints);
 }
 
-double getPathLen(std::vector<geometry_msgs::PoseStamped> poses)
-{
-  double len=0;
-  geometry_msgs::Point p1, p2;
-  int npoints = poses.size();
-  ROS_INFO("Path has [%d] points",npoints);
-  if(npoints>0){
-      for (int i=1;i<npoints;i++){
-          p1=poses[i].pose.position;
-          p2=poses[i-1].pose.position;
-          len += sqrt(pow(p1.x - p2.x, 2) +   pow(p1.y - p2.y, 2) );
-      }
-  } else {
-    len=std::numeric_limits<double>::max();
-    ROS_INFO("Empty path. Len set to infinite... ");
-  }
+double getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
+    double len = 0;
+    geometry_msgs::Point p1, p2;
+    int npoints = poses.size();
+//  ROS_INFO("[pure_navigation.cpp@getPathLen]Path has [%d] points",npoints);
+    if (npoints > 0) {
+        for (int i = 1; i < npoints; i++) {
+            p1 = poses[i].pose.position;
+            p2 = poses[i - 1].pose.position;
+            len += sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+        }
+    } else {
+        len = std::numeric_limits<double>::max();
+//        ROS_INFO("[pure_navigation.cpp@getPathLen]Empty path. Len set to infinite... ");
+    }
 
-  return len;
+    return len;
 }
 
 int main(int argc,char **argv){
