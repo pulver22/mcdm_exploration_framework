@@ -1,28 +1,34 @@
+#include <algorithm>
 #include <iostream>
 #include <iterator>
 #include "map.h"
 #include "newray.h"
 #include "mcdmfunction.h"
+#include "PathFinding/astar.h"
 #include "Criteria/traveldistancecriterion.h"
-# define PI           3.14159265358979323846  /* pi */
+#include "radio_models/propagationModel.cpp"
+
+#define _USE_MATH_DEFINES
+
+#include "math.h"
 #include <unistd.h>
+#include <time.h>
+#include <ctime>
+// #include "RFIDGridmap.h"
 #include <ros/ros.h>
 #include "movebasegoal.h"
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
 #include <nav_msgs/GetMap.h>
 #include <costmap_2d/costmap_2d_ros.h>
-#include <algorithm>
-#include <ptu_control/commandSweep.h>
-#include <amtec/GetStatus.h>
-#include "PathFinding/astar.h"
-#include "std_msgs/Int16.h"
-#include <boost/thread.hpp>
-#include <time.h>
-#include <ctime>
 #include <nav_msgs/GetPlan.h>
-//#include <spinner.h>
+//mfc ...
+#include <ros/console.h>
+//mfc ...
 
 
 using namespace std;
@@ -31,7 +37,7 @@ void cleanPossibleDestination2(std::list< Pose > &possibleDestinations, Pose& p)
 bool contains(std::list< Pose >& list, Pose& p);
 bool containsPos(std::list<std::pair<float, float> > positionEscluded, std::pair<float, float> p);
 Pose createFromInitialPose(Pose pose, float variation, int range, int FOV);
-void gasDetection();
+//void gasDetection();
 Pose getCurrentPose(float resolution, float costresolution, dummy::Map *map, double initFov, int initRange);
 int getIndex(int x, int y);
 double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
@@ -44,7 +50,7 @@ void pushInitialPositions(dummy::Map map, float x, float y, float orientation, i
                           string actualPose, vector<pair<string, list<Pose> > > *graph2,
                           ros::ServiceClient *path_client);
 void showMarkerandNavigate(Pose target, ros::Publisher *marker_pub, nav_msgs::GetPlan *path, ros::ServiceClient *path_client, list<Pose> *tabuList, std::list<std::pair<float, float> > *posToEsclude);
-void stateCallback(const std_msgs::Int16::ConstPtr& sta);
+//void stateCallback(const std_msgs::Int16::ConstPtr& sta);
 void scanning();
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg);
 void updatePathMetrics(int *count, Pose *target, Pose *previous, string actualPose, list<Pose> *nearCandidates,
@@ -79,14 +85,14 @@ int main(int argc, char **argv) {
 
         // some param control ...
         if (argc < 6) {
-                ROS_FATAL(
-                        "Missing input arguments: Got (%d) and should be (%d) [Field of View, Sensing Range, Precision, Threshold,Resolution]",
-                        argc - 1, 6 - 1);
-                return 1;
+            ROS_FATAL(
+                    "Missing input arguments: Got (%d) and should be (%d) [Field of View, Sensing Range, Precision, Threshold,Resolution]",
+                    argc - 1, 6 - 1);
+            return 1;
         } else {
-                ROS_INFO(
-                        "Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n- Threshold (%3.3f)\n- Resolution: (%3.3f)",
-                        atof(argv[1]), atoi(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]));
+            ROS_INFO(
+                    "Parameters:\n- Field of View (%3.3f)\n- Sensing Range (%d)\n- Precision (%3.3f)\n- Threshold (%3.3f)\n- Resolution: (%3.3f)",
+                    atof(argv[1]), atoi(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]));
         }
 
         auto startMCDM = chrono::high_resolution_clock::now();
@@ -101,10 +107,12 @@ int main(int argc, char **argv) {
         ros::Publisher moveBasePub = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1000);
         ros::Publisher gridPub = nh.advertise<grid_map_msgs::GridMap>("nav_grid_debug", 1, true);
         ros::Publisher planningPub = nh.advertise<grid_map_msgs::GridMap>("planning_grid_debug", 1, true);
-        ros::Subscriber ptu_sub = nh.subscribe("/ptu_control/state",10,stateCallback);
+//        ros::Subscriber ptu_sub = nh.subscribe("/ptu_control/state",10,stateCallback);
         ros::Subscriber costmap_sub;
         ros::Subscriber costmap_update_sub;
         ros::Rate r(10);
+
+
 
         ROS_INFO("Waiting for move_base action server to come up");
         while (!ac.waitForServer(ros::Duration(5.0))) {
@@ -125,6 +133,8 @@ int main(int argc, char **argv) {
 
         }
 
+        cout << "Here" << endl;
+
 
         while(ros::ok()) {
 
@@ -136,7 +146,7 @@ int main(int argc, char **argv) {
                 if(costmapReceived == 1)
                 {
                         double initFov = atoi(argv[1] );
-                        initFov = initFov * PI /180;
+                        initFov = initFov * M_PI /180;
                         FoV = initFov;
                         int initRange = atoi(argv[2]);
                         sensing_range = initRange;
@@ -183,8 +193,6 @@ int main(int argc, char **argv) {
 
                         long numConfiguration = 1;
                         vector<pair<string,list<Pose> > > graph2;
-                        NewRay ray;
-                        ray.setGridToPathGridScale(gridToPathGridScale);
                         MCDMFunction function;
                         long sensedCells = 0;
                         long newSensedCells =0;
@@ -229,14 +237,12 @@ int main(int argc, char **argv) {
 
                                 cout << "-----------------------------------------------------------------"<<endl;
                                 cout << "Round : " << count + 1<< endl;
-                                //newSensedCells = sensedCells + ray.getInformationGain(map,x,y,orientation,FOV,range);
                                 cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells -200<< endl;
-                                newSensedCells = sensedCells + map.performSensingOperation(x, y, orientation, FOV, range,
-                                                                                           target.getScanAngles().first,
-                                                                                           target.getScanAngles().second);
-
                                 target.setScanAngles(map.getSensingTime(x, y, orientation, FOV, range));
                                 totalAngle += target.getScanAngles().second - target.getScanAngles().first;
+                                newSensedCells = sensedCells + map.performSensingOperation(x, y, orientation, FOV, range,
+                                                                                           target.getScanAngles().first,
+                                                                                       target.getScanAngles().second);
                                 map.updatePathPlanningGrid(x, y, range);
                                 gridPub.publish(map.toMessageGrid());
                                 planningPub.publish(map.toMessagePathPlanning());
@@ -598,26 +604,23 @@ geometry_msgs::PoseStamped getCurrentPose()
         return start_pose;
 }
 
-void grid_callback(const nav_msgs::OccupancyGridConstPtr& msg)
-{
-        //cout << "alive" << endl;
-        if(costmapReceived == 0)
-        {
-                std::cout << "CALLBACK FIRST" << std::endl;
-                //costmap_grid = msg.get();
-                costresolution = msg->info.resolution;
-                costwidth = msg->info.width;
-                costheight = msg->info.height;
-                costorigin = msg->info.origin;
-                for(int i = 0; i < msg.get()->data.size(); ++i)
-                {
-                        occdata.push_back(msg->data.at(i));
-                }
-                std::cout << "size of occdata " << occdata.size() << " size of message data " << msg->data.size() << std::endl;
-                std::cout << "height" << msg->info.height << " width " << msg->info.width << " resolution " << msg->info.resolution << std::endl;
-                costmapReceived = 1;
+void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg) {
+    //ROS_INFO("RECEIVED A MAP!");
+    if (costmapReceived == 0) {
+        ROS_INFO("CALLBACK FIRST!");
+        costmap_grid = *msg;
+        costresolution = msg->info.resolution;
+        costwidth = msg->info.width;
+        costheight = msg->info.height;
+        costorigin = msg->info.origin;
+        for (int i = 0; i < msg.get()->data.size(); ++i) {
+            occdata.push_back(msg->data.at(i));
         }
-
+        std::cout << "size of occdata " << occdata.size() << " size of message data " << msg->data.size() << std::endl;
+        std::cout << "height " << msg->info.height << " width " << msg->info.width << " resolution "
+                  << msg->info.resolution << std::endl;
+        costmapReceived = 1;
+    }
 }
 
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr& msg)
@@ -703,118 +706,118 @@ void cleanPossibleDestination2(std::list< Pose >& possibleDestinations, Pose& p)
 
 }
 
-void gasDetection(){
+//void gasDetection(){
+//
+//        ros::NodeHandle n;
+//        ros::ServiceClient client1 = n.serviceClient<ptu_control::commandSweep>("/ptu_control/sweep");
+//        ros::ServiceClient client2 = n.serviceClient<amtec::GetStatus>("/amtec/get_status");
+//
+//        ptu_control::commandSweep srvSweep;
+//
+//        // Finding Tilt Angle:
+//        //--------------------------
+//        /*
+//         *    | phi
+//         *  0.904m |
+//         *         |
+//         *         |--
+//         *         |_|_____________________________theta
+//         *        sensing range
+//         *  phi   = atan(sensing range / 0.904)
+//         *  theta = atan(0.904 / sensing range)
+//         *  tilt_angle = 90-phi
+//         */
+//
+//        if(min_pan_angle > max_pan_angle) {
+//                double tmp = min_pan_angle;
+//                min_pan_angle = max_pan_angle;
+//                max_pan_angle = tmp;
+//        }
+//
+//        srvSweep.request.min_pan    = min_pan_angle;    //min_pan_angle;   //-10;
+//        srvSweep.request.max_pan    = max_pan_angle;   //max_pan_angle;   // 10;
+//        srvSweep.request.min_tilt   = tilt_angle;  //min_tilt_angle;  //-10;
+//        srvSweep.request.max_tilt   = tilt_angle;  //max_tilt_angle;  //-10;
+//        srvSweep.request.n_pan      = num_pan_sweeps;//  1;
+//        srvSweep.request.n_tilt     = num_tilt_sweeps;//  1;
+//        srvSweep.request.samp_delay = sample_delay; //0.1;
+//
+//        if (client1.call(srvSweep)) {
+//                ROS_INFO("Gas detection in progress ... <%.2f~%.2f,%.2f>",min_pan_angle,max_pan_angle,tilt_angle);
+//        }else{
+//                ROS_ERROR("Failed to initialize gas scanning.");
+//        }
+//
+//
+//}
 
-        ros::NodeHandle n;
-        ros::ServiceClient client1 = n.serviceClient<ptu_control::commandSweep>("/ptu_control/sweep");
-        ros::ServiceClient client2 = n.serviceClient<amtec::GetStatus>("/amtec/get_status");
+//void stateCallback(const std_msgs::Int16::ConstPtr& sta){
+//        //ROS_INFO("PTU status is...%d",sta->data);
+//        statusPTU=sta->data;
+//}
 
-        ptu_control::commandSweep srvSweep;
+//void scanning(){
+//        ros::NodeHandle nh("~");
+//        ros::Subscriber ptu_sub;
+//        ptu_sub = nh.subscribe<std_msgs::Int16>("/ptu_control/state",100,stateCallback);
+//        ros::AsyncSpinner spinner(0);
+//        spinner.start();
+//        auto start = chrono::high_resolution_clock::now();
+////        gasDetection();
+//        while(ros::ok()) {
+//
+//                while(statusPTU!=3) {
+//                        sleep(1);
+//                        //ROS_INFO("PTU status is...%d",statusPTU);
+//                }
+//                ROS_INFO("Scanning started!");
+//                ros::WallDuration(5).sleep();
+//                while(statusPTU!=0) {
+//                        sleep(1);
+//                        //ROS_INFO("PTU status is...%d",statusPTU);
+//                }
+//
+//                ROS_INFO("Gas detection COMPLETED!");
+//                auto end = chrono::high_resolution_clock::now();
+//                double tmpScanning = chrono::duration<double,milli>(end -start).count();
+//                cout << "Time of current scan : "<< tmpScanning << " ms" <<endl;
+//                timeOfScanning = timeOfScanning + tmpScanning;
+//                spinner.stop();
+//                break;
+//        }
+//
+//}
 
-        // Finding Tilt Angle:
-        //--------------------------
-        /*
-         *    | phi
-         *  0.904m |
-         *         |
-         *         |--
-         *         |_|_____________________________theta
-         *        sensing range
-         *  phi   = atan(sensing range / 0.904)
-         *  theta = atan(0.904 / sensing range)
-         *  tilt_angle = 90-phi
-         */
-
-        if(min_pan_angle > max_pan_angle) {
-                double tmp = min_pan_angle;
-                min_pan_angle = max_pan_angle;
-                max_pan_angle = tmp;
-        }
-
-        srvSweep.request.min_pan    = min_pan_angle;    //min_pan_angle;   //-10;
-        srvSweep.request.max_pan    = max_pan_angle;   //max_pan_angle;   // 10;
-        srvSweep.request.min_tilt   = tilt_angle;  //min_tilt_angle;  //-10;
-        srvSweep.request.max_tilt   = tilt_angle;  //max_tilt_angle;  //-10;
-        srvSweep.request.n_pan      = num_pan_sweeps;//  1;
-        srvSweep.request.n_tilt     = num_tilt_sweeps;//  1;
-        srvSweep.request.samp_delay = sample_delay; //0.1;
-
-        if (client1.call(srvSweep)) {
-                ROS_INFO("Gas detection in progress ... <%.2f~%.2f,%.2f>",min_pan_angle,max_pan_angle,tilt_angle);
-        }else{
-                ROS_ERROR("Failed to initialize gas scanning.");
-        }
-
-
-}
-
-void stateCallback(const std_msgs::Int16::ConstPtr& sta){
-        //ROS_INFO("PTU status is...%d",sta->data);
-        statusPTU=sta->data;
-}
-
-void scanning(){
-        ros::NodeHandle nh("~");
-        ros::Subscriber ptu_sub;
-        ptu_sub = nh.subscribe<std_msgs::Int16>("/ptu_control/state",100,stateCallback);
-        ros::AsyncSpinner spinner(0);
-        spinner.start();
-        auto start = chrono::high_resolution_clock::now();
-        gasDetection();
-        while(ros::ok()) {
-
-                while(statusPTU!=3) {
-                        sleep(1);
-                        //ROS_INFO("PTU status is...%d",statusPTU);
-                }
-                ROS_INFO("Scanning started!");
-                ros::WallDuration(5).sleep();
-                while(statusPTU!=0) {
-                        sleep(1);
-                        //ROS_INFO("PTU status is...%d",statusPTU);
-                }
-
-                ROS_INFO("Gas detection COMPLETED!");
-                auto end = chrono::high_resolution_clock::now();
-                double tmpScanning = chrono::duration<double,milli>(end -start).count();
-                cout << "Time of current scan : "<< tmpScanning << " ms" <<endl;
-                timeOfScanning = timeOfScanning + tmpScanning;
-                spinner.stop();
-                break;
-        }
-
-}
-
-double getPtuAngle(double mapAngle, int orientation)
-{
-        double ptuAngle = 0;
-        // get the angle in degrees
-
-
-        int tmp = mapAngle * 180 / PI;
-        cout << mapAngle << " -> " << tmp << endl;
-        cout << tmp <<endl;
-        /*
-           if(tmp >360){
-           ptuAngle = tmp - 360 - orientation;
-           }else ptuAngle = tmp - orientation;
-         */
-
-        if (tmp < 90) {
-                ptuAngle = tmp;
-        }else {
-                tmp = orientation + 360 - tmp;
-                if(tmp < 90) ptuAngle = tmp;
-                else ptuAngle = tmp - 360;
-        }
-
-        if(ptuAngle > 360) {
-                ptuAngle = ptuAngle - 360.0;
-        }
-        ptuAngle = ptuAngle * (-1);
-        //cout << ptuAngle <<endl;
-        return ptuAngle;
-}
+//double getPtuAngle(double mapAngle, int orientation)
+//{
+//        double ptuAngle = 0;
+//        // get the angle in degrees
+//
+//
+//        int tmp = mapAngle * 180 / PI;
+//        cout << mapAngle << " -> " << tmp << endl;
+//        cout << tmp <<endl;
+//        /*
+//           if(tmp >360){
+//           ptuAngle = tmp - 360 - orientation;
+//           }else ptuAngle = tmp - orientation;
+//         */
+//
+//        if (tmp < 90) {
+//                ptuAngle = tmp;
+//        }else {
+//                tmp = orientation + 360 - tmp;
+//                if(tmp < 90) ptuAngle = tmp;
+//                else ptuAngle = tmp - 360;
+//        }
+//
+//        if(ptuAngle > 360) {
+//                ptuAngle = ptuAngle - 360.0;
+//        }
+//        ptuAngle = ptuAngle * (-1);
+//        //cout << ptuAngle <<endl;
+//        return ptuAngle;
+//}
 
 void pushInitialPositions(dummy::Map map, float x, float y, float orientation, int range, int FOV, double threshold,
                           string actualPose, vector<pair<string, list<Pose> > > *graph2,

@@ -45,10 +45,10 @@ PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp)
 #add_executable(mcdm_online_exploration_ros main.cpp )
 #target_link_libraries(mcdm_online_exploration_ros mcdm_exploration_framework ${catkin_LIBRARIES})
 
-#add_executable(pure_navigation pure_navigation.cpp )
-#target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRARIES})
+add_executable(pure_navigation pure_navigation.cpp )
+target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRARIES})
 
-add_executable(mcdm_slim main_updated.cpp )
+add_executable(mcdm_slim mcdm_slim.cpp)
 target_link_libraries(mcdm_slim mcdm_exploration_framework ${catkin_LIBRARIES})
 
 ## Declare a C++ executable

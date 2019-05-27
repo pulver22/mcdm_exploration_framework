@@ -526,7 +526,7 @@ namespace dummy {
                 }
             }
 
-            if (numVistNavCellsPerPathCell >= 0.1 * gridToPathGridScale * gridToPathGridScale) {
+            if (numVistNavCellsPerPathCell >= 1.0* gridToPathGridScale * gridToPathGridScale) {
                 setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0), (*planning_iterator)(1));
                 numVistPathCell++;
             }
@@ -1537,12 +1537,14 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                     // trace a ray between that cell and robot cell:
                     for (grid_map::LineIterator lin_iterator(nav_grid_, centerPos, candidatePos);
                          !lin_iterator.isPastEnd(); ++lin_iterator) {
+//                        cout << "CenterPos: " << centerPos.x() << "," << centerPos.y() << endl;
+//                        cout << "CandidatePos: " << candidatePos.x() << "," << candidatePos.y() << endl;
 //                                cout << "[map.cpp@performSensingOperation] line element [i, j] : [" << (*lin_iterator)(0) << "," << (*lin_iterator)(1) << "] = " << getGridValue((*lin_iterator)(0), (*lin_iterator)(1)) << endl;
 
                         nav_grid_.getPosition(*lin_iterator, rayPos);
                         rayIndex = (*lin_iterator);
                         // if an obstacle is found, end
-                        if (isGridValueObst(*nav_iterator)) {
+                        if (isGridValueObst(*lin_iterator)) {
                             hit = true;
 //                                      ROS_DEBUG("[map.cpp@performSensingOperation] HIT! cell [%d, %d]- [%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., %3.3f m.]",
 //                                                  candidateIndex(0),candidateIndex(1),candidatePos(0),candidatePos(1),rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
@@ -1550,16 +1552,28 @@ bool  Map::getGridPosition(double &x, double &y, long i, long j)
                             //    candidatePos(0) <<"," << candidatePos(1) << " -  Hit point: [ "<< rayIndex(0) << "," << rayIndex(1) << "] - [" << rayPos(0) <<"," << rayPos(1) << "]" << endl;
                             break;
                         }
+
+                        if (!hit) {
+                            // Update the cells and the counter only if the cells is free and not already visited
+                            if (isGridValueFree(*lin_iterator)){
+                                setGridValue(Map::CellValue::VIST, (*lin_iterator)(0), (*lin_iterator)(1));
+                                modifiedCells++;
+                            }
+
+//                                ROS_DEBUG("[map.cpp@performSensingOperation] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
+//                                          rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
+                            //cout << "[map.cpp@performSensingOperation] Cell scanned:  [ " << rayIndex(0) << "," << rayIndex(1) << "] - [" << rayPos(0) << "," << rayPos(1) << "]" << endl;
+                        }
                     }
 
                     //if the free cell is reached, set its value to 2 and stop the ray
-                    if (!hit) {
-                        setGridValue(Map::CellValue::VIST, (*nav_iterator)(0), (*nav_iterator)(1));
-                        modifiedCells++;
-//                                ROS_DEBUG("[map.cpp@performSensingOperation] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
-//                                          rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
-                        //cout << "[map.cpp@performSensingOperation] Cell scanned:  [ " << rayIndex(0) << "," << rayIndex(1) << "] - [" << rayPos(0) << "," << rayPos(1) << "]" << endl;
-                    }
+//                    if (!hit) {
+//                        setGridValue(Map::CellValue::VIST, (*nav_iterator)(0), (*nav_iterator)(1));
+//                        modifiedCells++;
+////                                ROS_DEBUG("[map.cpp@performSensingOperation] Cell scanned: [%d, %d]- [%3.3f m., %3.3f m.] ",
+////                                          rayIndex(0),rayIndex(1),rayPos(0),rayPos(1)  );
+//                        //cout << "[map.cpp@performSensingOperation] Cell scanned:  [ " << rayIndex(0) << "," << rayIndex(1) << "] - [" << rayPos(0) << "," << rayPos(1) << "]" << endl;
+//                    }
 
 
                 }
