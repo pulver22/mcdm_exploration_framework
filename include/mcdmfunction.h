@@ -10,24 +10,24 @@
     * to evaluate the utility of the frontiers.
     */
 using namespace dummy;
-class MCDMFunction 
-{
+class MCDMFunction {
 
 public:
-    MCDMFunction();
-    ~MCDMFunction();
-    double evaluateFrontier(Pose& p, dummy::Map* map, ros::ServiceClient* path_client);
-    EvaluationRecords* evaluateFrontiers(const std::list< Pose >& frontiers,  dummy::Map* map,double threshold, ros::ServiceClient* path_client);
-    pair< Pose, double > selectNewPose(EvaluationRecords* evaluationRecords);
-    string getEncodedKey(Pose& p, int value);
-    
+  MCDMFunction();
+  ~MCDMFunction();
+  double evaluateFrontier(Pose &p, dummy::Map *map,
+                          ros::ServiceClient *path_client);
+  EvaluationRecords *evaluateFrontiers(const std::list<Pose> &frontiers,
+                                       dummy::Map *map, double threshold,
+                                       ros::ServiceClient *path_client);
+  pair<Pose, double> selectNewPose(EvaluationRecords *evaluationRecords);
+  string getEncodedKey(Pose &p, int value);
+
 protected:
-
-    Criterion * createCriterion(string name, double weight);        
-    unordered_map<string, Criterion* > criteria;
-    vector<Criterion* > activeCriteria;
-    WeightMatrix * matrix ;
-   //mutex myMutex;
-
+  Criterion *createCriterion(string name, double weight);
+  unordered_map<string, Criterion *> criteria;
+  vector<Criterion *> activeCriteria;
+  WeightMatrix *matrix;
+  // mutex myMutex;
 };
 #endif // MCDMFUNCTION_H

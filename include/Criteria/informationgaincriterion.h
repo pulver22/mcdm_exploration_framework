@@ -2,21 +2,19 @@
 #define INFORMATIONGAINCRITERION_H
 
 #include "criterion.h"
-#include "pose.h"
 #include "map.h"
+#include "pose.h"
 #include <vector>
 
-
-class InformationGainCriterion : public Criterion
-{
+class InformationGainCriterion : public Criterion {
 public:
-    InformationGainCriterion(double weight);
-    virtual ~InformationGainCriterion();
-    double evaluate( Pose &p, dummy::Map* map, ros::ServiceClient* path_client);
-private:
-    void normalize(long minSensedX, int number);
-    int* intersect(int p1x, int p1y, int p2x, int p2y, Pose &p);
-};
+  InformationGainCriterion(double weight);
+  virtual ~InformationGainCriterion();
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client);
 
+private:
+  void normalize(long minSensedX, int number);
+  int *intersect(int p1x, int p1y, int p2x, int p2y, Pose &p);
+};
 
 #endif // INFORMATIONGAINCRITERION_H

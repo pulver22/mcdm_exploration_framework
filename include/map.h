@@ -1,62 +1,57 @@
 #ifndef MAP_H
 #define MAP_H
 
-#include <fstream> // ifstream
-#include <sstream> // stringstream
-#include <vector>
-#include <string>
-#include <iostream>
-#include "pose.h"
-#include <unordered_map>
-#include <nav_msgs/OccupancyGrid.h>
-#include "geometry_msgs/PoseStamped.h"
 #include "RFIDGridmap.h"
-
+#include "geometry_msgs/PoseStamped.h"
+#include "pose.h"
+#include <fstream> // ifstream
+#include <iostream>
+#include <nav_msgs/OccupancyGrid.h>
+#include <sstream> // stringstream
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 using namespace std;
-namespace dummy{
+namespace dummy {
 
-class Map
-{
+class Map {
 
 public:
-  typedef enum CellValue{
-    FREE = 0,
-    OBST = 1,
-    VIST = 2
-  } CellValue;
+  typedef enum CellValue { FREE = 0, OBST = 1, VIST = 2 } CellValue;
 
-
-   /**
-   * Default constructor
-   */
+  /**
+  * Default constructor
+  */
   Map();
 
-   /**
-   * Creates Map using provided file
-   * @param infile     Map file (binary pgm)
-   * @param resolution Map resolution [m./cell]
-   */
-  Map(std::ifstream& infile, float resolution);
+  /**
+  * Creates Map using provided file
+  * @param infile     Map file (binary pgm)
+  * @param resolution Map resolution [m./cell]
+  */
+  Map(std::ifstream &infile, float resolution);
 
-  Map(float plan_resolution,  nav_msgs::OccupancyGrid occupancyGrid );
-   /**
-   *  Creates Map using provided data vector and parameters
-   * @param plan_resolution     planning grid resolution [m./cell] (should be greater than nav resolution)
-   * @param map_resolution      map, nav and rfid grid resolution [m./cell]
-   * @param width          data vector width (== numRows)
-   * @param height         data vector height (== numCols)
-   * @param data           data vector containing map data
-   * @param origin         Where to place 0,0 in map frame_id.
-   */
-Map(float plan_resolution, float map_resolution, int width, int height, vector< int > data, geometry_msgs::Pose origin);
+  Map(float plan_resolution, nav_msgs::OccupancyGrid occupancyGrid);
+  /**
+  *  Creates Map using provided data vector and parameters
+  * @param plan_resolution     planning grid resolution [m./cell] (should be
+  * greater than nav resolution)
+  * @param map_resolution      map, nav and rfid grid resolution [m./cell]
+  * @param width          data vector width (== numRows)
+  * @param height         data vector height (== numCols)
+  * @param data           data vector containing map data
+  * @param origin         Where to place 0,0 in map frame_id.
+  */
+  Map(float plan_resolution, float map_resolution, int width, int height,
+      vector<int> data, geometry_msgs::Pose origin);
 
-   /**
-   * Set a navigation grid cell value
-   * @param  i row index
-   * @param  j col index
-   * @param  value  navigation grid value
-   */
+  /**
+  * Set a navigation grid cell value
+  * @param  i row index
+  * @param  j col index
+  * @param  value  navigation grid value
+  */
   void setGridValue(Map::CellValue value, long i, long j);
 
   /**
@@ -126,20 +121,20 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    */
   long getNumCols();
 
-  //TODO: not implemented
-  //void findFreeEdges(int cX, int cY);
+  // TODO: not implemented
+  // void findFreeEdges(int cX, int cY);
 
- /**
- * TODO:Meaningful description here
- * @param x [description]
- * @param y [description]
- */
+  /**
+  * TODO:Meaningful description here
+  * @param x [description]
+  * @param y [description]
+  */
   void addEdgePoint(int x, int y);
 
   /**
   * TODO:Meaningful description here
   */
-  std::vector<vector<long> > getMap2D();
+  std::vector<vector<long>> getMap2D();
 
   /**
    * Returns robot pose
@@ -172,7 +167,8 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   void storeBinary(std::string fileURI);
 
   /**
-   * Stores navigation grid map in temporary acii file (only 0 indexes) at specified location
+   * Stores navigation grid map in temporary acii file (only 0 indexes) at
+   * specified location
    * @param fileURI full path and filename for file
    */
   void storeAscii(std::string fileURI);
@@ -189,7 +185,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   path planning grid value
    */
-  Map::CellValue getPathPlanningGridValue(long i,long j) const;
+  Map::CellValue getPathPlanningGridValue(long i, long j) const;
 
   /**
    * Return path planning grid cell value at given position
@@ -218,7 +214,8 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   * @param  ps point in "map" frame_id
   * @param  value  path planning grid value
   */
-  void setPathPlanningGridValue(Map::CellValue value, geometry_msgs::PoseStamped ps);
+  void setPathPlanningGridValue(Map::CellValue value,
+                                geometry_msgs::PoseStamped ps);
 
   /**
   * Set a path planning grid cell value
@@ -246,32 +243,39 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   float getGridToPathGridScale() const;
 
   /**
-  * Iterates over pathplanning-grid in a square and updates according to values in navigation grid
-  * @param cellX          Center of the update box, in pathplanning grid cells, x coord
-  * @param cellY          Center of the update box, in pathplanning grid cells, y coord
-  * @param rangeInCells   Half length of the square (radius?) in pathplanning grid cells
+  * Iterates over pathplanning-grid in a square and updates according to values
+  * in navigation grid
+  * @param cellX          Center of the update box, in pathplanning grid cells,
+  * x coord
+  * @param cellY          Center of the update box, in pathplanning grid cells,
+  * y coord
+  * @param rangeInCells   Half length of the square (radius?) in pathplanning
+  * grid cells
   * @param power          Unused...
   */
-  void updatePathPlanningGrid(int cellX, int cellY, int rangeInCells, double power);
+  void updatePathPlanningGrid(int cellX, int cellY, int rangeInCells,
+                              double power);
 
   /**
-  * Iterates over pathplanning-grid in a square and updates according to values in navigation grid
+  * Iterates over pathplanning-grid in a square and updates according to values
+  * in navigation grid
   * @param posX          Center of the update box, x coord
   * @param posY          Center of the update box, y coord
   * @param rangeInMeters Half length of the square (radius?) in meters
   */
   void updatePathPlanningGrid(float posX, float posY, float rangeInMeters);
 
-
   /**
-  * @brief Map::getRelativeTagCoord calculate the relative position of the RFID tag wrt the antenna
+  * @brief Map::getRelativeTagCoord calculate the relative position of the RFID
+  * tag wrt the antenna
   * @param absTagX: absolute x-position of the RFID tag
   * @param absTagY: absolute x-position of the RFID tag
   * @param antennaX: absolute x-position of the antenna
   * @param antennaY: absolute y-position of the antenna
   * @return a pair containing the relative position of the tag to the antenna
   */
-  std::pair<int, int> getRelativeTagCoord(int absTagX, int absTagY, int antennaX, int antennaY);
+  std::pair<int, int> getRelativeTagCoord(int absTagX, int absTagY,
+                                          int antennaX, int antennaY);
 
   /**
   * update the grid cell summing the current value with a new reading
@@ -316,8 +320,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j col index
    * @return   RFID grid value
    */
-  float getRFIDGridValue(long i,long j) const;
-
+  float getRFIDGridValue(long i, long j) const;
 
   /**
    * Return RFID grid cell value
@@ -345,123 +348,131 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
   */
   long getRFIDGridNumRows();
 
-  //TODO: not implemented...
-  //void updateRFIDGrid(double power, double phase, int antennaX, int antennaY);
+  // TODO: not implemented...
+  // void updateRFIDGrid(double power, double phase, int antennaX, int
+  // antennaY);
 
   /**
    * Returns tag pose in rfid grid cell indexs
    * Like drawRFIDGridScan(RFIDGridmap grid) but using internal rfid structure
    * @return [row,col] in rfid grid coordinates
    */
-  std::pair<int,int> findTag();
+  std::pair<int, int> findTag();
 
   /**
    * Returns tag pose in rfid grid cell indexs
    * @param grid RFIDGridmap containing the data
    */
-  std::pair<int,int> findTagfromGridMap(RFIDGridmap grid);
+  std::pair<int, int> findTagfromGridMap(RFIDGridmap grid);
 
+  /**
+  * Returns the i,j index from pathplanning grid of the given metric position
+  * (in "map" frame id)
+  * @param  x  metric position x coordinate (in "map" frame id) in m.
+  * @param  y  metric position y coordinate (in "map" frame id) in m.
+  * @param  i  corresponding cell row index
+  * @param  j  corresponding cell col index
+  * @return    True if index was retrieved
+  */
+  bool getPathPlanningIndex(double x, double y, long &i, long &j);
 
-   /**
-   * Returns the i,j index from pathplanning grid of the given metric position (in "map" frame id)
+  /**
+  * Returns the metric position (in "map" frame id) from pathplanning  grid of
+  * the given i,j index
+  * @param  x  corresponding metric position x coordinate (in "map" frame id) in
+  * m.
+  * @param  y  corresponding metric position y coordinate (in "map" frame id) in
+  * m.
+  * @param  i  cell row index
+  * @param  j  cell col index
+  * @return    True if position was retrieved
+  */
+  bool getPathPlanningPosition(double &x, double &y, long i, long j);
+
+  /**
+  * Returns the metric position (in "map" frame id) from any grid of the given
+  * i,j index
+  * @param  x  corresponding metric position x coordinate (in "map" frame id) in
+  * m.
+  * @param  y  corresponding metric position y coordinate (in "map" frame id) in
+  * m.
+  * @param  i  cell row index
+  * @param  j  cell col index
+  * @return    True if position was retrieved
+  */
+  bool getPosition(double &x, double &y, long i, long j, grid_map::GridMap *gm);
+
+  /**
+   * Returns the i,j index from navigation grid of the given metric position (in
+   * "map" frame id)
    * @param  x  metric position x coordinate (in "map" frame id) in m.
    * @param  y  metric position y coordinate (in "map" frame id) in m.
    * @param  i  corresponding cell row index
    * @param  j  corresponding cell col index
    * @return    True if index was retrieved
    */
-   bool  getPathPlanningIndex(double x, double y, long &i, long &j);
+  bool getGridIndex(double x, double y, long &i, long &j);
 
-   /**
-   * Returns the metric position (in "map" frame id) from pathplanning  grid of the given i,j index
-   * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
-   * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+  /**
+   * Returns the metric position (in "map" frame id) from navigation grid of the
+   * given i,j index
+   * @param  x  corresponding metric position x coordinate (in "map" frame id)
+   * in m.
+   * @param  y  corresponding metric position y coordinate (in "map" frame id)
+   * in m.
    * @param  i  cell row index
    * @param  j  cell col index
    * @return    True if position was retrieved
    */
-   bool  getPathPlanningPosition(double &x, double &y, long i, long j);
+  bool getGridPosition(double &x, double &y, long i, long j);
 
   /**
-  * Returns the metric position (in "map" frame id) from any grid of the given i,j index
-  * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
-  * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
-  * @param  i  cell row index
-  * @param  j  cell col index
-  * @return    True if position was retrieved
-  */
-   bool  getPosition(double &x, double &y, long i, long j, grid_map::GridMap *gm);
-
-   /**
-    * Returns the i,j index from navigation grid of the given metric position (in "map" frame id)
-    * @param  x  metric position x coordinate (in "map" frame id) in m.
-    * @param  y  metric position y coordinate (in "map" frame id) in m.
-    * @param  i  corresponding cell row index
-    * @param  j  corresponding cell col index
-    * @return    True if index was retrieved
-    */
-  bool  getGridIndex(double x, double y, long &i, long &j);
+   * Returns the i,j index from map grid of the given metric position (in "map"
+   * frame id)
+   * @param  x  metric position x coordinate (in "map" frame id) in m.
+   * @param  y  metric position y coordinate (in "map" frame id) in m.
+   * @param  i  corresponding cell row index
+   * @param  j  corresponding cell col index
+   * @return    True if index was retrieved
+   */
+  bool getMapIndex(double x, double y, long &i, long &j);
 
   /**
-   * Returns the metric position (in "map" frame id) from navigation grid of the given i,j index
-   * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
-   * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+   * Returns the metric position (in "map" frame id) from map grid of the given
+   * i,j index
+   * @param  x  corresponding metric position x coordinate (in "map" frame id)
+   * in m.
+   * @param  y  corresponding metric position y coordinate (in "map" frame id)
+   * in m.
    * @param  i  cell row index
    * @param  j  cell col index
    * @return    True if position was retrieved
    */
-   bool  getGridPosition(double &x, double &y, long i, long j);
-
-
-
-
-
-
-    /**
-     * Returns the i,j index from map grid of the given metric position (in "map" frame id)
-     * @param  x  metric position x coordinate (in "map" frame id) in m.
-     * @param  y  metric position y coordinate (in "map" frame id) in m.
-     * @param  i  corresponding cell row index
-     * @param  j  corresponding cell col index
-     * @return    True if index was retrieved
-     */
-  bool  getMapIndex(double x, double y, long &i, long &j);
+  bool getMapPosition(double &x, double &y, long i, long j);
 
   /**
-   * Returns the metric position (in "map" frame id) from map grid of the given i,j index
-   * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
-   * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
+   * Returns the metric position (in "map" frame id) from RFID grid of the given
+   * i,j index
+   * @param  x  corresponding metric position x coordinate (in "map" frame id)
+   * in m.
+   * @param  y  corresponding metric position y coordinate (in "map" frame id)
+   * in m.
    * @param  i  cell row index
    * @param  j  cell col index
    * @return    True if position was retrieved
    */
-   bool  getMapPosition(double &x, double &y, long i, long j);
+  bool getRFIDPosition(double &x, double &y, long i, long j);
 
-
-
-
-
-   /**
-    * Returns the metric position (in "map" frame id) from RFID grid of the given i,j index
-    * @param  x  corresponding metric position x coordinate (in "map" frame id) in m.
-    * @param  y  corresponding metric position y coordinate (in "map" frame id) in m.
-    * @param  i  cell row index
-    * @param  j  cell col index
-    * @return    True if position was retrieved
-    */
-    bool  getRFIDPosition(double &x, double &y, long i, long j);
-
-
-      /**
-       * Returns the i,j index from RFID grid of the given metric position (in "map" frame id)
-       * @param  x  metric position x coordinate (in "map" frame id) in m.
-       * @param  y  metric position y coordinate (in "map" frame id) in m.
-       * @param  i  corresponding cell row index
-       * @param  j  corresponding cell col index
-       * @return    True if index was retrieved
-       */
-  bool  getRFIDIndex(double x, double y, long &i, long &j);
-
+  /**
+   * Returns the i,j index from RFID grid of the given metric position (in "map"
+   * frame id)
+   * @param  x  metric position x coordinate (in "map" frame id) in m.
+   * @param  y  metric position y coordinate (in "map" frame id) in m.
+   * @param  i  corresponding cell row index
+   * @param  j  corresponding cell col index
+   * @return    True if index was retrieved
+   */
+  bool getRFIDIndex(double x, double y, long &i, long &j);
 
   void plotPathPlanningGridColor(std::string fileURI);
 
@@ -477,7 +488,7 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    * @param  j   cell col index in pathplanning grid
    * @return     1 == cell is adjacent to at least one free cell, 0 otherwise
    */
-  int isCandidate(long i,long  j);
+  int isCandidate(long i, long j);
 
   int planning_iterate_func(grid_map::SubmapIterator iterator);
 
@@ -486,17 +497,22 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    *       checks if any of the corresponding nav cells are empty
    * @param  i   cell row index in pathplanning grid
    * @param  j   cell col index in pathplanning grid
-   * @return     1 == cell is adjacent to at least one free nav cell, 0 otherwise
+   * @return     1 == cell is adjacent to at least one free nav cell, 0
+   * otherwise
    */
-  int isCandidate2(long i,long  j);
+  int isCandidate2(long i, long j);
 
   int nav_iterate_func(grid_map::SubmapIterator iterator);
 
   int isCandidate_inner(long i, long j, int mode);
 
-  void findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+  void findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m,
+                                    double heading_rad, double FOV_rad,
+                                    double range_m);
 
-  void calculateInfoGainSensingTime (double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+  void calculateInfoGainSensingTime(double pos_X_m, double pos_Y_m,
+                                    double heading_rad, double FOV_rad,
+                                    double range_m);
 
   /**
    * Given a starting point and heading, updates candidatePositions.
@@ -507,13 +523,15 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    *        -  "Candidate" as in function isCandidate.
    * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
    * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
-   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
-   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in
+   * radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in
+   * radians)
    * @param  range_m      Max. distance to consider in m.
    */
-  void findCandidatePositions(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
-
-
+  void findCandidatePositions(double pos_X_m, double pos_Y_m,
+                              double heading_rad, double FOV_rad,
+                              double range_m);
 
   /**
    * This function is exactly as findCandidatePositions but using Candidate2
@@ -525,91 +543,110 @@ Map(float plan_resolution, float map_resolution, int width, int height, vector< 
    *        -  "Candidate2" as in function isCandidate.
    * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
    * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
-   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
-   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in
+   * radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in
+   * radians)
    * @param  range_m      Max. distance to consider in m.
    */
-  void findCandidatePositions2(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+  void findCandidatePositions2(double pos_X_m, double pos_Y_m,
+                               double heading_rad, double FOV_rad,
+                               double range_m);
 
   /**
-   * Returns candidate positions: path planning cell indexes list built with findCandidatePositions or  findCandidatePositions2
+   * Returns candidate positions: path planning cell indexes list built with
+   * findCandidatePositions or  findCandidatePositions2
    */
-  vector< std::pair<float,float>> getCandidatePositions();
+  vector<std::pair<float, float>> getCandidatePositions();
 
   /**
-   * Clears candidate positions (built with findCandidatePositions or  findCandidatePositions2)
+   * Clears candidate positions (built with findCandidatePositions or
+   * findCandidatePositions2)
    */
   void emptyCandidatePositions();
 
   /**
-   * Calculate the sensing time of a possible scanning operation, at nav grid level.
+   * Calculate the sensing time of a possible scanning operation, at nav grid
+   * level.
    * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
    * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
-   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
-   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in
+   * radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in
+   * radians)
    * @param  range_m      Max. distance to consider in m.
-   * @return pair         Minimum FOV required to scan all the free cells from the considered pose
+   * @return pair         Minimum FOV required to scan all the free cells from
+   * the considered pose
    */
-  std::pair<double,double> getSensingTime(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
-
+  std::pair<double, double> getSensingTime(double pos_X_m, double pos_Y_m,
+                                           double heading_rad, double FOV_rad,
+                                           double range_m);
 
   /**
-   * Perform the sensing operation by setting the value of the free cell scanned to 2
+   * Perform the sensing operation by setting the value of the free cell scanned
+   * to 2
    * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
    * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
-   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
-   * @param  FOV_rad      Field of View from current heading (Arc width in radians) [UNUSED]
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in
+   * radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in
+   * radians) [UNUSED]
    * @param  range_m      Max. distance to consider in m.
-   * @param  minAngle_rad Min angle from current heading (in radians) to consider in scan
-   * @param  maxAngle_rad Max angle from current heading (in radians) to consider in scan
+   * @param  minAngle_rad Min angle from current heading (in radians) to
+   * consider in scan
+   * @param  maxAngle_rad Max angle from current heading (in radians) to
+   * consider in scan
    * @return int          Number of modified cells at nav grid.
    */
-  int performSensingOperation(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m, double minAngle_rad, double maxAngle_rad);
-
+  int performSensingOperation(double pos_X_m, double pos_Y_m,
+                              double heading_rad, double FOV_rad,
+                              double range_m, double minAngle_rad,
+                              double maxAngle_rad);
 
   /**
    * Returns number of free cells in scanning area at nav grid
    * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
    * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
-   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in radians
-   * @param  FOV_rad      Field of View from current heading (Arc width in radians)
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in
+   * radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in
+   * radians)
    * @param  range_m      Max. distance to consider in m.
    * @return int          Number of free cells at nav grid area.
    */
-  int getInformationGain(double pos_X_m, double pos_Y_m, double heading_rad, double FOV_rad, double range_m);
+  int getInformationGain(double pos_X_m, double pos_Y_m, double heading_rad,
+                         double FOV_rad, double range_m);
   // ...........................................................................
   // End of methos previously at newray.cpp ....................................
   // ...........................................................................
 
+  bool isGridValueObst(grid_map::Index ind);
 
+  bool isGridValueVist(grid_map::Index ind);
 
-  bool isGridValueObst( grid_map::Index ind);
+  bool isGridValueFree(grid_map::Index ind);
 
-  bool isGridValueVist( grid_map::Index ind);
+  bool isPathPlanningGridValueFree(grid_map::Index ind);
 
-  bool isGridValueFree( grid_map::Index ind);
-
-  bool isPathPlanningGridValueFree( grid_map::Index ind);
-
-  bool isPathPlanningGridValueObst( grid_map::Index ind);
+  bool isPathPlanningGridValueObst(grid_map::Index ind);
 
   grid_map_msgs::GridMap toMessagePathPlanning();
 
   grid_map_msgs::GridMap toMessageGrid();
 
-  void countPathPlanningCells(long *n_obsts, long *n_free, long *n_vist, long *n_others);
-  void countGridCells(long *n_obsts, long *n_free, long *n_vist, long *n_others);
+  void countPathPlanningCells(long *n_obsts, long *n_free, long *n_vist,
+                              long *n_others);
+  void countGridCells(long *n_obsts, long *n_free, long *n_vist,
+                      long *n_others);
 
 protected:
-
   void createMap(nav_msgs::OccupancyGrid occupancyGrid);
-
 
   /**
   * creates map grid from input stream
   * @param infile input stream
   */
-  void createMap(std::ifstream& infile);
+  void createMap(std::ifstream &infile);
 
   /**
   * creates map grid from opencv matrix
@@ -618,7 +655,8 @@ protected:
   * @param map_frame_id   map frame id (usually "map")
   * @param map_resolution map resolution in m./cell (usually 0.1)
   */
-  void createMap(cv::Mat imageCV,geometry_msgs::Pose origin, std::string map_frame_id, double map_resolution);
+  void createMap(cv::Mat imageCV, geometry_msgs::Pose origin,
+                 std::string map_frame_id, double map_resolution);
 
   /**
   * creates map grid from data vector
@@ -628,7 +666,8 @@ protected:
   * @param data           data vector containing map data
   * @param origin         position for grid center*
   */
-  void createMap(int width,int height, double resolution, vector<int> data, geometry_msgs::Pose origin);
+  void createMap(int width, int height, double resolution, vector<int> data,
+                 geometry_msgs::Pose origin);
 
   /**
   * Creates an  opencv matrix from data vector
@@ -637,13 +676,13 @@ protected:
   * @param data           data vector containing map data
   * @return              opencv matrix with data vector
   */
-  cv::Mat MreadImage(int width,int height,vector<int> data);
+  cv::Mat MreadImage(int width, int height, vector<int> data);
 
   /**
   * Creates an  opencv matrix from  input stream
   * @param infile input stream
   */
-  cv::Mat MreadImage(std::ifstream& input);
+  cv::Mat MreadImage(std::ifstream &input);
 
   /**
    * creates navigation grid with given resolution (a rescalling of map grid)
@@ -676,8 +715,6 @@ protected:
    */
   void decreaseFreeCells();
 
-
-
   // number of rows of the map grid
   long numRows;
 
@@ -698,13 +735,13 @@ protected:
 
   // GRIDS! Each one has just 1 layer, named "layer"
   // "map"      original input map
-  grid_map::GridMap  map_grid_;
+  grid_map::GridMap map_grid_;
   // "nav"	    reescaled input map for navigation
-  grid_map::GridMap  nav_grid_;
+  grid_map::GridMap nav_grid_;
   // "planning" reescaled input map for path planning
-  grid_map::GridMap  planning_grid_;
+  grid_map::GridMap planning_grid_;
   // "RFID"     reescaled input map for sensors
-  grid_map::GridMap  rfid_grid_;
+  grid_map::GridMap rfid_grid_;
 
   // planning_grid to nav_grid resolution ratio
   float gridToPathGridScale;
@@ -716,12 +753,12 @@ protected:
   long numGridCols;
 
 private:
-
   // TODO: meaningful description here
-  std::vector<std::pair<float, float> > edgePoints;
+  std::vector<std::pair<float, float>> edgePoints;
 
   /**
-   * Returns the i,j index from grid of the given metric position (in "map" frame id)
+   * Returns the i,j index from grid of the given metric position (in "map"
+   * frame id)
    * @param  x  metric position x coordinate (in "map" frame id) in m.
    * @param  y  metric position y coordinate (in "map" frame id) in m.
    * @param  i  corresponding cell row index
@@ -738,7 +775,7 @@ private:
   * @param  gm  grid_map to retrieve
   * @return     grid value at indexes
   */
-  float  getValue(long i,long j, const grid_map::GridMap *gm) const;
+  float getValue(long i, long j, const grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
@@ -746,14 +783,15 @@ private:
   * @param  gm  grid_map to retrieve
   * @return     grid value at pose stamped
   */
-  float  getValue(geometry_msgs::PoseStamped ps, const  grid_map::GridMap *gm) const;
+  float getValue(geometry_msgs::PoseStamped ps,
+                 const grid_map::GridMap *gm) const;
 
   /**
   * Get a grid cell value
   * @param  i ith element (as vector)
   * @return   navigation grid value
   */
-  float getValue(long i, const  grid_map::GridMap *gm) const;
+  float getValue(long i, const grid_map::GridMap *gm) const;
 
   /**
   * Set a grid cell value
@@ -762,7 +800,7 @@ private:
   * @param  j col index
   * @param  gm  grid_map to retrieve
   */
-  void setValue(float value, long i,long j, grid_map::GridMap *gm) ;
+  void setValue(float value, long i, long j, grid_map::GridMap *gm);
 
   /**
   * Set a grid cell value
@@ -770,14 +808,15 @@ private:
   * @param  ps  Pose stamped in "map" frame_id
   * @param  gm  grid_map to retrieve
   */
-  void setValue(float value, geometry_msgs::PoseStamped ps, grid_map::GridMap *gm) ;
+  void setValue(float value, geometry_msgs::PoseStamped ps,
+                grid_map::GridMap *gm);
 
   /**
   * Set a grid cell value
   * @param  value value to store
   * @param  i ith element (as vector)
   */
-  void setValue(float value, long i, grid_map::GridMap *gm) ;
+  void setValue(float value, long i, grid_map::GridMap *gm);
 
   /**
    * Get number of Cols (width) in grid_map
@@ -794,24 +833,25 @@ private:
   int getGridNumRows(const grid_map::GridMap *gm) const;
 
   // aux function ...
-  string type2str(int type) ;
+  string type2str(int type);
 
   /**
    * Prints grid boundaries and point pose
    * @param point point to print
    * @param gm    grid_map
    */
-  void printErrorReason(grid_map::Position point, const grid_map::GridMap *gm) const;
+  void printErrorReason(grid_map::Position point,
+                        const grid_map::GridMap *gm) const;
 
   void printScannedCells();
 
-  void printGridData(std::string grid_name , const grid_map::GridMap *gm );
+  void printGridData(std::string grid_name, const grid_map::GridMap *gm);
 
   cv::Mat binarizeImage(cv::Mat imageCV);
 
-  void plotMyGrid(std::string fileURI, const grid_map::GridMap * gm);
+  void plotMyGrid(std::string fileURI, const grid_map::GridMap *gm);
 
-  void plotMyGridColor(std::string fileURI, const grid_map::GridMap * gm);
+  void plotMyGridColor(std::string fileURI, const grid_map::GridMap *gm);
 
   grid_map_msgs::GridMap toMessage(grid_map::GridMap *gm, bool full);
 
@@ -820,16 +860,19 @@ private:
    * @param  x angle in radians
    * @return   -pi,pi wrapped angle
    */
-  double  constrainAnglePI(double x);
+  double constrainAnglePI(double x);
 
-
-  Map::CellValue  toCellValue( float floatVal, std::string who) const;
-  float  toFloat( Map::CellValue value) const;
+  Map::CellValue toCellValue(float floatVal, std::string who) const;
+  float toFloat(Map::CellValue value) const;
   void encodeGrid(grid_map::GridMap *gm, int obstValue, int freeValue);
-  void countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others, const grid_map::GridMap *gm );
-  void printSubmapBoundaries(  grid_map::Index startIndex,   grid_map::Index bufferSize, const grid_map::GridMap *gm) const;
+  void countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others,
+                  const grid_map::GridMap *gm);
+  void printSubmapBoundaries(grid_map::Index startIndex,
+                             grid_map::Index bufferSize,
+                             const grid_map::GridMap *gm) const;
 
-  // percentage of nav cells inside a planning cell that need to be visited before marking the planning cell as visited.
+  // percentage of nav cells inside a planning cell that need to be visited
+  // before marking the planning cell as visited.
   float PLANNING_VISIT_RATIO = 0.6;
 };
 }

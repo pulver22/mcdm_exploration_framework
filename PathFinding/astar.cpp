@@ -7,40 +7,37 @@
 
 using namespace std;
 
-Astar::Astar() {
-}
+Astar::Astar() {}
 
-Astar::~Astar() {
-}
-
+Astar::~Astar() {}
 
 bool operator<(const Node &a, const Node &b) {
   Node tmp1 = a;
   Node tmp2 = b;
-  //return tmp1.getPriority() > tmp2.getPriority();
+  // return tmp1.getPriority() > tmp2.getPriority();
 
   return a.getPriority() > b.getPriority();
 }
 
-
 // A-star algorithm.
 // The route returned is a string of direction digits.
-string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish, const int &yFinish,
-                       dummy::Map *originalMap) {
+string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish,
+                       const int &yFinish, dummy::Map *originalMap) {
   const int m = originalMap->getPathPlanningNumCols();
   const int n = originalMap->getPathPlanningNumRows();
   int map[n][m];
   int closed_nodes_map[n][m]; // map of closed (tried-out) nodes
-  int open_nodes_map[n][m]; // map of open (not-yet-tried) nodes
-  int dir_map[n][m]; // map of directions
+  int open_nodes_map[n][m];   // map of open (not-yet-tried) nodes
+  int dir_map[n][m];          // map of directions
 
   // create map
   for (int y = 0; y < m; y++) {
-    for (int x = 0; x < n; x++) map[x][y] = originalMap->getPathPlanningGridValue(x, y);
+    for (int x = 0; x < n; x++)
+      map[x][y] = originalMap->getPathPlanningGridValue(x, y);
   }
-  //cout << "alive in pathfind"<< endl;
+  // cout << "alive in pathfind"<< endl;
   static priority_queue<Node> pq[2]; // list of open (not-yet-tried) nodes
-  static int pqi; // pq index
+  static int pqi;                    // pq index
   static Node *n0;
   static Node *m0;
   static int i, j, x, y, xdx, ydy;
@@ -59,7 +56,8 @@ string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish,
   n0 = new Node(xStart, yStart, 0, 0);
   n0->updatePriority(xFinish, yFinish);
   pq[pqi].push(*n0);
-  open_nodes_map[xStart][yStart] = n0->getPriority(); // mark it on the open nodes map
+  open_nodes_map[xStart][yStart] =
+      n0->getPriority(); // mark it on the open nodes map
   delete n0;
 
   // A* search
@@ -78,7 +76,7 @@ string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish,
     closed_nodes_map[x][y] = 1;
 
     // quit searching when the goal state is reached
-    //if((*n0).estimate(xFinish, yFinish) == 0)
+    // if((*n0).estimate(xFinish, yFinish) == 0)
     if (x == xFinish && y == yFinish) {
       // generate the path from finish to start
       // by following the directions
@@ -94,7 +92,8 @@ string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish,
       // garbage collection
       delete n0;
       // empty the leftover nodes
-      while (!pq[pqi].empty()) pq[pqi].pop();
+      while (!pq[pqi].empty())
+        pq[pqi].pop();
       return path;
     }
 
@@ -103,11 +102,10 @@ string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish,
       xdx = x + dx[i];
       ydy = y + dy[i];
 
-      if (!(xdx < 0 || xdx > n - 1 || ydy < 0 || ydy > m - 1 || map[xdx][ydy] == 1
-            || closed_nodes_map[xdx][ydy] == 1)) {
+      if (!(xdx < 0 || xdx > n - 1 || ydy < 0 || ydy > m - 1 ||
+            map[xdx][ydy] == 1 || closed_nodes_map[xdx][ydy] == 1)) {
         // generate a child node
-        m0 = new Node(xdx, ydy, n0->getLevel(),
-                      n0->getPriority());
+        m0 = new Node(xdx, ydy, n0->getLevel(), n0->getPriority());
         m0->nextLevel(i);
         m0->updatePriority(xFinish, yFinish);
 
@@ -136,7 +134,8 @@ string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish,
           pq[pqi].pop(); // remove the wanted node
 
           // empty the larger size pq to the smaller one
-          if (pq[pqi].size() > pq[1 - pqi].size()) pqi = 1 - pqi;
+          if (pq[pqi].size() > pq[1 - pqi].size())
+            pqi = 1 - pqi;
           while (!pq[pqi].empty()) {
             pq[1 - pqi].push(pq[pqi].top());
             pq[pqi].pop();
@@ -144,7 +143,8 @@ string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish,
           pqi = 1 - pqi;
           pq[pqi].push(*m0); // add the better node instead
           delete m0;
-        } else delete m0; // garbage collection
+        } else
+          delete m0; // garbage collection
       }
     }
     delete n0; // garbage collection
@@ -155,13 +155,12 @@ string Astar::pathFind(const int &xStart, const int &yStart, const int &xFinish,
 double Astar::lenghtPath(string path) {
 
   double lenght = 0.0;
-  //calculate the distance expressed in cells
-  for (char &c : path)
-  {
-    if (c == '0' || c == '2' || c == '4' || c == '6')
-    {
+  // calculate the distance expressed in cells
+  for (char &c : path) {
+    if (c == '0' || c == '2' || c == '4' || c == '6') {
       lenght = lenght + 1;
-    } else lenght = lenght + sqrt(2);
+    } else
+      lenght = lenght + sqrt(2);
   }
 
   return lenght;
@@ -169,17 +168,20 @@ double Astar::lenghtPath(string path) {
 
 int Astar::getNumberOfTurning(string path) {
   int numberOfTurning = 0;
-  //calculate the number of turning during the path
+  // calculate the number of turning during the path
 
   if (path.size() == 0) {
     return 0;
   } else {
     for (int i = 0; i < path.size() - 1; i++) {
-      if (path.at(i + 1) == path.at(i) + 1 || path.at(i + 1) == path.at(i) - 1) {
+      if (path.at(i + 1) == path.at(i) + 1 ||
+          path.at(i + 1) == path.at(i) - 1) {
         numberOfTurning = +1;
-      } else if (path.at(i + 1) == path.at(i) + 2 || path.at(i + 1) == path.at(i) - 2) {
+      } else if (path.at(i + 1) == path.at(i) + 2 ||
+                 path.at(i + 1) == path.at(i) - 2) {
         numberOfTurning = +2;
-      } else if (path.at(i + 1) == path.at(i) + 3 || path.at(i + 1) == path.at(i) - 3) {
+      } else if (path.at(i + 1) == path.at(i) + 3 ||
+                 path.at(i + 1) == path.at(i) - 3) {
         numberOfTurning = +3;
       }
     }

@@ -2,22 +2,15 @@
 #ifndef MCDMWEIGHTREADER_H
 #define MCDMWEIGHTREADER_H
 
-
 #include "weightmatrix.h"
 
+class MCDMWeightReader {
 
-
-class MCDMWeightReader
-{
-  
 public:
+  WeightMatrix *getMatrix();
 
-    WeightMatrix* getMatrix();
-   
-    
-    private:
-    void listCasual(std::string str2);
+private:
+  void listCasual(std::string str2);
 };
-
 
 #endif // MCDMWEIGHTREADER_H

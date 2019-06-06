@@ -2,13 +2,9 @@
 #define EDGE_H
 #include "pose.h"
 
+struct Edge {
+  Pose destination;
+  double weight;
+};
 
-struct Edge
-    {
-	Pose destination;
-	double weight;
-    };
-
-
-    
 #endif

@@ -1,11 +1,10 @@
 #ifndef EXPLORATIONCONSTANTS_H
 #define EXPLORATIONCONSTANTS_H
 
-
 /**
   * Time interval between two map requests
   */
-#define MAP_RENEW_TIME 4*1000
+#define MAP_RENEW_TIME 4 * 1000
 
 #define NEW_FRONT_RADIUS 0.5
 
