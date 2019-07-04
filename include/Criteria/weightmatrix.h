@@ -38,7 +38,7 @@ private:
   // - the Hash contains the pairs criteria_combination<->weight
   // NOTE: all the keys of the String must be sorted by lexicographic order.
   std::vector<std::unordered_map<std::string, double> *> *weights;
-  std::vector<std::pair<std::string, bool>> activeCriteria;
+  std::vector<std::pair<std::string, bool> > activeCriteria;
   int numOfActiveCriteria;
   int lastInsertedCriteria;
   // std::mutex mutex;

@@ -932,8 +932,8 @@ void Map::addEdgePoint(int x, int y) {
   ROS_FATAL("[Map.cpp@addEdgePoint]: THIS METHOD SHOULD NEVER BE CALLED");
 }
 
-std::vector<vector<long>> Map::getMap2D() {
-  vector<vector<long>> map2D;
+std::vector<vector<long> > Map::getMap2D() {
+  vector<vector<long> > map2D;
 
   for (long gridRow = 0; gridRow < numGridRows; ++gridRow) {
     for (long gridCol = 0; gridCol < numGridCols; ++gridCol) {
@@ -1107,7 +1107,7 @@ string Map::type2str(int type) {
   string r;
 
   uchar depth = type & CV_MAT_DEPTH_MASK;
-  uchar chans = 1 + (type >> CV_CN_SHIFT);
+  uchar chans = 1 + (type > > CV_CN_SHIFT);
 
   switch (depth) {
   case CV_8U:
@@ -1502,7 +1502,7 @@ void Map::findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m,
   //        << edgePoints.size() << endl;
 }
 
-vector<std::pair<float, float>> Map::getCandidatePositions() {
+vector<std::pair<float, float> > Map::getCandidatePositions() {
   return edgePoints;
 }
 

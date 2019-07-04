@@ -28,7 +28,7 @@ double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map,
       // the considered cell
       //int* intersection;
       //Map as a bidimensional array (vector) starting
-      vector<vector<int>> map2D = map.getMap2D();
+      vector<vector<int> > map2D = map.getMap2D();
       int maxValueY = map2D.size();
       int maxValueX = map2D[0].size();
 

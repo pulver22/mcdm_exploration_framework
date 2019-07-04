@@ -9,7 +9,7 @@ using namespace std;
  */
 WeightMatrix::WeightMatrix(int numOfCriteria)
     : // mapping(new unordered_map<string, string>()),
-      // activeCriteria(new vector<pair<string, bool>>()),
+      // activeCriteria(new vector<pair<string, bool> >()),
       weights(new vector<unordered_map<string, double> *>()),
       lastInsertedCriteria(64),
       // mutex(new mutex()),
@@ -53,7 +53,7 @@ void WeightMatrix::insertSingleCriterion(string name, double weight,
   stringstream ss;
   ss << tmp;
   string code;
-  ss >> code;
+  ss > > code;
 
   // ldbg << "Criterion Code: " << code << endl;
   // insert the entry in the mapping table
@@ -79,7 +79,7 @@ void WeightMatrix::changeCriteriaActivation(const string &name, bool active) {
   string enc = mapping[name];
   // Get the actual state of the criterion activation
   int actualState;
-  for (vector<pair<string, bool>>::iterator it = activeCriteria.begin();
+  for (vector<pair<string, bool> >::iterator it = activeCriteria.begin();
        it != activeCriteria.end(); it++) {
     if ((*it).first == enc)
       actualState = (*it).second;
@@ -222,7 +222,7 @@ void WeightMatrix::insertCombinationWeight(const string &encoding,
 vector<string> WeightMatrix::getActiveCriteria() {
   // mutex.lock();
   vector<string> toRet;
-  for (vector<pair<string, bool>>::iterator it = activeCriteria.begin();
+  for (vector<pair<string, bool> >::iterator it = activeCriteria.begin();
        it != activeCriteria.end(); it++) {
     // k = endoding
     const string k = (*it).first;

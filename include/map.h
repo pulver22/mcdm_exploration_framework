@@ -134,7 +134,7 @@ public:
   /**
   * TODO:Meaningful description here
   */
-  std::vector<vector<long>> getMap2D();
+  std::vector<vector<long> > getMap2D();
 
   /**
    * Returns robot pose
@@ -557,7 +557,7 @@ public:
    * Returns candidate positions: path planning cell indexes list built with
    * findCandidatePositions or  findCandidatePositions2
    */
-  vector<std::pair<float, float>> getCandidatePositions();
+  vector<std::pair<float, float> > getCandidatePositions();
 
   /**
    * Clears candidate positions (built with findCandidatePositions or
@@ -754,7 +754,7 @@ protected:
 
 private:
   // TODO: meaningful description here
-  std::vector<std::pair<float, float>> edgePoints;
+  std::vector<std::pair<float, float> > edgePoints;
 
   /**
    * Returns the i,j index from grid of the given metric position (in "map"

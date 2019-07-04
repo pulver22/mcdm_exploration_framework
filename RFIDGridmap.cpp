@@ -344,7 +344,7 @@ string RFIDGridmap::type2str(int type) {
   string r;
 
   uchar depth = type & CV_MAT_DEPTH_MASK;
-  uchar chans = 1 + (type >> CV_CN_SHIFT);
+  uchar chans = 1 + (type > > CV_CN_SHIFT);
 
   switch (depth) {
   case CV_8U:

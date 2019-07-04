@@ -39,7 +39,7 @@ double getPtuAngle(double mapAngle, int orientation);
 void pushInitialPositions(dummy::Map map, int x, int y, int orientation,
                           int range, int FOV, double threshold,
                           string actualPose,
-                          vector<pair<string, list<Pose>>> *graph2);
+                          vector<pair<string, list<Pose> >> *graph2);
 Pose createFromInitialPose(int x, int y, int orientation, int variation,
                            int range, int FOV);
 
@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
         //----------------------------------------
 
         long numConfiguration = 1;
-        vector<pair<string, list<Pose>>> graph2;
+        vector<pair<string, list<Pose> >> graph2;
         NewRay ray;
         ray.setGridToPathGridScale(gridToPathGridScale);
         MCDMFunction function;
@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
           totalAngle +=
               target.getScanAngles().second - target.getScanAngles().first;
           ray.findCandidatePositions(&map, x, y, orientation, FOV, range);
-          vector<pair<long, long>> candidatePosition =
+          vector<pair<long, long> > candidatePosition =
               ray.getCandidatePositions();
           ray.emptyCandidatePositions();
 
@@ -339,10 +339,10 @@ int main(int argc, char **argv) {
             string eastPose = function.getEncodedKey(eastInitial, 0);
             string westPose = function.getEncodedKey(westInitial, 0);
             list<Pose> empty;
-            std::pair<string, list<Pose>> pair1 =
+            std::pair<string, list<Pose> > pair1 =
                 make_pair(invertedPose, empty);
-            std::pair<string, list<Pose>> pair2 = make_pair(eastPose, empty);
-            std::pair<string, list<Pose>> pair3 = make_pair(westPose, empty);
+            std::pair<string, list<Pose> > pair2 = make_pair(eastPose, empty);
+            std::pair<string, list<Pose> > pair3 = make_pair(westPose, empty);
             graph2.push_back(pair1);
             graph2.push_back(pair2);
             graph2.push_back(pair3);
@@ -420,7 +420,7 @@ int main(int argc, char **argv) {
             // need to convert from a <int,int pair> to a Pose with also
             // orientation,laser range and angle
             list<Pose> frontiers;
-            vector<pair<long, long>>::iterator it = candidatePosition.begin();
+            vector<pair<long, long> >::iterator it = candidatePosition.begin();
             for (it; it != candidatePosition.end(); it++) {
               Pose p1 = Pose((*it).first, (*it).second, 0, range, FOV);
               Pose p2 = Pose((*it).first, (*it).second, 45, range, FOV);
@@ -470,7 +470,7 @@ int main(int argc, char **argv) {
                 history.push_back(function.getEncodedKey(target, 1));
                 cout << "Graph dimension : " << graph2.size() << endl;
                 tabuList.push_back(target);
-                std::pair<string, list<Pose>> pair =
+                std::pair<string, list<Pose> > pair =
                     make_pair(actualPose, frontiers);
                 graph2.push_back(pair);
 
@@ -929,14 +929,14 @@ double getPtuAngle(double mapAngle, int orientation) {
 void pushInitialPositions(dummy::Map map, int x, int y, int orientation,
                           int range, int FOV, double threshold,
                           string actualPose,
-                          vector<pair<string, list<Pose>>> *graph2) {
+                          vector<pair<string, list<Pose> >> *graph2) {
   NewRay ray;
   MCDMFunction function;
   ray.findCandidatePositions(&map, x, y, orientation, FOV, range);
-  vector<pair<long, long>> candidatePosition = ray.getCandidatePositions();
+  vector<pair<long, long> > candidatePosition = ray.getCandidatePositions();
   ray.emptyCandidatePositions();
   list<Pose> frontiers;
-  vector<pair<long, long>>::iterator it = candidatePosition.begin();
+  vector<pair<long, long> >::iterator it = candidatePosition.begin();
   for (it; it != candidatePosition.end(); it++) {
     Pose p1 = Pose((*it).first, (*it).second, 0, range, FOV);
     Pose p2 = Pose((*it).first, (*it).second, 180, range, FOV);
@@ -950,7 +950,7 @@ void pushInitialPositions(dummy::Map map, int x, int y, int orientation,
   EvaluationRecords *record =
       function.evaluateFrontiers(frontiers, map, threshold);
   list<Pose> nearCandidates = record->getFrontiers();
-  std::pair<string, list<Pose>> pair = make_pair(actualPose, nearCandidates);
+  std::pair<string, list<Pose> > pair = make_pair(actualPose, nearCandidates);
   graph2->push_back(pair);
 }
 
