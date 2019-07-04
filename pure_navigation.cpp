@@ -88,6 +88,10 @@ Pose getCurrentPose(float resolution, float costresolution, dummy::Map *map,
 
 double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
 
+void printROSParams();
+void loadROSParams();
+void createROSComms();
+
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
     MoveBaseClient;
 vector<int> occdata;
@@ -107,6 +111,28 @@ bool btMode = false;
 double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
 
+//  ROS PARAMETERS ....................................
+std::string static_map_srv_name;
+std::string make_plan_srv_name;
+std::string move_base_goal_topic_name;
+std::string move_base_srv_name;
+std::string nav_grid_debug_topic_name;
+std::string planning_grid_debug_topic_name;
+std::string move_base_costmap_topic_name;
+std::string move_base_costmap_updates_topic_name;
+std::string  marker_pub_topic_name;
+
+// Ros services/subscribers/publishers
+ros::ServiceClient map_service_client_;
+ros::ServiceClient path_client;
+nav_msgs::GetMap srv_map;
+ros::Publisher moveBasePub;
+ros::Subscriber costmap_sub;
+ros::Subscriber costmap_update_sub;
+ros::Publisher gridPub;
+ros::Publisher planningPub;
+ros::Publisher marker_pub;
+
 // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm
 // 100 75 5 0 15 180 0.95 0.12
 // resolution x y orientation range centralAngle precision threshold
@@ -125,6 +151,7 @@ int main(int argc, char **argv) {
              atof(argv[1]), atoi(argv[2]), atof(argv[3]), atof(argv[4]),
              atof(argv[5]));
   }
+
   //   sets console output to debug mode...
   //  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
   //  ros::console::levels::Debug) )
@@ -132,49 +159,20 @@ int main(int argc, char **argv) {
   //   ros::console::notifyLoggerLevelsChanged();
   //  }
   // mfc ...........................
-
   auto startMCDM = chrono::high_resolution_clock::now();
   ros::init(argc, argv, "mcdm_exploration_framework_node");
-  ros::NodeHandle nh;
-  ros::ServiceClient map_service_client_ =
-      nh.serviceClient<nav_msgs::GetMap>("static_map");
-  ros::ServiceClient path_client =
-      nh.serviceClient<nav_msgs::GetPlan>("/move_base/make_plan", true);
+
+  //mfc Load params from ros
+  loadROSParams();
+
+  //mfc Load params from ros
+  printROSParams();
+
+  // create ROS connections/services
+  createROSComms();
   double path_len;
   bool path_srv_call;
-  nav_msgs::GetMap srv_map;
-  // ros::Publisher grid_pub =
-  // nh.advertise<nav_msgs::OccupancyGrid>("mcdm_grid", 1000);
-  ros::Publisher moveBasePub =
-      nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 1000);
-  MoveBaseClient ac("move_base", true);
-  ros::Subscriber costmap_sub;
-  ros::Subscriber costmap_update_sub;
   ros::Rate r(1);
-
-  ros::Publisher gridPub =
-      nh.advertise<grid_map_msgs::GridMap>("nav_grid_debug", 1, true);
-  ros::Publisher planningPub =
-      nh.advertise<grid_map_msgs::GridMap>("planning_grid_debug", 1, true);
-
-  ROS_INFO("Waiting for move_base action server to come up");
-  while (!ac.waitForServer(ros::Duration(5.0))) {
-    ROS_INFO("... waiting ...");
-  }
-
-  bool disConnected = true;
-  while (disConnected) {
-    ROS_INFO("Waiting for static_map service to respond...");
-    if (map_service_client_.call(srv_map)) {
-      costmap_sub = nh.subscribe<nav_msgs::OccupancyGrid>(
-          "move_base/global_costmap/costmap", 100, grid_callback);
-      costmap_update_sub = nh.subscribe<map_msgs::OccupancyGridUpdate>(
-          "move_base/global_costmap/costmap_updates", 10, update_callback);
-      disConnected = false;
-    } else {
-      r.sleep();
-    }
-  }
 
   while (ros::ok()) {
 
@@ -216,9 +214,6 @@ int main(int argc, char **argv) {
 
       //        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
       //        cout << "RFIDgrid created correctly" << endl;
-      ros::Publisher marker_pub =
-          nh.advertise<geometry_msgs::PointStamped>("goal_pt", 10);
-      ROS_DEBUG("[pure_navigation.cpp@main] publisher created ...");
       int gridToPathGridScale = map.getGridToPathGridScale();
       cout << "gridToPathGridScale: " << gridToPathGridScale << endl;
       ROS_DEBUG("[pure_navigation.cpp@main] grid To Path Grid Scale obtained");
@@ -283,6 +278,8 @@ int main(int argc, char **argv) {
       long i, j;
       long cell_i, cell_j;
       double targetX_meter, targetY_meter;
+
+
       do {
 
         cout << "\n============================================" << endl;
@@ -1617,4 +1614,84 @@ void showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
   move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) / 100,
        time_travel, tabuList,
        posToEsclude); // full resolution
+}
+
+
+
+
+
+void loadROSParams(){
+
+  ros::NodeHandle private_node_handle("~");
+
+  // LOAD ROS PARAMETERS ....................................
+  private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
+  private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
+  private_node_handle.param("move_base_goal_topic_name", move_base_goal_topic_name, std::string("move_base_simple/goal"));
+  private_node_handle.param("move_base_srv_name", move_base_srv_name, std::string("move_base"));
+  private_node_handle.param("nav_grid_debug_topic_name", nav_grid_debug_topic_name, std::string("nav_grid_debug"));
+  private_node_handle.param("planning_grid_debug_topic_name", planning_grid_debug_topic_name, std::string("planning_grid_debug"));
+  private_node_handle.param("move_base_costmap_topic_name", move_base_costmap_topic_name, std::string("move_base/global_costmap/costmap"));
+  private_node_handle.param("move_base_costmap_updates_topic_name", move_base_costmap_updates_topic_name, std::string("move_base/global_costmap/costmap_updates"));
+  private_node_handle.param("marker_pub_topic_name", marker_pub_topic_name, std::string("goal_pt"));
+
+}
+
+void printROSParams(){
+  ROS_INFO("/////////////////////////////////////////////////////////////////////////");
+  ROS_INFO("[pure_navigation@printROSParams] Using the following ros params:");
+
+  ROS_INFO("   - static_map_srv_name [%s]", static_map_srv_name.c_str());
+  ROS_INFO("   - make_plan_srv_name [%s]", make_plan_srv_name.c_str());
+  ROS_INFO("   - move_base_goal_topic_name [%s]", move_base_goal_topic_name.c_str());
+  ROS_INFO("   - move_base_srv_name [%s]", move_base_srv_name.c_str());
+  ROS_INFO("   - nav_grid_debug_topic_name [%s]", nav_grid_debug_topic_name.c_str());
+  ROS_INFO("   - planning_grid_debug_topic_name [%s]", planning_grid_debug_topic_name.c_str());
+  ROS_INFO("   - move_base_costmap_topic_name [%s]", move_base_costmap_topic_name.c_str());
+  ROS_INFO("   - move_base_costmap_updates_topic_name [%s]", move_base_costmap_updates_topic_name.c_str());
+  ROS_INFO("   - marker_pub_topic_name [%s]", marker_pub_topic_name.c_str());
+  ROS_INFO("/////////////////////////////////////////////////////////////////////////");
+
+}
+
+
+void createROSComms(){
+
+  ros::NodeHandle nh;
+  ros::Rate r(1);
+  bool disConnected = true;
+
+  // create service clients
+  map_service_client_ = nh.serviceClient<nav_msgs::GetMap>(static_map_srv_name);
+  path_client =   nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
+
+  // create publishers
+  moveBasePub =   nh.advertise<geometry_msgs::PoseStamped>(move_base_goal_topic_name, 1000);
+  gridPub = nh.advertise<grid_map_msgs::GridMap>(nav_grid_debug_topic_name, 1, true);
+  planningPub = nh.advertise<grid_map_msgs::GridMap>(planning_grid_debug_topic_name, 1, true);
+  marker_pub =  nh.advertise<geometry_msgs::PointStamped>(marker_pub_topic_name, 10);
+
+
+  // create subscribers, only when we are sure the right people is publishing
+  ROS_INFO("[pure_navigation@createROSComms] Waiting for move_base action server to come up");
+  MoveBaseClient ac(move_base_srv_name, true);
+  while (!ac.waitForServer(ros::Duration(5.0))) {
+    ROS_INFO("[pure_navigation@createROSComms]... waiting ...");
+  }
+
+
+  while (disConnected) {
+    ROS_INFO("[pure_navigation@createROSComms] Waiting for static_map service to respond...");
+    if (map_service_client_.call(srv_map)) {
+      costmap_sub = nh.subscribe<nav_msgs::OccupancyGrid>(
+           move_base_costmap_topic_name, 100, grid_callback);
+      costmap_update_sub = nh.subscribe<map_msgs::OccupancyGridUpdate>(
+           move_base_costmap_updates_topic_name, 10, update_callback);
+      disConnected = false;
+    } else {
+      r.sleep();
+    }
+  }
+
+
 }

@@ -79,6 +79,7 @@ void Map::createMap(nav_msgs::OccupancyGrid occupancyGrid) {
   float maxValue = map_grid_.get("layer").maxCoeffOfFinites();
   float minValue = map_grid_.get("layer").minCoeffOfFinites();
   //        maxValue = 20;
+  ROS_DEBUG("[Map.cpp@createMap] encoding map grid between values: %3.3f, %3.3f",maxValue, minValue);
   encodeGrid(&map_grid_, maxValue, minValue);
 
   printGridData("map", &map_grid_);
@@ -154,6 +155,7 @@ void Map::createMap(cv::Mat imageCV, geometry_msgs::Pose origin,
       cv_bridge::CvImage(std_msgs::Header(), format, imageCV).toImageMsg();
   GridMapRosConverter::addLayerFromImage(*imageROS, "layer", tempMap);
 
+  ROS_DEBUG("[Map.cpp@createMap] encoding map grid between values: %3.3f, %3.3f",1,0);
   encodeGrid(&tempMap, 1, 0);
 
   map_grid_ = tempMap;
@@ -323,6 +325,8 @@ void Map::createGrid(float resolution) {
   float minValue = nav_grid_.get("layer").minCoeffOfFinites();
   //        cout << "maxValue(obstacle) = " << maxValue << ", minValue(free) = "
   //        << minValue << endl;
+
+  ROS_DEBUG("[Map.cpp@createGrid] encoding nav grid between values: %3.3f, %3.3f",maxValue, minValue);
   encodeGrid(&nav_grid_, maxValue, minValue);
 
   Map::numGridRows = nav_grid_.getSize()(0);
@@ -332,7 +336,7 @@ void Map::createGrid(float resolution) {
 
 void Map::createPathPlanningGrid(float resolution) {
   // change gridmap resolution from map_resolution to gridResolution
-  ROS_DEBUG("[Map.cpp@createGrid] creating planning grid with resolution %3.3f",
+  ROS_DEBUG("[Map.cpp@createPathPlanningGrid] creating planning grid with resolution %3.3f",
             resolution);
 
   GridMapCvProcessing::changeResolution(map_grid_, planning_grid_, resolution);
