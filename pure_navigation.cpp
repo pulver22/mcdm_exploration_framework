@@ -89,6 +89,7 @@ Pose getCurrentPose(float resolution, float costresolution, dummy::Map *map,
 double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
 
 void printROSParams();
+
 void loadROSParams();
 void createROSComms();
 
@@ -1651,6 +1652,19 @@ void printROSParams(){
   ROS_INFO("   - move_base_costmap_updates_topic_name [%s]", move_base_costmap_updates_topic_name.c_str());
   ROS_INFO("   - marker_pub_topic_name [%s]", marker_pub_topic_name.c_str());
   ROS_INFO("/////////////////////////////////////////////////////////////////////////");
+
+  cout << "/////////////////////////////////////////////////////////////////////////" << endl;
+  cout << "[pure_navigation@printROSParams] Using the following ros params:" << endl;
+  cout << "   - static_map_srv_name [" << static_map_srv_name <<"]" << endl;
+  cout << "   - make_plan_srv_name [" << make_plan_srv_name <<"]" << endl;
+  cout << "   - move_base_goal_topic_name [" << move_base_goal_topic_name <<"]" << endl;
+  cout << "   - move_base_srv_name [" << move_base_srv_name <<"]" << endl;
+  cout << "   - nav_grid_debug_topic_name [" << nav_grid_debug_topic_name <<"]" << endl;
+  cout << "   - planning_grid_debug_topic_name [" << planning_grid_debug_topic_name <<"]" << endl;
+  cout << "   - move_base_costmap_topic_name [" << move_base_costmap_topic_name <<"]" << endl;
+  cout << "   - move_base_costmap_updates_topic_name [" << move_base_costmap_updates_topic_name <<"]" << endl;
+  cout << "   - marker_pub_topic_name [" << marker_pub_topic_name <<"]" << endl;
+  cout << "/////////////////////////////////////////////////////////////////////////" << endl;
 
 }
 
