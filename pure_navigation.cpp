@@ -93,8 +93,7 @@ void printROSParams();
 void loadROSParams();
 void createROSComms();
 
-typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
-    MoveBaseClient;
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>MoveBaseClient;
 vector<int> occdata;
 int costmapReceived = 0;
 float costresolution;
@@ -395,8 +394,8 @@ int main(int argc, char **argv) {
           map.findCandidatePositions(x, y, orientation, FOV, range);
           //          ray.findCandidatePositions(&map, x, y, orientation, FOV,
           //          range);
-          vector<pair<float, float> > candidatePosition =
-              map.getCandidatePositions();
+          vector<pair<float, float> > candidatePosition = map.getCandidatePositions();
+          cout << "Candidate position:" << candidatePosition.size() << endl;
 
           map.emptyCandidatePositions();
           cout << " Candidate cleaned!" << endl;
@@ -1493,7 +1492,7 @@ void move(float x, float y, float orientation, float time_travel,
           std::list<std::pair<float, float> > *posToEsclude) {
   move_base_msgs::MoveBaseGoal goal;
 
-  MoveBaseClient ac("move_base", true);
+  MoveBaseClient ac(move_base_srv_name, true);
   // we'll send a goal to the robot to move 1 meter forward
   goal.target_pose.header.frame_id = "map";
   goal.target_pose.header.stamp = ros::Time::now();
@@ -1516,21 +1515,25 @@ void move(float x, float y, float orientation, float time_travel,
   m.getRPY(roll, pitch, yaw);
 
   ROS_INFO("[pure_navigation.cpp@move] Sending goal");
-  //  cout << "   [pure_navigation.cpp@move] [map]goal: (" << x << "," << y <<
-  //  ") with orientation: " << _orientation << "(" << _orientation * 180 / M_PI
-  //  << ")"<< endl;
+  cout << "   [pure_navigation.cpp@move] [map]goal: (" << x << "," << y <<
+    ") with orientation: " << _orientation << "(" << _orientation * 180 / M_PI
+    << ")"<< endl;
+  ROS_INFO("[pure_navigation@createROSComms] Waiting for move_base action server to come up");
+  while (!ac.waitForServer(ros::Duration(5.0))) {
+    ROS_INFO("[pure_navigation@createROSComms]... waiting ...");
+  }
   ac.sendGoal(goal);
 
-  time_travel = std::min(time_travel, (float)120.0);
-  //  cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << "
-  //  seconds" << endl;
+  time_travel = std::min(time_travel, (float)30.0);
+    cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << " seconds" << endl;
   ac.waitForResult(ros::Duration(time_travel));
+  cout << "Result: " << ac.getState().getText() << endl;
 
   if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-    ROS_INFO("[pure_navigation.cpp@move] I'm moving...");
+    cout << "[pure_navigation.cpp@move] I'm moving..." ;
   } else {
-    ROS_INFO("[pure_navigation.cpp@move] The base failed to move, adding this "
-             "pose to the Tabulist and posToEsclude");
+    cout << "[pure_navigation.cpp@move] The base failed to move, adding this "
+             "pose to the Tabulist and posToEsclude";
     std::pair<float, float> pairToRemove;
     pairToRemove = make_pair(x, y);
     posToEsclude->push_back(pairToRemove);
@@ -1609,8 +1612,8 @@ void showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
   }
 
   float time_travel = 2 * path_len / min_robot_speed;
-  //    cout << "[pure_navigation.cpp@showMarkerandNavigate] Target is at " <<
-  //    path_len << " m from the robot" << endl;
+      cout << "[pure_navigation.cpp@showMarkerandNavigate] Target is at " <<
+      path_len << " m from the robot" << endl;
 
   move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) / 100,
        time_travel, tabuList,
@@ -1672,7 +1675,7 @@ void printROSParams(){
 void createROSComms(){
 
   ros::NodeHandle nh;
-  ros::Rate r(1);
+  ros::Rate r(20);
   bool disConnected = true;
 
   // create service clients
@@ -1687,11 +1690,11 @@ void createROSComms(){
 
 
   // create subscribers, only when we are sure the right people is publishing
-  ROS_INFO("[pure_navigation@createROSComms] Waiting for move_base action server to come up");
-  MoveBaseClient ac(move_base_srv_name, true);
-  while (!ac.waitForServer(ros::Duration(5.0))) {
-    ROS_INFO("[pure_navigation@createROSComms]... waiting ...");
-  }
+//  ROS_INFO("[pure_navigation@createROSComms] Waiting for move_base action server to come up");
+//  MoveBaseClient ac(move_base_srv_name, true);
+//  while (!ac.waitForServer(ros::Duration(5.0))) {
+//    ROS_INFO("[pure_navigation@createROSComms]... waiting ...");
+//  }
 
 
   while (disConnected) {

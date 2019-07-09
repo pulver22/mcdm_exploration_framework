@@ -53,7 +53,7 @@ void WeightMatrix::insertSingleCriterion(string name, double weight,
   stringstream ss;
   ss << tmp;
   string code;
-  ss > > code;
+  ss >> code;
 
   // ldbg << "Criterion Code: " << code << endl;
   // insert the entry in the mapping table

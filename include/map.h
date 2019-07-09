@@ -243,6 +243,15 @@ public:
   float getGridToPathGridScale() const;
 
   /**
+   * Return a new grid in which the corner have been dilated so it can be used
+   * more safely for navigating around, reducing the risk of choosing as next
+   * position a cell too close to obstacles or walls.
+   *
+   * @return
+   */
+  void createSecondNavigationGrid(grid_map::GridMap& gridMap);
+
+  /**
   * Iterates over pathplanning-grid in a square and updates according to values
   * in navigation grid
   * @param cellX          Center of the update box, in pathplanning grid cells,
@@ -255,6 +264,19 @@ public:
   */
   void updatePathPlanningGrid(int cellX, int cellY, int rangeInCells,
                               double power);
+
+  /**
+  * Iterates over pathplanning-grid in a square and check existence of wall
+  * around the robot
+  * @param cellX          Center of the update box, in pathplanning grid cells,
+  * x coord
+  * @param cellY          Center of the update box, in pathplanning grid cells,
+  * y coord
+  * @param rangeInCells   Half length of the square (radius?) in pathplanning
+  * grid cells
+  * @param power          Unused...
+  */
+  bool checkWallsPathPlanningGrid(float posX, float posY, float rangeInMeters);
 
   /**
   * Iterates over pathplanning-grid in a square and updates according to values
