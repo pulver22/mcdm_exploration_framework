@@ -1574,7 +1574,7 @@ bool move(float x, float y, float orientation, float time_travel,
 }
 
 
-double getAngleBetPoses(geometry_msgs::PoseStamped ps1, geometry_msgs:PoseStamped ps2){
+double getAngleBetPoses(geometry_msgs::PoseStamped ps1, geometry_msgs::PoseStamped ps2){
 
   // ....................
   // find quaternion to go from q1 to q2
