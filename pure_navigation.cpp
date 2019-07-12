@@ -1608,7 +1608,7 @@ double getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
       p1 = poses[i].pose.position;
       p2 = poses[i - 1].pose.position;
       len += sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
-      len += getAngleBetPoses(poses[i], poses[i-1]) * robot_radius;
+      len += abs(getAngleBetPoses(poses[i], poses[i-1])) * robot_radius;
     }
   } else {
     len = std::numeric_limits<double>::max();
