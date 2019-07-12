@@ -348,7 +348,7 @@ void NewRay::findCandidatePositions2(dummy::Map *map, double posX_meter,
   }
 }
 
-vector<std::pair<long, long>> NewRay::getCandidatePositions() {
+vector<std::pair<long, long> > NewRay::getCandidatePositions() {
   return NewRay::edgePoints;
 }
 

@@ -134,7 +134,7 @@ public:
   /**
   * TODO:Meaningful description here
   */
-  std::vector<vector<long>> getMap2D();
+  std::vector<vector<long> > getMap2D();
 
   /**
    * Returns robot pose
@@ -243,6 +243,15 @@ public:
   float getGridToPathGridScale() const;
 
   /**
+   * Return a new grid in which the corner have been dilated so it can be used
+   * more safely for navigating around, reducing the risk of choosing as next
+   * position a cell too close to obstacles or walls.
+   *
+   * @return
+   */
+  void createSecondNavigationGrid(grid_map::GridMap& gridMap);
+
+  /**
   * Iterates over pathplanning-grid in a square and updates according to values
   * in navigation grid
   * @param cellX          Center of the update box, in pathplanning grid cells,
@@ -255,6 +264,19 @@ public:
   */
   void updatePathPlanningGrid(int cellX, int cellY, int rangeInCells,
                               double power);
+
+  /**
+  * Iterates over pathplanning-grid in a square and check existence of wall
+  * around the robot
+  * @param cellX          Center of the update box, in pathplanning grid cells,
+  * x coord
+  * @param cellY          Center of the update box, in pathplanning grid cells,
+  * y coord
+  * @param rangeInCells   Half length of the square (radius?) in pathplanning
+  * grid cells
+  * @param power          Unused...
+  */
+  bool checkWallsPathPlanningGrid(float posX, float posY, float rangeInMeters);
 
   /**
   * Iterates over pathplanning-grid in a square and updates according to values
@@ -557,7 +579,7 @@ public:
    * Returns candidate positions: path planning cell indexes list built with
    * findCandidatePositions or  findCandidatePositions2
    */
-  vector<std::pair<float, float>> getCandidatePositions();
+  vector<std::pair<float, float> > getCandidatePositions();
 
   /**
    * Clears candidate positions (built with findCandidatePositions or
@@ -763,7 +785,7 @@ protected:
 
 private:
   // TODO: meaningful description here
-  std::vector<std::pair<float, float>> edgePoints;
+  std::vector<std::pair<float, float> > edgePoints;
 
   /**
    * Returns the i,j index from grid of the given metric position (in "map"

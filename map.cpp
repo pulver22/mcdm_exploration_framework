@@ -332,6 +332,7 @@ void Map::createGrid(float resolution) {
   Map::numGridRows = nav_grid_.getSize()(0);
   Map::numGridCols = nav_grid_.getSize()(1);
   printGridData("nav", &nav_grid_);
+//  createSecondNavigationGrid(map_grid_);  // TODO: Enable it only when fixed
 }
 
 void Map::createPathPlanningGrid(float resolution) {
@@ -637,6 +638,96 @@ bool Map::containsNavObstacles(Position position_pp)
     result =  true;
   }
 //  cout << "(" << position_pp.x() << "," << position_pp.y() << ") contains Obstacle: " << result << endl;
+  return result;
+}
+
+bool Map::checkWallsPathPlanningGrid(float posX, float posY, float rangeInMeters) {
+  int rangeInCells_pp = 3;
+  int numVistNavCellsPerPathCell;
+  double k;
+  int numVistPathCell;
+  bool result = false;
+  //      long upper_left_pp_X, upper_left_pp_X;
+
+  grid_map::Index planningStartIndex;
+  grid_map::Index planningBufferSize;
+  Position upper_left_pp;
+  Position position_pp;
+  Position robot_pp(posX, posY);
+  grid_map::Index robot_index;
+  planning_grid_.getIndex(robot_pp, robot_index);
+
+  grid_map::Index navStartIndex;
+  grid_map::Index navBufferSize;
+
+  // get the boundaries of the planning submap
+  planningBufferSize =
+      grid_map::Index(2 * rangeInCells_pp, 2 * rangeInCells_pp);
+  planningStartIndex(0) = robot_index(0) - rangeInCells_pp;
+  planningStartIndex(1) = robot_index(1) - rangeInCells_pp;
+
+  // this is the number of navigation cells inside a planning cell
+  navBufferSize = grid_map::Index(gridToPathGridScale, gridToPathGridScale);
+
+  // distance from the center of a planning grid cell to the center
+  // of the furthest navigation cell. IN METERS
+  k = (planning_grid_.getResolution() / 2) - nav_grid_.getResolution();
+
+  numVistPathCell = 0;
+
+  printSubmapBoundaries(planningStartIndex, planningBufferSize,
+                        &planning_grid_);
+  //      std::cout << "[Map.cpp@updatePathPlanningGrid] rangeInCells_pp = " <<
+  //      rangeInCells_pp << endl;
+  //      std::cout << "[Map.cpp@updatePathPlanningGrid] robot position = " <<
+  //      posX << "," << posY << endl;
+  //      std::cout << "[Map.cpp@updatePathPlanningGrid] k = " << k << endl;
+  //      std::cout << "[Map.cpp@updatePathPlanningGrid] navGridResolution = "
+  //      << nav_grid_.getResolution() <<
+  //          ", pathPlanningGridResolution =" <<
+  //          planning_grid_.getResolution()<< endl;
+
+  // iterate over the submap in the planning grid (lower res)
+  for (grid_map::SubmapIterator planning_iterator(
+      planning_grid_, planningStartIndex, planningBufferSize);
+       !planning_iterator.isPastEnd(); ++planning_iterator) {
+
+    // get the centre of the current planning cell
+    planning_grid_.getPosition(*planning_iterator, position_pp);
+    //        std::cout << "\n[Map.cpp@updatePathPlanningGrid] planning_iterator
+    //        = [" << (*planning_iterator)(0) << "," << (*planning_iterator)(1)
+    //        << "]" << endl;
+    //        std::cout << "[Map.cpp@updatePathPlanningGrid] position_pp = " <<
+    //        position_pp.x()  << "," << position_pp.y() << endl;
+    int numObstNavCellsPerPathCell = 0;
+
+    // obtain the position of the upper-left  navigation cell INSIDE current
+    // planning cell
+    upper_left_pp.x() = position_pp.x() - k;
+    upper_left_pp.y() = position_pp.y() - k;
+    //        std::cout << "[Map.cpp@updatePathPlanningGrid] upper_left_pp = "
+    //        << upper_left_pp.x()  << "," << upper_left_pp.y() << endl;
+    // and corresponding index in nav_grid_
+    nav_grid_.getIndex(upper_left_pp, navStartIndex);
+
+    for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex,
+                                               navBufferSize);
+         !nav_iterator.isPastEnd(); ++nav_iterator) {
+      //          std::cout << "[Map.cpp@updatePathPlanningGrid] Visited : " <<
+      //          isGridValueVist(*nav_iterator) << " at " <<
+      //            (*nav_iterator)(0) << ", " << (*nav_iterator)(1) << endl;
+      if (isGridValueObst(*nav_iterator)) {
+        numObstNavCellsPerPathCell++;
+      }
+    }
+
+    if (numObstNavCellsPerPathCell >=
+        0.5 * gridToPathGridScale * gridToPathGridScale) {
+      setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0),
+                               (*planning_iterator)(1));
+      result = true;
+    }
+  }
   return result;
 }
 
@@ -964,8 +1055,8 @@ void Map::addEdgePoint(int x, int y) {
   ROS_FATAL("[Map.cpp@addEdgePoint]: THIS METHOD SHOULD NEVER BE CALLED");
 }
 
-std::vector<vector<long>> Map::getMap2D() {
-  vector<vector<long>> map2D;
+std::vector<vector<long> > Map::getMap2D() {
+  vector<vector<long> > map2D;
 
   for (long gridRow = 0; gridRow < numGridRows; ++gridRow) {
     for (long gridCol = 0; gridCol < numGridCols; ++gridCol) {
@@ -1538,7 +1629,7 @@ void Map::findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m,
 //          cout << "[map.cpp@findCandidatePositions] CandidatePosition found: " << edgePoints.size() << endl;
 }
 
-vector<std::pair<float, float>> Map::getCandidatePositions() {
+vector<std::pair<float, float> > Map::getCandidatePositions() {
   return edgePoints;
 }
 
@@ -1913,4 +2004,39 @@ grid_map_msgs::GridMap Map::toMessage(grid_map::GridMap *gm, bool full) {
   GridMapRosConverter::toMessage(*gm, message);
   return message;
 }
+
+void Map::createSecondNavigationGrid(grid_map::GridMap& gridMap) {
+  // TODO: fix the method in order to dilate the edges of the wall
+  // remove isolated white dots...
+  cv::Mat element = cv::getStructuringElement( cv::MORPH_CROSS, cv::Size( 20, 20 ) );
+  cv::Mat erosion_dst, dilate_dst, edges, tmp_img;
+  cout << "Before converter" << endl;
+  GridMapCvConverter::toImage<unsigned short, 1>(gridMap, "layer", CV_16UC1, 0.0, 0.3, tmp_img);
+  cv::erode(tmp_img, erosion_dst, element);
+  cv::dilate(erosion_dst, dilate_dst, element);
+  // find edges
+  cout << "Before canny" << endl;
+  dilate_dst.convertTo(dilate_dst, CV_8UC1);
+  cv::Canny(dilate_dst, edges, 100, 200);
+  cout << "After." << endl;
+  cv::dilate(edges, dilate_dst, element);
+  cv::bitwise_not(dilate_dst, tmp_img);
+  // Threshold.
+  // Set values equal to or above 220 to 0.
+  // Set values below 220 to 255.
+  cv::threshold(tmp_img, tmp_img, 220, 255, cv::THRESH_BINARY_INV);
+  // Mask used to flood filling.
+  // Notice the size needs to be 2 pixels than the image.
+  int height = tmp_img.rows + 2;
+  int width = tmp_img.cols + 2;
+  cv::Mat mask = cv::Mat(height, width, CV_8U , 0.0);
+  // Floodfill from point (0, 0)
+  cv::floodFill(tmp_img, mask, cv::Point(0,0), 255);
+  // Invert floodfilled image
+  cv::bitwise_not(tmp_img, tmp_img);
+  cv::imwrite("/tmp/dilated.png", tmp_img);
+
 }
+
+}
+

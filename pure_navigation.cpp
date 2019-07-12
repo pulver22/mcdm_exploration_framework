@@ -43,7 +43,7 @@ void cleanPossibleDestination2(std::list<Pose> *possibleDestinations, Pose &p);
 void pushInitialPositions(dummy::Map map, float x, float y, float orientation,
                           int range, int FOV, double threshold,
                           string actualPose,
-                          vector<pair<string, list<Pose>>> *graph2,
+                          vector<pair<string, list<Pose> >> *graph2,
                           ros::ServiceClient *path_client);
 
 double calculateScanTime(double scanAngle);
@@ -54,9 +54,9 @@ Pose createFromInitialPose(Pose pose, float variation, int range, int FOV);
 
 void updatePathMetrics(
     int *count, Pose *target, Pose *previous, string actualPose,
-    list<Pose> *nearCandidates, vector<pair<string, list<Pose>>> *graph2,
+    list<Pose> *nearCandidates, vector<pair<string, list<Pose> >> *graph2,
     dummy::Map *map, MCDMFunction *function, list<Pose> *tabuList,
-    list<pair<float, float>> *posToEsclude, vector<string> *history,
+    list<pair<float, float> > *posToEsclude, vector<string> *history,
     int encodedKeyValue, Astar *astar, long *numConfiguration,
     double *totalAngle, double *travelledDistance, int *numOfTurning,
     double scanAngle, ros::ServiceClient *path_client, bool backTracking);
@@ -72,12 +72,12 @@ bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            nav_msgs::GetPlan *path,
                            ros::ServiceClient *path_client,
                            list<Pose> *tabuList,
-                           std::list<std::pair<float, float>> *posToEsclude);
+                           std::list<std::pair<float, float> > *posToEsclude);
 
 // ROS varies
 bool move(float x, float y, float orientation, float time_travel,
           list<Pose> *tabuList,
-          std::list<std::pair<float, float>> *posToEsclude);
+          std::list<std::pair<float, float> > *posToEsclude);
 
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 
@@ -93,8 +93,7 @@ void printROSParams();
 void loadROSParams();
 void createROSComms();
 
-typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
-    MoveBaseClient;
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>MoveBaseClient;
 vector<int> occdata;
 int costmapReceived = 0;
 float costresolution;
@@ -239,7 +238,7 @@ int main(int argc, char **argv) {
           createFromInitialPose(start_pose, 3 * M_PI / 2, initRange, initFov);
       std::pair<float, float> targetPos;
       long numConfiguration = 1;
-      vector<pair<string, list<Pose>>> graph2;
+      vector<pair<string, list<Pose> >> graph2;
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
@@ -261,7 +260,7 @@ int main(int argc, char **argv) {
       // cout << "total free cells in the main: " << totalFreeCells << endl;
       list<Pose> unexploredFrontiers;
       list<Pose> tabuList;
-      std::list<std::pair<float, float>> posToEsclude;
+      std::list<std::pair<float, float> > posToEsclude;
       list<Pose> nearCandidates;
       EvaluationRecords record;
       Astar astar;
@@ -439,10 +438,10 @@ int main(int argc, char **argv) {
             string eastPose = function.getEncodedKey(eastInitial, 0);
             string westPose = function.getEncodedKey(westInitial, 0);
             list<Pose> empty;
-            std::pair<string, list<Pose>> pair1 =
+            std::pair<string, list<Pose> > pair1 =
                 make_pair(invertedPose, empty);
-            std::pair<string, list<Pose>> pair2 = make_pair(eastPose, empty);
-            std::pair<string, list<Pose>> pair3 = make_pair(westPose, empty);
+            std::pair<string, list<Pose> > pair2 = make_pair(eastPose, empty);
+            std::pair<string, list<Pose> > pair3 = make_pair(westPose, empty);
             // And add them (with empty candidates) to the graph structure
             graph2.push_back(pair1);
             graph2.push_back(pair2);
@@ -567,7 +566,7 @@ int main(int argc, char **argv) {
             list<Pose> frontiers;
             // For every candidate positio, create 8 pose with a different
             // orientation each and consider them as frontiers
-            vector<pair<float, float>>::iterator it = candidatePosition.begin();
+            vector<pair<float, float> >::iterator it = candidatePosition.begin();
             for (it; it != candidatePosition.end(); it++) {
               Pose p1 = Pose((*it).first, (*it).second, roundf(0 * 100) / 100,
                              range, FOV);
@@ -1216,15 +1215,15 @@ void cleanPossibleDestination2(std::list<Pose> *possibleDestinations, Pose &p) {
 void pushInitialPositions(dummy::Map map, float x, float y, float orientation,
                           int range, int FOV, double threshold,
                           string actualPose,
-                          vector<pair<string, list<Pose>>> *graph2,
+                          vector<pair<string, list<Pose> >> *graph2,
                           ros::ServiceClient *path_client) {
   NewRay ray;
   MCDMFunction function;
   map.findCandidatePositions(x, y, orientation, FOV, range);
-  vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
+  vector<pair<float, float> > candidatePosition = map.getCandidatePositions();
   map.emptyCandidatePositions();
   list<Pose> frontiers;
-  vector<pair<float, float>>::iterator it = candidatePosition.begin();
+  vector<pair<float, float> >::iterator it = candidatePosition.begin();
   for (it; it != candidatePosition.end(); it++) {
     Pose p1 = Pose((*it).first, (*it).second, 0, range, FOV);
     Pose p2 = Pose((*it).first, (*it).second, 180, range, FOV);
@@ -1239,7 +1238,7 @@ void pushInitialPositions(dummy::Map map, float x, float y, float orientation,
       function.evaluateFrontiers(frontiers, &map, threshold, path_client);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
-  std::pair<string, list<Pose>> pair = make_pair(actualPose, nearCandidates);
+  std::pair<string, list<Pose> > pair = make_pair(actualPose, nearCandidates);
   graph2->push_back(pair);
 }
 
@@ -1292,9 +1291,9 @@ void calculateDistance(list<Pose> history, ros::ServiceClient *path_client) {
 
 void updatePathMetrics(
     int *count, Pose *target, Pose *previous, string actualPose,
-    list<Pose> *nearCandidates, vector<pair<string, list<Pose>>> *graph2,
+    list<Pose> *nearCandidates, vector<pair<string, list<Pose> >> *graph2,
     dummy::Map *map, MCDMFunction *function, list<Pose> *tabuList,
-    list<pair<float, float>> *posToEsclude, vector<string> *history,
+    list<pair<float, float> > *posToEsclude, vector<string> *history,
     int encodedKeyValue, Astar *astar, long *numConfiguration,
     double *totalAngle, double *travelledDistance, int *numOfTurning,
     double scanAngle, ros::ServiceClient *path_client, bool backTracking) {
@@ -1315,7 +1314,7 @@ void updatePathMetrics(
   // position, without the current pose of the robot
   // We don't want to visit this cell again
   if (backTracking == false) {
-    std::pair<string, list<Pose>> pair = make_pair(actualPose, *nearCandidates);
+    std::pair<string, list<Pose> > pair = make_pair(actualPose, *nearCandidates);
     graph2->push_back(pair);
   }
 
@@ -1517,7 +1516,7 @@ int getIndex(int x, int y) {
 
 bool move(float x, float y, float orientation, float time_travel,
           list<Pose> *tabuList,
-          std::list<std::pair<float, float>> *posToEsclude) {
+          std::list<std::pair<float, float> > *posToEsclude) {
   move_base_msgs::MoveBaseGoal goal;
   bool success = false;
 
@@ -1556,6 +1555,7 @@ bool move(float x, float y, float orientation, float time_travel,
   //  cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << "
   //  seconds" << endl;
   ac.waitForResult(ros::Duration(time_travel));
+  cout << "Result: " << ac.getState().getText() << endl;
 
   if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
     cout << "[pure_navigation.cpp@move] Goal position reached!" << endl;
@@ -1595,7 +1595,7 @@ bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            nav_msgs::GetPlan *path,
                            ros::ServiceClient *path_client,
                            list<Pose> *tabuList,
-                           std::list<std::pair<float, float>> *posToEsclude) {
+                           std::list<std::pair<float, float> > *posToEsclude) {
   //---------------------------PRINT GOAL POSITION
   geometry_msgs::PointStamped p;
   p.header.frame_id = "map";
@@ -1640,8 +1640,8 @@ bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
   }
 
   float time_travel = 2 * path_len / min_robot_speed;
-  //    cout << "[pure_navigation.cpp@showMarkerandNavigate] Target is at " <<
-  //    path_len << " m from the robot" << endl;
+      cout << "[pure_navigation.cpp@showMarkerandNavigate] Target is at " <<
+      path_len << " m from the robot" << endl;
 
   return move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) / 100,
        time_travel, tabuList,
@@ -1703,7 +1703,7 @@ void printROSParams(){
 void createROSComms(){
 
   ros::NodeHandle nh;
-  ros::Rate r(1);
+  ros::Rate r(20);
   bool disConnected = true;
 
   // create service clients

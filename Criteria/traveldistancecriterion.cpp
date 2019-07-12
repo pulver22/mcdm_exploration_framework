@@ -73,7 +73,12 @@ double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
     path_len = 1000;
   }
   Criterion::insertEvaluation(p, path_len);
-
+  bool collision = map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
+  if (collision == true)
+  {
+    path_len = 50000;
+    cout << "[ "<< p.getX() << "," << p.getY() <<"] CELL TOO CLOSE TO WALL" << endl;
+  }
   return path_len;
 }
 

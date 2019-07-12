@@ -21,7 +21,7 @@ public:
                                int range);
   int isCandidate(dummy::Map *map, double cell_i, double cell_j);
   int isCandidate2(dummy::Map *map, double cell_i, double cell_j);
-  std::vector<std::pair<long, long>> getCandidatePositions();
+  std::vector<std::pair<long, long> > getCandidatePositions();
   pair<double, double> getSensingTime(dummy::Map *map, double posX_meter,
                                       double posY_meter, float orientation,
                                       double FOV, int range);
@@ -41,7 +41,7 @@ protected:
   int orientation;   // orientation of the robot (0, 90, 180, 270 degrees)
   double FOV;
   int range; // range of the scanner
-  std::vector<std::pair<long, long>> edgePoints;
+  std::vector<std::pair<long, long> > edgePoints;
   long numGridCols;
   long numGridRows;
   long numPathPlanningGridRows;

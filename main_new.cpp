@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
   Pose previous = initialPose;
   long numConfiguration = 0;
   // testing
-  // vector<pair<string,list<Pose>>> graph2;
+  // vector<pair<string,list<Pose> >> graph2;
   NewRay ray;
   MCDMFunction function;
   long sensedCells = 0;
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
     ray.performSensingOperation(map, x, y, orientation, FOV, range);
     ray.findCandidatePositions(map, x, y, orientation, FOV, range);
-    vector<pair<long, long>> candidatePosition = ray.getCandidatePositions();
+    vector<pair<long, long> > candidatePosition = ray.getCandidatePositions();
     ray.emptyCandidatePositions();
 
     if (candidatePosition.size() == 0) {
@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
       // need to convert from a <int,int pair> to a Pose with also
       // orientation,laser range and angle
       list<Pose> frontiers;
-      vector<pair<long, long>>::iterator it = candidatePosition.begin();
+      vector<pair<long, long> >::iterator it = candidatePosition.begin();
       for (it; it != candidatePosition.end(); it++) {
         Pose p1 = Pose((*it).first, (*it).second, 0, range, FOV);
         Pose p2 = Pose((*it).first, (*it).second, 180, range, FOV);
