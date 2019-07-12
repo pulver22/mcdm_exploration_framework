@@ -155,7 +155,7 @@ void Map::createMap(cv::Mat imageCV, geometry_msgs::Pose origin,
       cv_bridge::CvImage(std_msgs::Header(), format, imageCV).toImageMsg();
   GridMapRosConverter::addLayerFromImage(*imageROS, "layer", tempMap);
 
-  ROS_DEBUG("[Map.cpp@createMap] encoding map grid between values: %3.3f, %3.3f",1,0);
+  ROS_DEBUG("[Map.cpp@createMap] encoding map grid between values: %3.3f, %3.3f",1.0,0.0);
   encodeGrid(&tempMap, 1, 0);
 
   map_grid_ = tempMap;
@@ -2039,4 +2039,3 @@ void Map::createSecondNavigationGrid(grid_map::GridMap& gridMap) {
 }
 
 }
-
