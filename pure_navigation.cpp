@@ -121,6 +121,7 @@ std::string planning_grid_debug_topic_name;
 std::string move_base_costmap_topic_name;
 std::string move_base_costmap_updates_topic_name;
 std::string  marker_pub_topic_name;
+double robot_radius;
 
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_;
@@ -1542,6 +1543,31 @@ void move(float x, float y, float orientation, float time_travel,
   cout << endl;
 }
 
+
+double getAngleBetPoses(geometry_msgs::PoseStamped ps1, geometry_msgs:PoseStamped ps2){
+
+  // ....................
+  // find quaternion to go from q1 to q2
+  // q2 = qr *q1
+  // qr = q2 * q1_inv
+
+  double roll, pitch, yaw;
+  // inverted quaternion is just inverting w component
+  tf::Quaternion q1_inv(ps1.pose.orientation.x,ps1.pose.orientation.y,ps1.pose.orientation.z, -ps1.pose.orientation.w);
+  tf::Quaternion q2(ps2.pose.orientation.x,ps2.pose.orientation.y,ps2.pose.orientation.z,ps2.pose.orientation.w);
+
+  tf::Quaternion qr = q2 * q1_inv;
+  qr.normalize();
+
+  // and get angles
+  tf::Matrix3x3 m(qr);
+  m.getRPY(roll, pitch, yaw);
+  //
+  return yaw;
+
+}
+
+
 double getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
   double len = 0;
   geometry_msgs::Point p1, p2;
@@ -1552,6 +1578,7 @@ double getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
       p1 = poses[i].pose.position;
       p2 = poses[i - 1].pose.position;
       len += sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+      len += getAngleBetPoses(poses[i], poses[i-1]) * robot_radius;
     }
   } else {
     len = std::numeric_limits<double>::max();
@@ -1630,6 +1657,7 @@ void loadROSParams(){
 
   // LOAD ROS PARAMETERS ....................................
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
+  private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("move_base_goal_topic_name", move_base_goal_topic_name, std::string("move_base_simple/goal"));
   private_node_handle.param("move_base_srv_name", move_base_srv_name, std::string("move_base"));
@@ -1644,7 +1672,7 @@ void loadROSParams(){
 void printROSParams(){
   ROS_INFO("/////////////////////////////////////////////////////////////////////////");
   ROS_INFO("[pure_navigation@printROSParams] Using the following ros params:");
-
+  ROS_INFO("   - robot_radius [%3.3f]",  robot_radius);
   ROS_INFO("   - static_map_srv_name [%s]", static_map_srv_name.c_str());
   ROS_INFO("   - make_plan_srv_name [%s]", make_plan_srv_name.c_str());
   ROS_INFO("   - move_base_goal_topic_name [%s]", move_base_goal_topic_name.c_str());
