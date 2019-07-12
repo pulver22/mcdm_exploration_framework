@@ -511,6 +511,7 @@ void Map::printSubmapBoundaries(grid_map::Index startIndex,
 void Map::updatePathPlanningGrid(float posX, float posY, float rangeInMeters) {
   int rangeInCells_pp;
   int numVistNavCellsPerPathCell;
+  int numObstNavCellsPerPathCell;
   double k;
   int numVistPathCell;
   //      long upper_left_pp_X, upper_left_pp_X;
@@ -527,16 +528,16 @@ void Map::updatePathPlanningGrid(float posX, float posY, float rangeInMeters) {
   grid_map::Index navBufferSize;
 
   // get the boundaries of the planning submap
-  rangeInCells_pp =
-      (int)std::ceil(rangeInMeters / planning_grid_.getResolution());
-  planningBufferSize =
-      grid_map::Index(2 * rangeInCells_pp, 2 * rangeInCells_pp);
+  rangeInCells_pp = (int)std::ceil(rangeInMeters / planning_grid_.getResolution());
+  planningBufferSize = grid_map::Index(2 * rangeInCells_pp, 2 * rangeInCells_pp);
   planningStartIndex(0) = robot_index(0) - rangeInCells_pp;
   planningStartIndex(1) = robot_index(1) - rangeInCells_pp;
-  //      std::cout << "\n[Map.cpp@updatePathPlanningGrid] upper_left_pp = [" <<
-  //      upper_left_pp.x() << "," << upper_left_pp.y() << "]" << endl;
-  //      std::cout << "[Map.cpp@updatePathPlanningGrid] planningStartIndex = "
-  //      << (planningStartIndex)(0)  << "," << (planningStartIndex)(1) << endl;
+//        std::cout << "\n[Map.cpp@updatePathPlanningGrid] upper_left_pp = [" <<
+//        upper_left_pp.x() << "," << upper_left_pp.y() << "]" << endl;
+//        std::cout << "[Map.cpp@updatePathPlanningGrid] robotIndex = "
+//              << (robot_index)(0)  << "," << (robot_index)(1) << endl;
+//        std::cout << "[Map.cpp@updatePathPlanningGrid] planningStartIndex = "
+//        << (planningStartIndex)(0)  << "," << (planningStartIndex)(1) << endl;
 
   //      planningStartIndex = Position(posX - rangeInMeters, posY -
   //      rangeInMeters);
@@ -549,64 +550,95 @@ void Map::updatePathPlanningGrid(float posX, float posY, float rangeInMeters) {
 
   numVistPathCell = 0;
 
-  printSubmapBoundaries(planningStartIndex, planningBufferSize,
-                        &planning_grid_);
-  //      std::cout << "[Map.cpp@updatePathPlanningGrid] rangeInCells_pp = " <<
-  //      rangeInCells_pp << endl;
-  //      std::cout << "[Map.cpp@updatePathPlanningGrid] robot position = " <<
-  //      posX << "," << posY << endl;
-  //      std::cout << "[Map.cpp@updatePathPlanningGrid] k = " << k << endl;
-  //      std::cout << "[Map.cpp@updatePathPlanningGrid] navGridResolution = "
-  //      << nav_grid_.getResolution() <<
-  //          ", pathPlanningGridResolution =" <<
-  //          planning_grid_.getResolution()<< endl;
+  printSubmapBoundaries(planningStartIndex, planningBufferSize, &planning_grid_);
+//  std::cout << "[Map.cpp@updatePathPlanningGrid] rangeInCells_pp = " << rangeInCells_pp << endl;
+//  std::cout << "[Map.cpp@updatePathPlanningGrid] robot position = " << posX << "," << posY << endl;
+//  std::cout << "[Map.cpp@updatePathPlanningGrid] k = " << k << endl;
+//  std::cout << "[Map.cpp@updatePathPlanningGrid] navGridResolution = "
+//    << nav_grid_.getResolution() << ", pathPlanningGridResolution =" << planning_grid_.getResolution()<< endl;
+//  std::cout << "[Map.cpp@updatePathPlanningGrid] navBufferSize: " << navBufferSize << endl;
 
   // iterate over the submap in the planning grid (lower res)
-  for (grid_map::SubmapIterator planning_iterator(
-           planning_grid_, planningStartIndex, planningBufferSize);
+  //    cout << "PlanningGrid cell selected: " << endl;
+  for (grid_map::SubmapIterator planning_iterator(planning_grid_, planningStartIndex, planningBufferSize);
        !planning_iterator.isPastEnd(); ++planning_iterator) {
 
     // get the centre of the current planning cell
     planning_grid_.getPosition(*planning_iterator, position_pp);
-    //        std::cout << "\n[Map.cpp@updatePathPlanningGrid] planning_iterator
-    //        = [" << (*planning_iterator)(0) << "," << (*planning_iterator)(1)
-    //        << "]" << endl;
-    //        std::cout << "[Map.cpp@updatePathPlanningGrid] position_pp = " <<
-    //        position_pp.x()  << "," << position_pp.y() << endl;
+//    std::cout << "\n[Map.cpp@updatePathPlanningGrid] planning_iterator= [" <<
+//        (*planning_iterator)(0) << "," << (*planning_iterator)(1) << "]" << endl;
+//    std::cout << "[Map.cpp@updatePathPlanningGrid] position_pp = " <<
+//        position_pp.x()  << "," << position_pp.y() << endl;
     numVistNavCellsPerPathCell = 0;
+    numObstNavCellsPerPathCell = 0;
+
 
     // obtain the position of the upper-left  navigation cell INSIDE current
     // planning cell
     upper_left_pp.x() = position_pp.x() - k;
     upper_left_pp.y() = position_pp.y() - k;
-    //        std::cout << "[Map.cpp@updatePathPlanningGrid] upper_left_pp = "
-    //        << upper_left_pp.x()  << "," << upper_left_pp.y() << endl;
+//    std::cout << "[Map.cpp@updatePathPlanningGrid] upper_left_pp = "
+//            << upper_left_pp.x()  << "," << upper_left_pp.y() << endl;
     // and corresponding index in nav_grid_
     nav_grid_.getIndex(upper_left_pp, navStartIndex);
 
-    for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex,
-                                               navBufferSize);
-         !nav_iterator.isPastEnd(); ++nav_iterator) {
-      //          std::cout << "[Map.cpp@updatePathPlanningGrid] Visited : " <<
-      //          isGridValueVist(*nav_iterator) << " at " <<
-      //            (*nav_iterator)(0) << ", " << (*nav_iterator)(1) << endl;
+    for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex,navBufferSize); !nav_iterator.isPastEnd(); ++nav_iterator) {
+//      std::cout << "[Map.cpp@updatePathPlanningGrid] Visited : " << isGridValueVist(*nav_iterator) << " at " <<
+//          (*nav_iterator)(0) << ", " << (*nav_iterator)(1) << endl;
       if (isGridValueVist(*nav_iterator)) {
         numVistNavCellsPerPathCell++;
       }
+
+      if (isGridValueObst(*nav_iterator)) {
+        numObstNavCellsPerPathCell++;
+      }
     }
 
-    if (numVistNavCellsPerPathCell >=
-        1.0 * gridToPathGridScale * gridToPathGridScale) {
-      setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0),
-                               (*planning_iterator)(1));
-      numVistPathCell++;
-    }
+//    if (numObstNavCellsPerPathCell <= 0.6 * gridToPathGridScale * gridToPathGridScale){
+      if (numVistNavCellsPerPathCell >= 0.6 * gridToPathGridScale * gridToPathGridScale) {
+        setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0) +1,
+                                 (*planning_iterator)(1) +1) ;  // TODO: the +1 has been added because the cells where not correctly marked, it needs further investigation
+        numVistPathCell++;
+//      cout << "(" << (*planning_iterator)(0) <<"," << (*planning_iterator)(1) + 1 <<")" << endl;
+      }
+//    }
+
   }
 
-  ROS_DEBUG("[Map.cpp@updatePathPlanningGrid] PlanningGrid scanned cells: %d",
-            numVistPathCell);
-  cout << "[Map.cpp@updatePathPlanningGrid] PlanningGrid scanned cells: "
-       << numVistPathCell << endl;
+//  ROS_DEBUG("[Map.cpp@updatePathPlanningGrid] PlanningGrid scanned cells: %d", numVistPathCell);
+//  cout << "[Map.cpp@updatePathPlanningGrid] PlanningGrid scanned cells: "  << numVistPathCell << endl;
+}
+
+bool Map::containsNavObstacles(Position position_pp)
+{
+  Position upper_left_pp;
+  grid_map::Index navStartIndex;
+  grid_map::Index navBufferSize;
+  int numObstNavCellsPerPathCell = 0;
+  bool result = false;
+  // this is the number of navigation cells inside a planning cell
+  navBufferSize = grid_map::Index(gridToPathGridScale, gridToPathGridScale);
+  // distance from the center of a planning grid cell to the center
+  // of the furthest navigation cell. IN METERS
+  double k = (planning_grid_.getResolution() / 2) - nav_grid_.getResolution();
+//  cout << "k: " << k << endl;
+  upper_left_pp.x() = position_pp.x() - k;
+  upper_left_pp.y() = position_pp.y() - k;
+
+  // and corresponding index in nav_grid_
+  nav_grid_.getIndex(upper_left_pp, navStartIndex);
+
+  for (grid_map::SubmapIterator nav_iterator(nav_grid_, navStartIndex, navBufferSize); !nav_iterator.isPastEnd(); ++nav_iterator) {
+    if (isGridValueObst(*nav_iterator)) {
+      numObstNavCellsPerPathCell++;
+    }
+  }
+//  cout << "numObstNavCellsPerPathCell: " << numObstNavCellsPerPathCell << endl;
+  if (numObstNavCellsPerPathCell >= 0.01 * gridToPathGridScale * gridToPathGridScale) {
+    result =  true;
+  }
+//  cout << "(" << position_pp.x() << "," << position_pp.y() << ") contains Obstacle: " << result << endl;
+  return result;
 }
 
 bool Map::checkWallsPathPlanningGrid(float posX, float posY, float rangeInMeters) {
@@ -1409,10 +1441,12 @@ int Map::planning_iterate_func(grid_map::SubmapIterator planning_iterator) {
   int candidate = 0;
   for (; !planning_iterator.isPastEnd(); ++planning_iterator) {
     if (isPathPlanningGridValueFree(*planning_iterator)) {
+//    if (isPathPlanningGridValueVist(*planning_iterator)) {
       candidate = 1;
       break;
     }
   }
+//  cout <<"Iterator = (" << (*planning_iterator)(0) << "," << (*planning_iterator)(1) << ") ==>" << candidate << endl;
   return candidate;
 }
 
@@ -1534,41 +1568,44 @@ void Map::findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m,
       //                      cout << "[map.cpp@findCandidatePosition_inner]
       //                      Cell is candidate" << endl;
       candidateIndex = (*iterator);
+//      cout << "\n" << endl;
+      // A cell is candidate if FREE and on the edge between scanned and unscanned area
       if (mode == 1)
         isOk = (isCandidate(candidateIndex(0), candidateIndex(1)) == 1);
       if (mode == 2)
         isOk = (isCandidate2(candidateIndex(0), candidateIndex(1)) == 1);
-
+//      cout << " ("<< candidatePos(0) << "," << candidatePos(1) << ") is a candidate cell: " << isOk << endl;
+      isOk = !containsNavObstacles(candidatePos);
       if (isOk) {
-        //                          cout <<
-        //                          "[map.cpp@findCandidatePosition_inner] is
-        //                          OK" << endl;
+//        cout << "[map.cpp@findCandidatePosition_inner] is OK" << endl;
         hit = false;
         // trace a ray between that cell and robot cell:
-        for (grid_map::LineIterator lin_iterator(planning_grid_, candidatePos,
-                                                 centerPos);
+        for (grid_map::LineIterator lin_iterator(planning_grid_, candidatePos, centerPos);
              !lin_iterator.isPastEnd(); ++lin_iterator) {
 
           planning_grid_.getPosition(*lin_iterator, rayPos);
-          //                                cout
-          //                                <<"[map.cpp@findCandidatePositions]
-          //                                Pos: " << rayPos(0) << "," <<
-          //                                rayPos(1) << endl;
+//          cout <<"[map.cpp@findCandidatePositions]Pos: " << rayPos(0) << "," << rayPos(1) << endl;
           rayIndex = (*lin_iterator);
           // if an obstacle is found, end
           if (isPathPlanningGridValueObst(rayIndex)) {
             hit = true;
-            ROS_DEBUG("[map.cpp@findCandidatePositions] HIT! cell [%d, %d]- "
-                      "[%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., "
-                      "%3.3f m.]",
-                      candidateIndex(0), candidateIndex(1), candidatePos(0),
-                      candidatePos(1), rayIndex(0), rayIndex(1), rayPos(0),
-                      rayPos(1));
+//            printf("[map.cpp@findCandidatePositions] HIT! cell [%d, %d]- "
+//                      "[%3.3f m., %3.3f m.] -  Hit point: [%d, %d]- [%3.3f m., "
+//                      "%3.3f m.]\n",
+//                      candidateIndex(0), candidateIndex(1), candidatePos(0),
+//                      candidatePos(1), rayIndex(0), rayIndex(1), rayPos(0),
+//                      rayPos(1));
             //                                  cout << "HIT! cell" << endl;
             break;
           }
         }
-
+//        cout << "[map.cpp@findCandidatePositions] [1]hit = " << hit << endl;
+//        if (hit == false)
+//        {
+//          // additional check: the candidate position dmust not contain obstacles
+////          hit = containsNavObstacles(candidatePos);
+//        }
+//        cout << "[map.cpp@findCandidatePositions] [2]hit = " << hit << endl;
         //                          cout << "Going to be scanned" << endl;
         // if we reach robot pose without obstacles: add cell it to pair list
         if (hit == false) {
@@ -1578,10 +1615,10 @@ void Map::findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m,
           std::pair<float, float> temp =
               std::make_pair(candidatePos(0), candidatePos(1));
           edgePoints.push_back(temp);
-          ROS_DEBUG("[map.cpp@findCandidatePositions] Cell scanned: [%d, %d]- "
-                    "[%3.3f m., %3.3f m.] ",
-                    candidateIndex(0), candidateIndex(1), candidatePos(0),
-                    candidatePos(1));
+//          printf("[map.cpp@findCandidatePositions] Cell scanned: [%d, %d]- "
+//                    "[%3.3f m., %3.3f m.] ",
+//                    candidateIndex(0), candidateIndex(1), candidatePos(0),
+//                    candidatePos(1));
           //                            cout <<"[map.cpp@findCandidatePositions]
           //                            Cell scanned: " << candidatePos(0) <<
           //                            "," << candidatePos(1) << endl;
@@ -1589,8 +1626,7 @@ void Map::findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m,
       }
     }
   }
-  //        cout << "[map.cpp@findCandidatePositions] CandidatePosition found: "
-  //        << edgePoints.size() << endl;
+//          cout << "[map.cpp@findCandidatePositions] CandidatePosition found: " << edgePoints.size() << endl;
 }
 
 vector<std::pair<float, float> > Map::getCandidatePositions() {
@@ -1936,6 +1972,9 @@ bool Map::isPathPlanningGridValueFree(grid_map::Index ind) {
   return (getPathPlanningGridValue(ind(0), ind(1)) == Map::CellValue::FREE);
 }
 
+bool Map::isPathPlanningGridValueVist(grid_map::Index ind) {
+  return (getPathPlanningGridValue(ind(0), ind(1)) == Map::CellValue::VIST);
+}
 bool Map::isPathPlanningGridValueObst(grid_map::Index ind) {
   return (getPathPlanningGridValue(ind(0), ind(1)) == Map::CellValue::OBST);
 }
