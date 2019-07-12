@@ -66,7 +66,7 @@ list<Pose> cleanHistory(vector<string> *history,
 
 void printResult(long newSensedCells, long totalFreeCells, double precision,
                  long numConfiguration, double travelledDistance,
-                 int numOfTurning, double totalAngle, double totalScanTime);
+                 int numOfTurning, double totalAngle, double totalScanTime, double resolution);
 
 bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            nav_msgs::GetPlan *path,
@@ -303,7 +303,9 @@ int main(int argc, char **argv) {
           target = getCurrentPose(resolution, costresolution, &map,
                                        initFov, initRange);
           cout << "\n============================================" << endl;
-          cout << "New iteration, position: " << target.getX() << "," << target.getY() << "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %]" << endl;
+          cout << "New iteration, position: " << target.getX() << "," << target.getY() <<
+            "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
+            (chrono::duration<double, milli>(chrono::high_resolution_clock::now() - startMCDM).count() ) / 60.0 << " min ]" << endl;
           //          cout << "[Current Pose]: " << target.getX() << ", " <<
           //          target.getY()<<" m. " << ", " << target.getOrientation()
           //          << "("<< (target.getOrientation() * 180 / M_PI) <<" deg),
@@ -543,7 +545,7 @@ int main(int argc, char **argv) {
               }
               printResult(newSensedCells, totalFreeCells, precision,
                           numConfiguration, travelledDistance, numOfTurning,
-                          totalAngle, totalScanTime);
+                          totalAngle, totalScanTime, resolution);
               auto endMCDM = chrono::high_resolution_clock::now();
               double totalTimeMCDM =
                   chrono::duration<double, milli>(endMCDM - startMCDM).count();
@@ -652,14 +654,14 @@ int main(int argc, char **argv) {
                 success = showMarkerandNavigate(target, &marker_pub, &path, &path_client,
                                       &tabuList, &posToEsclude);
                 if (success == true){
-                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                   updatePathMetrics(
                       &count, &target, &previous, actualPose, &nearCandidates,
                       &graph2, &map, &function, &tabuList, &posToEsclude,
                       &history, encodedKeyValue, &astar, &numConfiguration,
                       &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
                       &path_client, backTracking);
-                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                 }
 
                 scan = true;
@@ -763,14 +765,14 @@ int main(int argc, char **argv) {
                                         &path_client, &tabuList, &posToEsclude);
                   if (success == true)
                   {
-                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                     updatePathMetrics(
                         &count, &target, &previous, actualPose, &nearCandidates,
                         &graph2, &map, &function, &tabuList, &posToEsclude,
                         &history, encodedKeyValue, &astar, &numConfiguration,
                         &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
                         &path_client, backTracking);
-                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                   }
                   scan = true;
                 }
@@ -802,10 +804,10 @@ int main(int argc, char **argv) {
               // If the graph is empty, stop the navigation
               if (graph2.size() == 0)
                 break;
-              cout << "Graph size: " << graph2.size() << endl;
-              for (auto it = graph2.begin(); it != graph2.end(); it++) {
-                cout << " " << it->first << endl;
-              }
+//              cout << "Graph size: " << graph2.size() << endl;
+//              for (auto it = graph2.begin(); it != graph2.end(); it++) {
+//                cout << " " << it->first << endl;
+//              }
               cout << "[BT3] There are no visible cells so come back to "
                       "previous position in the graph"
                       " structure:"
@@ -958,14 +960,14 @@ int main(int argc, char **argv) {
               success = showMarkerandNavigate(target, &marker_pub, &path, &path_client,
                                     &tabuList, &posToEsclude);
               if (success == true){
-                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                 updatePathMetrics(
                     &count, &target, &previous, actualPose, &nearCandidates,
                     &graph2, &map, &function, &tabuList, &posToEsclude,
                     &history, encodedKeyValue, &astar, &numConfiguration,
                     &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
                     &path_client, backTracking);
-                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
               }
               // Leave the backtracking branch
               btMode = false;
@@ -1129,7 +1131,7 @@ int main(int argc, char **argv) {
       }
 
       printResult(newSensedCells, totalFreeCells, precision, numConfiguration,
-                  travelledDistance, numOfTurning, totalAngle, totalScanTime);
+                  travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution);
       // Find the tag
       //        std::pair<int,int> tag = map.findTag();
       //        cout << "RFID pose: [" << tag.second << "," << tag.first << "]"
@@ -1348,10 +1350,10 @@ void updatePathMetrics(
   } else {
     cout << "[pure_navigation@updatePathMetrics] Path_finding Service call failed! " << endl;
   }
-    cout << "1: " << *travelledDistance << endl;
+//    cout << "1: " << *travelledDistance << endl;
   // Update the distance counting
   *travelledDistance = *travelledDistance + path_len;
-    cout << "2: " << *travelledDistance << endl;
+//    cout << "2: " << *travelledDistance << endl;
   // Update the turning counting
   //  *numOfTurning = *numOfTurning + astar->getNumberOfTurning(path);
   // Update the scanning angle
@@ -1376,24 +1378,24 @@ list<Pose> cleanHistory(vector<string> *history,
 
 void printResult(long newSensedCells, long totalFreeCells, double precision,
                  long numConfiguration, double travelledDistance,
-                 int numOfTurning, double totalAngle, double totalScanTime) {
+                 int numOfTurning, double totalAngle, double totalScanTime, double resolution) {
   cout << "-----------------------------------------------------------------"
        << endl;
   cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells << "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %]" << endl;
   cout << "Total cell visited :" << numConfiguration << endl;
   cout << "Total travelled distance (meters): " << travelledDistance << endl;
-  cout << "Total travel time: " << travelledDistance / 0.5 << "s, "
-       << (travelledDistance / 0.5) / 60 << " m" << endl;
-  cout << "I came back to the original position since i don't have any other "
-          "candidate position"
-       << endl;
-  cout << "Total exploration time (s): " << travelledDistance / 0.5 << endl;
-  cout << "Total number of turning: " << numOfTurning << endl;
+//  cout << "Total travel time: " << travelledDistance / resolution << "s, "
+//       << (travelledDistance / resolution) / 60 << " m" << endl;
+//  cout << "I came back to the original position since i don't have any other "
+//          "candidate position"
+//       << endl;
+//  cout << "Total exploration time (s): " << travelledDistance / resolution << endl;
+//  cout << "Total number of turning: " << numOfTurning << endl;
   cout << "Sum of scan angles (radians): " << totalAngle << endl;
   cout << "Total time for scanning: " << totalScanTime << endl;
-  cout << "Total time for exploration: "
-       << travelledDistance / 0.5 + totalScanTime << "s, "
-       << (travelledDistance / 0.5 + totalScanTime) / 60 << " m" << endl;
+//  cout << "Total time for exploration: "
+//       << travelledDistance / resolution + totalScanTime << "s, "
+//       << (travelledDistance / resolution + totalScanTime) / 60 << " m" << endl;
   if (newSensedCells < precision * totalFreeCells) {
     cout << "FINAL: MAP NOT EXPLORED! :(" << endl;
   } else {
@@ -1438,8 +1440,7 @@ Pose getCurrentPose(float resolution, float costresolution, dummy::Map *map,
       start_pose.pose.orientation.z, start_pose.pose.orientation.w);
   tfScalar angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
 
-  cout << endl
-       << "Current position in the " << map_frame << " frame:" << initX << "," << initY
+  cout << "Current position in the " << map_frame << " frame:" << initX << "," << initY
        << " with orientation :" << angle << "(" << (angle * 180 / M_PI)
        << " deg)" << endl;
 
@@ -1550,12 +1551,12 @@ bool move(float x, float y, float orientation, float time_travel,
     ") with orientation: " << _orientation << "(" << _orientation * 180 / M_PI
     << ")"<< endl;
   ac.sendGoal(goal);
-  cout << "[pure_navigation.cpp@move] I'm moving..." << endl;
+//  cout << "[pure_navigation.cpp@move] I'm moving..." << endl;
   time_travel = std::min(time_travel, (float)120.0);
   //  cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << "
   //  seconds" << endl;
   ac.waitForResult(ros::Duration(time_travel));
-  cout << "Result: " << ac.getState().getText() << endl;
+//  cout << "Result: " << ac.getState().getText() << endl;
 
   if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
     cout << "[pure_navigation.cpp@move] Goal position reached!" << endl;
@@ -1576,7 +1577,7 @@ double getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
   double len = 0;
   geometry_msgs::Point p1, p2;
   int npoints = poses.size();
-  cout << "[pure_navigation.cpp@getPathLen]Path has [" <<npoints << "] points" << endl;
+//  cout << "[pure_navigation.cpp@getPathLen]Path has [" <<npoints << "] points" << endl;
   if (npoints > 0) {
     for (int i = 1; i < npoints; i++) {
       p1 = poses[i].pose.position;
@@ -1585,7 +1586,7 @@ double getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
     }
   } else {
     len = std::numeric_limits<double>::max();
-    cout << "[pure_navigation.cpp@getPathLen]Empty path. Len set to infinite... " << endl;
+//    cout << "[pure_navigation.cpp@getPathLen]Empty path. Len set to infinite... " << endl;
   }
 
   return len;
@@ -1640,8 +1641,8 @@ bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
   }
 
   float time_travel = 2 * path_len / min_robot_speed;
-      cout << "[pure_navigation.cpp@showMarkerandNavigate] Target is at " <<
-      path_len << " m from the robot" << endl;
+//      cout << "[pure_navigation.cpp@showMarkerandNavigate] Target is at " <<
+//      path_len << " m from the robot" << endl;
 
   return move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) / 100,
        time_travel, tabuList,
