@@ -628,6 +628,8 @@ public:
 
   bool isPathPlanningGridValueFree(grid_map::Index ind);
 
+  bool isPathPlanningGridValueVist(grid_map::Index ind);
+
   bool isPathPlanningGridValueObst(grid_map::Index ind);
 
   grid_map_msgs::GridMap toMessagePathPlanning();
@@ -640,6 +642,13 @@ public:
                       long *n_others);
 
 protected:
+
+  /**
+   * See if the corresponding pathplanning cell contains any obstacles in its surrounding
+   * @return
+   */
+  bool containsNavObstacles(Position position_pp);
+
   void createMap(nav_msgs::OccupancyGrid occupancyGrid);
 
   /**
