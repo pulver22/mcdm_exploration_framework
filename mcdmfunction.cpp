@@ -148,7 +148,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers,
 
       for (vector<Criterion *>::iterator k = activeCriteria.begin();
            !dobreak && k != activeCriteria.end(); k++) {
-        // cout << "------------------New criterio observed------------- " <<
+        // cout << "------------------New criterion observed------------- " <<
         // endl;
         Criterion *c = NULL;
         double weight = 0.0;
@@ -176,8 +176,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers,
           if (eval <= 0.0001 or isnan(eval))
             eval = 0;
           finalValue += eval * weight;
-          //        cout << "nameCriterion: " << c->getName() << ", evaluation:"
-          //        << eval << endl;
+//          cout << "[mcdmfunctionc.pp@evaluateFrontiers] nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
 
           //        if (c->getEvaluation(f) <= 0)
           //        {
@@ -198,8 +197,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers,
 
           double tmpValue = eval - eval2;
           finalValue += tmpValue * weight;
-          //        cout << "nameCriterion: " << c->getName() << ", evaluation:"
-          //        << eval << endl;
+//          cout << "[mcdmfunctionc.pp@evaluateFrontiers] nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
 
           // cout << tmpValue <<"," << weight<<endl;
           //        if (c->getEvaluation(f) <= 0)
@@ -212,8 +210,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers,
         lastCrit = c;
       }
 
-      //    cout << "Frontier coord = (" << f.getX() << "," << f.getY() << "),
-      //    Final value: " << finalValue << endl;
+//      cout << " [mcdmfunctionc.pp@evaluateFrontiers] Frontier coord = (" << f.getX() << "," << f.getY() << "),  Final value: " << finalValue << endl;
       if (finalValue > threshold) {
         toRet->putEvaluation(f, finalValue);
       }

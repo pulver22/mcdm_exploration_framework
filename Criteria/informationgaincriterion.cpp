@@ -199,8 +199,9 @@ double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map,
   //    << x_meter << "," << y_meter << "]" << endl;
   //  double unExploredMap = ray.getInformationGain( map, px, py, orientation,
   //  angle, range);
-  double unExploredMap =
-      map->getInformationGain(px, py, orientation, angle, range);
+  double unExploredMap = map->getInformationGain(px, py, orientation, angle, range);
+//  cout << "[informationGainCriterion.cpp@Evaluate] [posX, posY] = [" << px << "," << py << "]" << endl;
+//  cout << "   [informationGainCriterion.cpp@Evaluate] unExploredMap = " << unExploredMap << endl;
   //
   /*
   if (unExploredMap >= 0.5) {

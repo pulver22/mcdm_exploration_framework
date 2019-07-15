@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(mcdm_exploration_framework)
 
 find_package(catkin REQUIRED COMPONENTS
+  record_ros
   ptu_control
   amtec
   actionlib
@@ -15,13 +16,14 @@ find_package(catkin REQUIRED COMPONENTS
   grid_map_msgs
   grid_map_cv
   cv_bridge
+
 )
 
 
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mcdm_exploration_framework
-  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs
+  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs record_ros
 #  DEPENDS system_lib
 )
 

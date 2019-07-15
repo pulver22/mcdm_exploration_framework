@@ -28,6 +28,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 // mfc ...
 #include <ros/console.h>
+#include "record_ros/record.h"
+#include "record_ros/String_cmd.h"
 // mfc ...
 
 using namespace std;
@@ -121,11 +123,13 @@ std::string planning_grid_debug_topic_name;
 std::string move_base_costmap_topic_name;
 std::string move_base_costmap_updates_topic_name;
 std::string  marker_pub_topic_name;
+std::string rosbag_srv_name;
 double robot_radius;
 
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_;
 ros::ServiceClient path_client;
+ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;
 ros::Publisher moveBasePub;
 ros::Subscriber costmap_sub;
@@ -133,6 +137,7 @@ ros::Subscriber costmap_update_sub;
 ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
+record_ros::String_cmd srv_rosbag;
 
 // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm
 // 100 75 5 0 15 180 0.95 0.12
@@ -174,6 +179,17 @@ int main(int argc, char **argv) {
   double path_len;
   bool path_srv_call;
   ros::Rate r(1);
+
+  // Start recording the bag
+  srv_rosbag.request.cmd = "record";
+  if (rosbag_client.call(srv_rosbag)){
+    cout << "Start recording the bag..." << endl;
+    sleep(5);
+  }else{
+    cout << "Error occurring while recording the bag. Exiting now!" << endl;
+//    exit(0);
+  }
+
 
   while (ros::ok()) {
 
@@ -306,7 +322,7 @@ int main(int argc, char **argv) {
           cout << "\n============================================" << endl;
           cout << "New iteration, position: " << target.getX() << "," << target.getY() <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
-            (chrono::duration<double, milli>(chrono::high_resolution_clock::now() - startMCDM).count() ) / 60.0 << " min ]" << endl;
+            (chrono::duration<double, milli>(chrono::high_resolution_clock::now() - startMCDM).count() ) / 60000.0 << " min ]" << endl;
           //          cout << "[Current Pose]: " << target.getX() << ", " <<
           //          target.getY()<<" m. " << ", " << target.getOrientation()
           //          << "("<< (target.getOrientation() * 180 / M_PI) <<" deg),
@@ -397,8 +413,7 @@ int main(int argc, char **argv) {
           map.findCandidatePositions(x, y, orientation, FOV, range);
           //          ray.findCandidatePositions(&map, x, y, orientation, FOV,
           //          range);
-          vector<pair<float, float>> candidatePosition =
-              map.getCandidatePositions();
+          vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
 //            cout << "Size of initial candidate positions: " << candidatePosition.size() << endl;
 
 
@@ -555,6 +570,15 @@ int main(int argc, char **argv) {
                    << totalTimeMCDM / 60000 << " m " << endl;
               cout << "Total time in empirical way : "
                    << travelledDistance / 0.25 + timeOfScanning / 1000 << endl;
+
+              // Stop recording the bag
+              srv_rosbag.request.cmd = "stop";
+              if (rosbag_client.call(srv_rosbag)){
+                cout << "Stop recording the bag..." << endl;
+                sleep(5);
+              }else{
+                cout << "Error occurring while stopping recording the bag. Exiting now!" << endl;
+              }
               exit(0);
             }
 
@@ -639,7 +663,7 @@ int main(int argc, char **argv) {
               //                cout << record->getEncodedKey(*tabuList_it) <<
               //                endl;
               //              }
-              cout << "Target selected: " << target.getX() << "," << target.getY() << endl;
+              cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
 //              cout << "PoseToEsclude:" << endl;
 //              for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
 //                  cout << " " << iter->first << "," << iter->second << endl;
@@ -689,11 +713,14 @@ int main(int argc, char **argv) {
                   record = function.evaluateFrontiers(nearCandidates, &map,
                                                       threshold, &path_client);
                   // If there are candidate positions
+                  cout << "PoseToEsclude:" << endl;
+                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
+                      cout << " " << iter->first << "," << iter->second << endl;
+                  }
                   while (1) {
                     if (record->size() != 0) {
                       // Select the new pose of the robot
-                      std::pair<Pose, double> result =
-                          function.selectNewPose(record);
+                      std::pair<Pose, double> result = function.selectNewPose(record);
                       target = result.first;
                       targetPos = make_pair(target.getX(), target.getY());
                       //                      if (!contains(tabuList, target)) {
@@ -734,25 +761,34 @@ int main(int argc, char **argv) {
                         cleanPossibleDestination2(&nearCandidates, target);
                         // Get the list of new candidate position with
                         // associated evaluation
-                        record = function.evaluateFrontiers(
-                            nearCandidates, &map, threshold, &path_client);
+                        record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
                       }
                     }
                     // If there are no more candidate position from the last
                     // position in the graph
                     else {
                       // if the graph is now empty, stop the navigation
-                      if (graph2.size() == 0)
-                        break;
-                      // Otherwise, select as new position the last cell in the
-                      // graph and then remove it from there
-                      string targetString = graph2.at(graph2.size() - 1).first;
+//                                if (graph2.size() == 0) break;
+//                                // Otherwise, select as new position the last cell in the
+//                                // graph and then remove it from there
+//                                // TODO: in reality, I don't want to go to the previous position in the graph but to the best candidate from there (FIXME)
+//                                string targetString = graph2.at(graph2.size() - 1).first;
+//                                graph2.pop_back();
+//                                previous = target;
+//                                target = record->getPoseFromEncoding(targetString);
+//                                scan = false;
+//                                cout << "[BT1] 2" << endl;
+//                                break;
+                      cout << "[BT2 - New]There are visible cells but the selected one is already "
+                              "explored! Come back to best frontier from the two positions back in the graph. Start selecting the new record"
+                           << endl;
+                      // Remove the last element (cell and associated candidate from
+                      // there) from the graph
                       graph2.pop_back();
-                      previous = target;
-                      target = record->getPoseFromEncoding(targetString);
-                      scan = false;
-                      break;
-                      cout << "[BT1] 2" << endl;
+                      // Select the new record from two position back in the graph
+                      nearCandidates = graph2.at(graph2.size() - 1).second;
+                      record = function.evaluateFrontiers(nearCandidates, &map,
+                                                          threshold, &path_client);
                     }
                   }
                   cout << "[BT1-2]Target: " << target.getX() << ", " << target.getY() << endl;
@@ -782,7 +818,7 @@ int main(int argc, char **argv) {
                 else {
                   cout << "[BT2 - Tabulist]There are visible cells but the "
                           "selected one is already "
-                          "explored! Come back to two position ago"
+                          "explored! Come back to two positions ago"
                        << endl;
                   // Remove the last element (cell and associated candidate from
                   // there) from the graph
@@ -1151,6 +1187,16 @@ int main(int argc, char **argv) {
            << totalTimeMCDM / 1000 << " s, " << totalTimeMCDM / 60000 << " m "
            << endl;
       cout << "Spinning at the end" << endl;
+
+      // Stop recording the bag
+      srv_rosbag.request.cmd = "stop";
+      if (rosbag_client.call(srv_rosbag)){
+        cout << "Stop recording the bag..." << endl;
+        sleep(5);
+      }else{
+        cout << "Error occurring while stop recording the bag. Exiting now!" << endl;
+      }
+
       sleep(1);
       exit(0);
     }
@@ -1695,6 +1741,7 @@ void loadROSParams(){
   private_node_handle.param("move_base_costmap_topic_name", move_base_costmap_topic_name, std::string("move_base/global_costmap/costmap"));
   private_node_handle.param("move_base_costmap_updates_topic_name", move_base_costmap_updates_topic_name, std::string("move_base/global_costmap/costmap_updates"));
   private_node_handle.param("marker_pub_topic_name", marker_pub_topic_name, std::string("goal_pt"));
+  private_node_handle.param("rosbag_srv_name", rosbag_srv_name, std::string("/record/cmd"));
 
 }
 
@@ -1738,6 +1785,7 @@ void createROSComms(){
   // create service clients
   map_service_client_ = nh.serviceClient<nav_msgs::GetMap>(static_map_srv_name);
   path_client =   nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
+  rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
 
   // create publishers
   moveBasePub =   nh.advertise<geometry_msgs::PoseStamped>(move_base_goal_topic_name, 1000);
