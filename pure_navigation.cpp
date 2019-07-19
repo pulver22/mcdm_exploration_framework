@@ -824,6 +824,7 @@ int main(int argc, char **argv) {
                        << endl;
                   // Remove the last element (cell and associated candidate from
                   // there) from the graph
+                  if (graph2.size() == 0) break;
                   graph2.pop_back();
                   // Select as new target, the new last element of the graph
                   string targetString = graph2.at(graph2.size() - 1).first;
@@ -1045,7 +1046,7 @@ int main(int argc, char **argv) {
               }
               // ...otherwise, if there are no more candidates
               else {
-
+                if (graph2.size() == 0) break;
                 // Select as target the last element in the graph
                 string targetString = graph2.at(graph2.size() - 1).first;
                 nearCandidates = graph2.at(graph2.size() - 1).second;
