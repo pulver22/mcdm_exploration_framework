@@ -617,13 +617,13 @@ bool Map::containsNavObstacles(Position position_pp)
   int numObstNavCellsPerPathCell = 0;
   bool result = false;
   // this is the number of navigation cells inside a planning cell
-  navBufferSize = grid_map::Index(gridToPathGridScale, gridToPathGridScale);
+  navBufferSize = grid_map::Index(3 * gridToPathGridScale, 3 * gridToPathGridScale);
   // distance from the center of a planning grid cell to the center
   // of the furthest navigation cell. IN METERS
   double k = (planning_grid_.getResolution() / 2) - nav_grid_.getResolution();
 //  cout << "k: " << k << endl;
-  upper_left_pp.x() = position_pp.x() - k;
-  upper_left_pp.y() = position_pp.y() - k;
+  upper_left_pp.x() = position_pp.x() - k - 2*planning_grid_.getResolution();
+  upper_left_pp.y() = position_pp.y() - k - 2*planning_grid_.getResolution();
 
   // and corresponding index in nav_grid_
   nav_grid_.getIndex(upper_left_pp, navStartIndex);
