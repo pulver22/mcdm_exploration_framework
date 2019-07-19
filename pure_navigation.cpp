@@ -321,6 +321,7 @@ int main(int argc, char **argv) {
                                        initFov, initRange);
           cout << "\n============================================" << endl;
           cout << "New iteration, position: " << target.getX() << "," << target.getY() <<
+            "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (chrono::duration<double, milli>(chrono::high_resolution_clock::now() - startMCDM).count() ) / 60000.0 << " min ]" << endl;
           //          cout << "[Current Pose]: " << target.getX() << ", " <<
@@ -1599,24 +1600,35 @@ bool move(float x, float y, float orientation, float time_travel,
     ") with orientation: " << _orientation << "(" << _orientation * 180 / M_PI
     << ")"<< endl;
   ac.sendGoal(goal);
-//  cout << "[pure_navigation.cpp@move] I'm moving..." << endl;
-  time_travel = std::min(time_travel, (float)30.0);
-   cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << " seconds" << endl;
-  ac.waitForResult(ros::Duration(time_travel));
- cout << "Result: " << ac.getState().getText() << endl;
+  //  cout << "[pure_navigation.cpp@move] I'm moving..." << endl;
 
-  if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-    cout << "[pure_navigation.cpp@move] Goal position reached!" << endl;
-    success = true;
-  } else {
-    cout << "[pure_navigation.cpp@move] The base failed to move, adding this "
-             "pose to the Tabulist and posToEsclude" << endl;
-    success = false;
-    std::pair<int, int> pairToRemove;
-    pairToRemove = make_pair(int(x), int(y));
-    posToEsclude->push_back(pairToRemove);
+  actionlib::SimpleClientGoalState curr_state = actionlib::SimpleClientGoalState::PENDING;
+  float total_wait_time = 0.0;
+  while (!curr_state.isDone()){
+        time_travel = std::min(time_travel, (float) 5.0);
+        total_wait_time +=  time_travel;
+         cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << " seconds to reach goal" << endl;
+         ac.waitForResult(ros::Duration(time_travel));
+         curr_state = ac.getState();
+         cout << "Result: " << curr_state.getText() << endl;
+
+
+        if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
+          cout << "[pure_navigation.cpp@move] Goal position reached!" << endl;
+          success = true;
+        } else if (curr_state.isDone()) {
+          cout << "[pure_navigation.cpp@move] The base failed to move, adding this "
+                   "pose to the Tabulist and posToEsclude" << endl;
+          success = false;
+          std::pair<int, int> pairToRemove;
+          pairToRemove = make_pair(int(x), int(y));
+          posToEsclude->push_back(pairToRemove);
+        } else if (total_wait_time> 60.0) {
+          cout << "[pure_navigation.cpp@move] Is taking too long" << endl;
+          success = false;
+          curr_state = actionlib::SimpleClientGoalState::ABORTED;
+        }
   }
-
   return success;
 }
 

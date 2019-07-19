@@ -1072,16 +1072,14 @@ Pose Map::getRobotPosition() { return currentPose; }
 void Map::setCurrentPose(Pose &p) { currentPose = p; }
 
 long Map::getTotalFreeCells() {
-  long columns = getNumGridCols();
-  long rows = getNumGridRows();
-  totalFreeCells = columns * rows;
-  for (long row = 0; row < rows; ++row) {
-    for (long col = 0; col < columns; ++col) {
-      if (isGridValueObst(grid_map::Index(col, row)))
-        totalFreeCells--;
-    }
-  }
-  return totalFreeCells;
+  long n_obsts = 0;
+  long n_free = 0;
+  long n_vist = 0;
+  long n_others = 0;
+
+  countCells(&n_obsts, &n_free, &n_vist, &n_others, &nav_grid_);
+
+  return n_free;
 }
 
 void Map::decreaseFreeCells() { totalFreeCells--; }
@@ -1308,10 +1306,10 @@ void Map::printGridData(std::string grid_name, const grid_map::GridMap *gm) {
 
   countCells(&n_obsts, &n_free, &n_vist, &n_others, gm);
   total = n_obsts + n_free + n_vist + n_others;
-  printf("[Map.cpp@printGridData] Grid has %3.3f %% of free cells, %3.3f %% "
-            "of occupied cells and  %3.3f %% of visited cells\n",
-            100.0 * n_free / (1.0 * total), 100.0 * n_obsts / (1.0 * total),
-            100.0 * n_vist / (1.0 * total));
+  printf("[Map.cpp@printGridData] Grid has (%d) %3.3f %% of free cells, (%d) %3.3f %% "
+            "of occupied cells and (%d) %3.3f %% of visited cells\n",
+            n_free, 100.0 * n_free / (1.0 * total), n_obsts, 100.0 * n_obsts / (1.0 * total),
+            n_vist, 100.0 * n_vist / (1.0 * total));
   if (n_others)
     printf("[Map.cpp@printGridData] Found %3.3f %% undefined cells\n",
               100.0 * n_others / (1.0 * total));
