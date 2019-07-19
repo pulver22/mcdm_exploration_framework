@@ -25,6 +25,7 @@
 #include <ros/ros.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
+#include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 // mfc ...
 #include <ros/console.h>
@@ -76,6 +77,8 @@ bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            list<Pose> *tabuList,
                            std::list<std::pair<float, float> > *posToEsclude);
 
+bool freeInLocalCostmap(Pose target);
+
 // ROS varies
 bool move(float x, float y, float orientation, float time_travel,
           list<Pose> *tabuList,
@@ -121,6 +124,7 @@ std::string move_base_srv_name;
 std::string nav_grid_debug_topic_name;
 std::string planning_grid_debug_topic_name;
 std::string move_base_costmap_topic_name;
+std::string move_base_local_costmap_topic_name;
 std::string move_base_costmap_updates_topic_name;
 std::string  marker_pub_topic_name;
 std::string rosbag_srv_name;
@@ -672,11 +676,12 @@ int main(int argc, char **argv) {
               targetPos = std::make_pair(target.getX(), target.getY());
               //                            cout << "1" << endl;
               //                          if ( ! contains ( tabuList,target ))
-              if (!containsPos(&posToEsclude, targetPos)) {
+              if ((!containsPos(&posToEsclude, targetPos)) & (freeInLocalCostmap(target)  ) ) {
                 //                                cout << "2" << endl;
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 backTracking = false;
+
                 success = showMarkerandNavigate(target, &marker_pub, &path, &path_client,
                                       &tabuList, &posToEsclude);
                 if (success == true){
@@ -991,7 +996,8 @@ int main(int argc, char **argv) {
 
             // If this cells has not been visited before
             //            if ( ! contains ( tabuList,target ) )
-            if (!containsPos(&posToEsclude, targetPos)) {
+            if ((!containsPos(&posToEsclude, targetPos)) & (freeInLocalCostmap(target)  ) ) {
+
               // Add it to the list of visited cells as first-view
               encodedKeyValue = 1;
               backTracking = true;
@@ -1753,6 +1759,7 @@ void loadROSParams(){
   private_node_handle.param("planning_grid_debug_topic_name", planning_grid_debug_topic_name, std::string("planning_grid_debug"));
   private_node_handle.param("move_base_costmap_topic_name", move_base_costmap_topic_name, std::string("move_base/global_costmap/costmap"));
   private_node_handle.param("move_base_costmap_updates_topic_name", move_base_costmap_updates_topic_name, std::string("move_base/global_costmap/costmap_updates"));
+  private_node_handle.param("move_base_local_costmap_topic_name", move_base_local_costmap_topic_name, std::string("/move_base/local_costmap/costmap"));
   private_node_handle.param("marker_pub_topic_name", marker_pub_topic_name, std::string("goal_pt"));
   private_node_handle.param("rosbag_srv_name", rosbag_srv_name, std::string("/record/cmd"));
 
@@ -1815,5 +1822,66 @@ void createROSComms(){
     }
   }
 
+
+}
+
+bool freeInLocalCostmap(Pose target){
+      string map_frame= "map";
+      bool ans =false;
+      int val=0;
+      grid_map::GridMap local_grid;
+      geometry_msgs::PointStamped targetPoint_map;
+      geometry_msgs::PointStamped targetPoint_local;
+
+      targetPoint_map.point.x = target.getX();
+      targetPoint_map.point.y = target.getY();
+      targetPoint_map.header.frame_id = map_frame;
+
+
+
+      // read a local costmap
+      printf("............................................................ \n");
+
+      nav_msgs::OccupancyGridConstPtr local_costmap = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(move_base_local_costmap_topic_name, ros::Duration(1.0));
+      if (!local_costmap) {
+        printf("oops \n");
+      }
+      printf("Local costmap frame is: %s \n",local_costmap->header.frame_id.c_str());
+
+      // cast stupid point into local gridmap frame
+      tf2_ros::Buffer tfBuffer;
+      tf2_ros::TransformListener tf2_listener(tfBuffer);
+      geometry_msgs::TransformStamped map_to_local_tf;
+
+      ros::Time _now_stamp_ = ros::Time(0);
+
+      try {
+        map_to_local_tf = tfBuffer.lookupTransform(local_costmap->header.frame_id,map_frame, _now_stamp_,
+                                     ros::Duration(5.0));
+      } catch (tf2::TransformException &ex) {
+        cout << "TRANSFORMS ARE COCKED-UP PAL! Why is that :=> " << ex.what() << endl;
+      }
+      tf2::doTransform(targetPoint_map, targetPoint_local, map_to_local_tf);
+
+      printf("In [%s] frame,  point is (%3.1f, %3.1f) \n",targetPoint_map.header.frame_id.c_str(), targetPoint_map.point.x, targetPoint_map.point.y);
+      printf("In [%s] frame,  point is (%3.1f, %3.1f) \n",targetPoint_local.header.frame_id.c_str(), targetPoint_local.point.x, targetPoint_local.point.y);
+
+      // cast occupancy grid to gridmap
+      GridMapRosConverter::fromOccupancyGrid(*local_costmap, "layer", local_grid);
+
+      grid_map::Position point(targetPoint_local.point.x, targetPoint_local.point.y);
+      // check target cell value inside  local costmap
+      if (local_grid.isInside(point)) {
+        printf("Point is INSIDE \n");
+        // profit
+        val = local_grid.atPosition("layer", point);
+        printf("Value was %d \n",val);
+      } else{
+        printf("Point is OUTSIDE ... \n");
+      }
+
+      ans = (val == 0);
+      printf("............................................................ \n");
+      return ans;
 
 }

@@ -1270,51 +1270,55 @@ void Map::printGridData(std::string grid_name, const grid_map::GridMap *gm) {
   long n_vist = 0;
   long total = 0;
 
-  int nRow = gm->getSize()(0);
-  int nCol = gm->getSize()(1);
-  grid_map::Index topLeftI(0, 0);
-  grid_map::Index topRightI(0, nCol - 1);
-  grid_map::Index bottomRightI(nRow - 1, nCol - 1);
-  grid_map::Index bottomLeftI(nRow - 1, 0);
+  bool doIt=false;
+  if (doIt)
+  {
+      int nRow = gm->getSize()(0);
+      int nCol = gm->getSize()(1);
+      grid_map::Index topLeftI(0, 0);
+      grid_map::Index topRightI(0, nCol - 1);
+      grid_map::Index bottomRightI(nRow - 1, nCol - 1);
+      grid_map::Index bottomLeftI(nRow - 1, 0);
 
-  grid_map::Position topLeftP, topRightP, bottomRightP, bottomLeftP;
-  gm->getPosition(topLeftI, topLeftP);
-  gm->getPosition(topRightI, topRightP);
-  gm->getPosition(bottomRightI, bottomRightP);
-  gm->getPosition(bottomLeftI, bottomLeftP);
+      grid_map::Position topLeftP, topRightP, bottomRightP, bottomLeftP;
+      gm->getPosition(topLeftI, topLeftP);
+      gm->getPosition(topRightI, topRightP);
+      gm->getPosition(bottomRightI, bottomRightP);
+      gm->getPosition(bottomLeftI, bottomLeftP);
 
-  printf("[Map.cpp@printGridData] .........................................\n");
-  printf("[Map.cpp@printGridData] Grid Name: [%s]\n", grid_name.c_str());
-  printf("[Map.cpp@printGridData] Num Cols, Num Rows [%d,  %d]\n", nCol, nRow);
-  printf("[Map.cpp@printGridData] Frame id [%s]\n", gm->getFrameId().c_str());
-  printf("[Map.cpp@printGridData] Grid Center [%3.3f %3.3f] m. \n",
-            gm->getPosition().x(), gm->getPosition().y());
-  printf("[Map.cpp@printGridData] Resolution [%3.3f] m./cell \n",
-            gm->getResolution());
-  printf("[Map.cpp@printGridData] Map Size [%3.3f x %3.3f] m.\n",
-            gm->getLength()(0), gm->getLength()(1));
-  printf("[Map.cpp@printGridData] Bounding box positions (m.):\n");
-  printf(" \t\t topLeft cell: [%d, %d] == [%3.3f, %3.3f] m.\n", topLeftI.x(),
-            topLeftI.y(), topLeftP.x(), topLeftP.y());
-  printf(" \t\t topRight cell: [%d, %d] == [%3.3f, %3.3f] m.\n", topRightI.x(),
-            topRightI.y(), topRightP.x(), topRightP.y());
-  printf(" \t\t bottomRight cell: [%d, %d] == [%3.3f, %3.3f] m.\n",
-            bottomRightI.x(), bottomRightI.y(), bottomRightP.x(),
-            bottomRightP.y());
-  printf(" \t\t bottomLeft cell: [%d, %d] == [%3.3f, %3.3f] m.\n",
-            bottomLeftI.x(), bottomLeftI.y(), bottomLeftP.x(), bottomLeftP.y());
+      printf("[Map.cpp@printGridData] .........................................\n");
+      printf("[Map.cpp@printGridData] Grid Name: [%s]\n", grid_name.c_str());
+      printf("[Map.cpp@printGridData] Num Cols, Num Rows [%d,  %d]\n", nCol, nRow);
+      printf("[Map.cpp@printGridData] Frame id [%s]\n", gm->getFrameId().c_str());
+      printf("[Map.cpp@printGridData] Grid Center [%3.3f %3.3f] m. \n",
+                gm->getPosition().x(), gm->getPosition().y());
+      printf("[Map.cpp@printGridData] Resolution [%3.3f] m./cell \n",
+                gm->getResolution());
+      printf("[Map.cpp@printGridData] Map Size [%3.3f x %3.3f] m.\n",
+                gm->getLength()(0), gm->getLength()(1));
+      printf("[Map.cpp@printGridData] Bounding box positions (m.):\n");
+      printf(" \t\t topLeft cell: [%d, %d] == [%3.3f, %3.3f] m.\n", topLeftI.x(),
+                topLeftI.y(), topLeftP.x(), topLeftP.y());
+      printf(" \t\t topRight cell: [%d, %d] == [%3.3f, %3.3f] m.\n", topRightI.x(),
+                topRightI.y(), topRightP.x(), topRightP.y());
+      printf(" \t\t bottomRight cell: [%d, %d] == [%3.3f, %3.3f] m.\n",
+                bottomRightI.x(), bottomRightI.y(), bottomRightP.x(),
+                bottomRightP.y());
+      printf(" \t\t bottomLeft cell: [%d, %d] == [%3.3f, %3.3f] m.\n",
+                bottomLeftI.x(), bottomLeftI.y(), bottomLeftP.x(), bottomLeftP.y());
 
-  countCells(&n_obsts, &n_free, &n_vist, &n_others, gm);
-  total = n_obsts + n_free + n_vist + n_others;
-  printf("[Map.cpp@printGridData] Grid has (%d) %3.3f %% of free cells, (%d) %3.3f %% "
-            "of occupied cells and (%d) %3.3f %% of visited cells\n",
-            n_free, 100.0 * n_free / (1.0 * total), n_obsts, 100.0 * n_obsts / (1.0 * total),
-            n_vist, 100.0 * n_vist / (1.0 * total));
-  if (n_others)
-    printf("[Map.cpp@printGridData] Found %3.3f %% undefined cells\n",
-              100.0 * n_others / (1.0 * total));
+      countCells(&n_obsts, &n_free, &n_vist, &n_others, gm);
+      total = n_obsts + n_free + n_vist + n_others;
+      printf("[Map.cpp@printGridData] Grid has (%d) %3.3f %% of free cells, (%d) %3.3f %% "
+                "of occupied cells and (%d) %3.3f %% of visited cells\n",
+                n_free, 100.0 * n_free / (1.0 * total), n_obsts, 100.0 * n_obsts / (1.0 * total),
+                n_vist, 100.0 * n_vist / (1.0 * total));
+      if (n_others)
+        printf("[Map.cpp@printGridData] Found %3.3f %% undefined cells\n",
+                  100.0 * n_others / (1.0 * total));
 
-  printf("[Map.cpp@printGridData] .........................................\n");
+      printf("[Map.cpp@printGridData] .........................................\n");
+    }
   // .............................................................
 }
 
