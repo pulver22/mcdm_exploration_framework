@@ -597,28 +597,28 @@ int main(int argc, char **argv) {
             for (it; it != candidatePosition.end(); it++) {
               Pose p1 = Pose((*it).first, (*it).second, roundf(0 * 100) / 100,
                              range, FOV);
-              Pose p2 = Pose((*it).first, (*it).second,
-                             roundf(M_PI / 4 * 100) / 100, range, FOV);
+              // Pose p2 = Pose((*it).first, (*it).second,
+              //                roundf(M_PI / 4 * 100) / 100, range, FOV);
               Pose p3 = Pose((*it).first, (*it).second,
                              roundf(M_PI / 2 * 100) / 100, range, FOV);
-              Pose p4 = Pose((*it).first, (*it).second,
-                             roundf(3 * M_PI / 4 * 100) / 100, range, FOV);
+              // Pose p4 = Pose((*it).first, (*it).second,
+              //                roundf(3 * M_PI / 4 * 100) / 100, range, FOV);
               Pose p5 = Pose((*it).first, (*it).second,
                              roundf(M_PI * 100) / 100, range, FOV);
-              Pose p6 = Pose((*it).first, (*it).second,
-                             roundf(5 * M_PI / 4 * 100) / 100, range, FOV);
+              // Pose p6 = Pose((*it).first, (*it).second,
+              //                roundf(5 * M_PI / 4 * 100) / 100, range, FOV);
               Pose p7 = Pose((*it).first, (*it).second,
                              roundf(3 * M_PI / 2 * 100) / 100, range, FOV);
-              Pose p8 = Pose((*it).first, (*it).second,
-                             roundf(7 * M_PI / 4 * 100) / 100, range, FOV);
+              // Pose p8 = Pose((*it).first, (*it).second,
+              //                roundf(7 * M_PI / 4 * 100) / 100, range, FOV);
               frontiers.push_back(p1);
-              frontiers.push_back(p2);
+              // frontiers.push_back(p2);
               frontiers.push_back(p3);
-              frontiers.push_back(p4);
+              // frontiers.push_back(p4);
               frontiers.push_back(p5);
-              frontiers.push_back(p6);
+              // frontiers.push_back(p6);
               frontiers.push_back(p7);
-              frontiers.push_back(p8);
+              // frontiers.push_back(p8);
             }
             //            cout << "Frontiers" << endl;
             //            for (auto it = frontiers.begin(); it !=
@@ -784,6 +784,7 @@ int main(int argc, char **argv) {
                            << endl;
                       // Remove the last element (cell and associated candidate from
                       // there) from the graph
+                      if (graph2.size() == 1) break;
                       graph2.pop_back();
                       // Select the new record from two position back in the graph
                       nearCandidates = graph2.at(graph2.size() - 1).second;
@@ -1599,11 +1600,10 @@ bool move(float x, float y, float orientation, float time_travel,
     << ")"<< endl;
   ac.sendGoal(goal);
 //  cout << "[pure_navigation.cpp@move] I'm moving..." << endl;
-  time_travel = std::min(time_travel, (float)120.0);
-  //  cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << "
-  //  seconds" << endl;
+  time_travel = std::min(time_travel, (float)30.0);
+   cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << " seconds" << endl;
   ac.waitForResult(ros::Duration(time_travel));
-//  cout << "Result: " << ac.getState().getText() << endl;
+ cout << "Result: " << ac.getState().getText() << endl;
 
   if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
     cout << "[pure_navigation.cpp@move] Goal position reached!" << endl;
@@ -1746,32 +1746,19 @@ void loadROSParams(){
 }
 
 void printROSParams(){
-  printf("/////////////////////////////////////////////////////////////////////////");
-  printf("[pure_navigation@printROSParams] Using the following ros params:");
-  printf("   - robot_radius [%3.3f]",  robot_radius);
-  printf("   - static_map_srv_name [%s]", static_map_srv_name.c_str());
-  printf("   - make_plan_srv_name [%s]", make_plan_srv_name.c_str());
-  printf("   - move_base_goal_topic_name [%s]", move_base_goal_topic_name.c_str());
-  printf("   - move_base_srv_name [%s]", move_base_srv_name.c_str());
-  printf("   - nav_grid_debug_topic_name [%s]", nav_grid_debug_topic_name.c_str());
-  printf("   - planning_grid_debug_topic_name [%s]", planning_grid_debug_topic_name.c_str());
-  printf("   - move_base_costmap_topic_name [%s]", move_base_costmap_topic_name.c_str());
-  printf("   - move_base_costmap_updates_topic_name [%s]", move_base_costmap_updates_topic_name.c_str());
-  printf("   - marker_pub_topic_name [%s]", marker_pub_topic_name.c_str());
-  printf("/////////////////////////////////////////////////////////////////////////");
-
-  cout << "/////////////////////////////////////////////////////////////////////////" << endl;
-  cout << "[pure_navigation@printROSParams] Using the following ros params:" << endl;
-  cout << "   - static_map_srv_name [" << static_map_srv_name <<"]" << endl;
-  cout << "   - make_plan_srv_name [" << make_plan_srv_name <<"]" << endl;
-  cout << "   - move_base_goal_topic_name [" << move_base_goal_topic_name <<"]" << endl;
-  cout << "   - move_base_srv_name [" << move_base_srv_name <<"]" << endl;
-  cout << "   - nav_grid_debug_topic_name [" << nav_grid_debug_topic_name <<"]" << endl;
-  cout << "   - planning_grid_debug_topic_name [" << planning_grid_debug_topic_name <<"]" << endl;
-  cout << "   - move_base_costmap_topic_name [" << move_base_costmap_topic_name <<"]" << endl;
-  cout << "   - move_base_costmap_updates_topic_name [" << move_base_costmap_updates_topic_name <<"]" << endl;
-  cout << "   - marker_pub_topic_name [" << marker_pub_topic_name <<"]" << endl;
-  cout << "/////////////////////////////////////////////////////////////////////////" << endl;
+  printf("/////////////////////////////////////////////////////////////////////////\n");
+  printf("[pure_navigation@printROSParams] Using the following ros params:\n");
+  printf("   - robot_radius [%3.3f]\n",  robot_radius);
+  printf("   - static_map_srv_name [%s]\n", static_map_srv_name.c_str());
+  printf("   - make_plan_srv_name [%s]\n", make_plan_srv_name.c_str());
+  printf("   - move_base_goal_topic_name [%s]\n", move_base_goal_topic_name.c_str());
+  printf("   - move_base_srv_name [%s]\n", move_base_srv_name.c_str());
+  printf("   - nav_grid_debug_topic_name [%s]\n", nav_grid_debug_topic_name.c_str());
+  printf("   - planning_grid_debug_topic_name [%s]\n", planning_grid_debug_topic_name.c_str());
+  printf("   - move_base_costmap_topic_name [%s]\n", move_base_costmap_topic_name.c_str());
+  printf("   - move_base_costmap_updates_topic_name [%s]\n", move_base_costmap_updates_topic_name.c_str());
+  printf("   - marker_pub_topic_name [%s]\n", marker_pub_topic_name.c_str());
+  printf("/////////////////////////////////////////////////////////////////////////\n");
 
 }
 

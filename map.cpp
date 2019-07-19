@@ -455,7 +455,7 @@ void Map::updatePathPlanningGrid(int cellX_pp, int cellY_pp,
 
     //        std::cout << "[Map.cpp@updatePathPlanningGrid] countScanned: " <<
     //        countScanned << endl;
-    if (countScanned >= 0.6 * gridToPathGridScale * gridToPathGridScale) {
+    if (countScanned >= 0.9 * gridToPathGridScale * gridToPathGridScale) {
       setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0),
                                (*planning_iterator)(1));
 
@@ -595,7 +595,7 @@ void Map::updatePathPlanningGrid(float posX, float posY, float rangeInMeters) {
     }
 
 //    if (numObstNavCellsPerPathCell <= 0.6 * gridToPathGridScale * gridToPathGridScale){
-      if (numVistNavCellsPerPathCell >= 0.6 * gridToPathGridScale * gridToPathGridScale) {
+      if (numVistNavCellsPerPathCell >= 0.9 * gridToPathGridScale * gridToPathGridScale) {
         setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0) +1,
                                  (*planning_iterator)(1) +1) ;  // TODO: the +1 has been added because the cells where not correctly marked, it needs further investigation
         numVistPathCell++;
@@ -1285,36 +1285,38 @@ void Map::printGridData(std::string grid_name, const grid_map::GridMap *gm) {
   gm->getPosition(bottomRightI, bottomRightP);
   gm->getPosition(bottomLeftI, bottomLeftP);
 
-  ROS_DEBUG("[Map.cpp@printGridData] Grid Name: [%s]", grid_name.c_str());
-  ROS_DEBUG("[Map.cpp@printGridData] Num Cols, Num Rows [%d,  %d]", nCol, nRow);
-  ROS_DEBUG("[Map.cpp@printGridData] Frame id [%s]", gm->getFrameId().c_str());
-  ROS_DEBUG("[Map.cpp@printGridData] Grid Center [%3.3f %3.3f] m. ",
+  printf("[Map.cpp@printGridData] .........................................\n");
+  printf("[Map.cpp@printGridData] Grid Name: [%s]\n", grid_name.c_str());
+  printf("[Map.cpp@printGridData] Num Cols, Num Rows [%d,  %d]\n", nCol, nRow);
+  printf("[Map.cpp@printGridData] Frame id [%s]\n", gm->getFrameId().c_str());
+  printf("[Map.cpp@printGridData] Grid Center [%3.3f %3.3f] m. \n",
             gm->getPosition().x(), gm->getPosition().y());
-  ROS_DEBUG("[Map.cpp@printGridData] Resolution [%3.3f] m./cell ",
+  printf("[Map.cpp@printGridData] Resolution [%3.3f] m./cell \n",
             gm->getResolution());
-  ROS_DEBUG("[Map.cpp@printGridData] Map Size [%3.3f x %3.3f] m.",
+  printf("[Map.cpp@printGridData] Map Size [%3.3f x %3.3f] m.\n",
             gm->getLength()(0), gm->getLength()(1));
-  ROS_DEBUG("[Map.cpp@printGridData] Bounding box positions (m.):");
-  ROS_DEBUG(" \t\t topLeft cell: [%d, %d] == [%3.3f, %3.3f] m.", topLeftI.x(),
+  printf("[Map.cpp@printGridData] Bounding box positions (m.):\n");
+  printf(" \t\t topLeft cell: [%d, %d] == [%3.3f, %3.3f] m.\n", topLeftI.x(),
             topLeftI.y(), topLeftP.x(), topLeftP.y());
-  ROS_DEBUG(" \t\t topRight cell: [%d, %d] == [%3.3f, %3.3f] m.", topRightI.x(),
+  printf(" \t\t topRight cell: [%d, %d] == [%3.3f, %3.3f] m.\n", topRightI.x(),
             topRightI.y(), topRightP.x(), topRightP.y());
-  ROS_DEBUG(" \t\t bottomRight cell: [%d, %d] == [%3.3f, %3.3f] m.",
+  printf(" \t\t bottomRight cell: [%d, %d] == [%3.3f, %3.3f] m.\n",
             bottomRightI.x(), bottomRightI.y(), bottomRightP.x(),
             bottomRightP.y());
-  ROS_DEBUG(" \t\t bottomLeft cell: [%d, %d] == [%3.3f, %3.3f] m.",
+  printf(" \t\t bottomLeft cell: [%d, %d] == [%3.3f, %3.3f] m.\n",
             bottomLeftI.x(), bottomLeftI.y(), bottomLeftP.x(), bottomLeftP.y());
 
   countCells(&n_obsts, &n_free, &n_vist, &n_others, gm);
   total = n_obsts + n_free + n_vist + n_others;
-  ROS_DEBUG("[Map.cpp@printGridData] Grid has %3.3f %% of free cells, %3.3f %% "
-            "of occupied cells and  %3.3f %% of visited cells",
+  printf("[Map.cpp@printGridData] Grid has %3.3f %% of free cells, %3.3f %% "
+            "of occupied cells and  %3.3f %% of visited cells\n",
             100.0 * n_free / (1.0 * total), 100.0 * n_obsts / (1.0 * total),
             100.0 * n_vist / (1.0 * total));
   if (n_others)
-    ROS_ERROR("[Map.cpp@printGridData] Found %3.3f %% undefined cells",
+    printf("[Map.cpp@printGridData] Found %3.3f %% undefined cells\n",
               100.0 * n_others / (1.0 * total));
 
+  printf("[Map.cpp@printGridData] .........................................\n");
   // .............................................................
 }
 
