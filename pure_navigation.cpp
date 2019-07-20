@@ -730,7 +730,7 @@ int main(int argc, char **argv) {
                       target = result.first;
                       targetPos = make_pair(target.getX(), target.getY());
                       //                      if (!contains(tabuList, target)) {
-                      if (!containsPos(&posToEsclude, targetPos)) {
+                      if (!containsPos(&posToEsclude, targetPos) & (freeInLocalCostmap(target) )) {
                         // If the new selected position is not in the Tabulist
 
                         encodedKeyValue = 1;
@@ -941,9 +941,8 @@ int main(int argc, char **argv) {
         // ... otherwise, if we are doing backtracking
         else {
           cout << "-------------- BTMODE --------------" << endl;
-          cout << "Previous: " << previous.getX() << ", " << previous.getY()
-               << endl;
-          cout << "Target: " << target.getX() << ", " << target.getY() << endl;
+//          cout << "Previous: " << previous.getX() << ", " << previous.getY() << endl;
+//          cout << "Target: " << target.getX() << ", " << target.getY() << endl;
           float x = target.getX();
           float y = target.getY();
           float orientation = roundf(target.getOrientation() * 100) / 100;
@@ -982,10 +981,10 @@ int main(int argc, char **argv) {
           //            target.getOrientation(), -0.5, 7.0);
           // Remove the current pose from the list of possible candidate cells
           cleanPossibleDestination2(&nearCandidates, target);
-          cout << "Cleaned" << endl;
+//          cout << "Cleaned" << endl;
           // Get the list of the candidate cells with their evaluation
           EvaluationRecords *record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
-          cout << "Record obtained, size is " << record->size() << endl;
+//          cout << "Record obtained, size is " << record->size() << endl;
 
           // If there are candidate cells
           if (record->size() > 0) {
@@ -1840,13 +1839,13 @@ bool freeInLocalCostmap(Pose target){
 
 
       // read a local costmap
-      printf("............................................................ \n");
+//      printf("............................................................ \n");
 
       nav_msgs::OccupancyGridConstPtr local_costmap = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(move_base_local_costmap_topic_name, ros::Duration(1.0));
       if (!local_costmap) {
         printf("oops \n");
       }
-      printf("Local costmap frame is: %s \n",local_costmap->header.frame_id.c_str());
+//      printf("Local costmap frame is: %s \n",local_costmap->header.frame_id.c_str());
 
       // cast stupid point into local gridmap frame
       tf2_ros::Buffer tfBuffer;
@@ -1863,8 +1862,8 @@ bool freeInLocalCostmap(Pose target){
       }
       tf2::doTransform(targetPoint_map, targetPoint_local, map_to_local_tf);
 
-      printf("In [%s] frame,  point is (%3.1f, %3.1f) \n",targetPoint_map.header.frame_id.c_str(), targetPoint_map.point.x, targetPoint_map.point.y);
-      printf("In [%s] frame,  point is (%3.1f, %3.1f) \n",targetPoint_local.header.frame_id.c_str(), targetPoint_local.point.x, targetPoint_local.point.y);
+//      printf("In [%s] frame,  point is (%3.1f, %3.1f) \n",targetPoint_map.header.frame_id.c_str(), targetPoint_map.point.x, targetPoint_map.point.y);
+//      printf("In [%s] frame,  point is (%3.1f, %3.1f) \n",targetPoint_local.header.frame_id.c_str(), targetPoint_local.point.x, targetPoint_local.point.y);
 
       // cast occupancy grid to gridmap
       GridMapRosConverter::fromOccupancyGrid(*local_costmap, "layer", local_grid);
@@ -1872,16 +1871,16 @@ bool freeInLocalCostmap(Pose target){
       grid_map::Position point(targetPoint_local.point.x, targetPoint_local.point.y);
       // check target cell value inside  local costmap
       if (local_grid.isInside(point)) {
-        printf("Point is INSIDE \n");
+//        printf("Point is INSIDE \n");
         // profit
         val = local_grid.atPosition("layer", point);
-        printf("Value was %d \n",val);
+//        printf("Value was %d \n",val);
       } else{
-        printf("Point is OUTSIDE ... \n");
+//        printf("Point is OUTSIDE ... \n");
       }
 
       ans = (val == 0);
-      printf("............................................................ \n");
+//      printf("............................................................ \n");
       return ans;
 
 }
