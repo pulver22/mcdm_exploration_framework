@@ -42,15 +42,15 @@ add_library(mcdm_exploration_framework pose.cpp map.cpp newray.cpp mcdmfunction.
 map.cpp evaluationrecords.cpp Criteria/sensingtimecriterion.cpp
 Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp
 Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cpp
-PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp)
+PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp navigation_utilities.cpp navigation_utilities.h)
 
 #add_executable(mcdm_online_exploration_ros main.cpp )
 #target_link_libraries(mcdm_online_exploration_ros mcdm_exploration_framework ${catkin_LIBRARIES})
 
-add_executable(pure_navigation pure_navigation.cpp )
+add_executable(pure_navigation pure_navigation.cpp navigation_utilities.cpp navigation_utilities.h)
 target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRARIES})
 
-add_executable(mcdm_slim mcdm_slim.cpp)
+add_executable(mcdm_slim mcdm_slim.cpp navigation_utilities.cpp navigation_utilities.h)
 target_link_libraries(mcdm_slim mcdm_exploration_framework ${catkin_LIBRARIES})
 
 ## Declare a C++ executable

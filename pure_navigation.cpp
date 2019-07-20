@@ -60,7 +60,7 @@ void updatePathMetrics(
     list<Pose> *nearCandidates, vector<pair<string, list<Pose> >> *graph2,
     dummy::Map *map, MCDMFunction *function, list<Pose> *tabuList,
     list<pair<float, float> > *posToEsclude, vector<string> *history,
-    int encodedKeyValue, Astar *astar, long *numConfiguration,
+    int encodedKeyValue, long *numConfiguration,
     double *totalAngle, double *travelledDistance, int *numOfTurning,
     double scanAngle, ros::ServiceClient *path_client, bool backTracking);
 
@@ -97,6 +97,9 @@ void printROSParams();
 
 void loadROSParams();
 void createROSComms();
+Pose selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
+                                  double threshold, ros::ServiceClient *path_client,
+                                  std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record);
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>MoveBaseClient;
 vector<int> occdata;
@@ -284,7 +287,6 @@ int main(int argc, char **argv) {
       std::list<std::pair<float, float> > posToEsclude;
       list<Pose> nearCandidates;
       EvaluationRecords record;
-      Astar astar;
       bool scan = true;
       double totalScanTime = 0;
       int encodedKeyValue = 0;
@@ -328,27 +330,10 @@ int main(int argc, char **argv) {
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (chrono::duration<double, milli>(chrono::high_resolution_clock::now() - startMCDM).count() ) / 60000.0 << " min ]" << endl;
-          //          cout << "[Current Pose]: " << target.getX() << ", " <<
-          //          target.getY()<<" m. " << ", " << target.getOrientation()
-          //          << "("<< (target.getOrientation() * 180 / M_PI) <<" deg),
-          //          " << target.getFOV() <<", " << target.getRange() << endl;
-          //            cout << "[Tmp]: " << tmp_target.getY() << ", " <<
-          //            tmp_target.getX() << ", " <<
-          //            (tmp_target.getOrientation() + 360 ) % 360 << ", " <<
-          //            tmp_target.getFOV() <<", " << tmp_target.getRange() <<
-          //            endl;
-          map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
-          //          cout << "[Current CELL INDEX in PathPlanningGrid]: " << i
-          //          << ", " << j << endl;
-          map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
-          //          cout << "[Current POSITION in PathPlanningGrid]: " <<
-          //          targetX_meter << ", " << targetY_meter << endl;
-          map.getGridIndex(target.getX(), target.getY(), i, j);
-          //          cout << "[Current CELL INDEX in NavigationGrid]: " << i <<
-          //          ", " << j << endl;
 
-          //          newSensedCells = sensedCells + ray.performSensingOperation
-          //          ( &map, 5.0, 3.0, 90, 180, 3, -1.8, 1.8 );
+          map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
+          map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
+          map.getGridIndex(target.getX(), target.getY(), i, j);
           gridPub.publish(map.toMessageGrid());
 
           // Update starting point in the path
@@ -414,21 +399,10 @@ int main(int argc, char **argv) {
           planningPub.publish(map.toMessagePathPlanning());
           map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
           map.plotGridColor("/tmp/nav_lastLoop.png");
-
           map.findCandidatePositions(x, y, orientation, FOV, range);
-          //          ray.findCandidatePositions(&map, x, y, orientation, FOV,
-          //          range);
           vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
-//            cout << "Size of initial candidate positions: " << candidatePosition.size() << endl;
-
 
             map.emptyCandidatePositions();
-//          cout << " Candidate cleaned!" << endl;
-          //          for (auto it = candidatePosition.begin(); it !=
-          //          candidatePosition.end(); it++) {
-          //            cout << (*it).first << "/" << (*it).second << endl;
-          //          }
-//          cout << "Size of candidate positions after cleaning: " << candidatePosition.size() << endl;
 
           if (scan) {
             // NOTE: perform gas sensing------------
@@ -511,33 +485,10 @@ int main(int argc, char **argv) {
               cout << "[BT]No significand position reachable. Come back to "
                       "previous position"
                    << endl;
-              //                            cout << "       " << targetString <<
-              //                            endl;
               cout << "       " << function.getEncodedKey(target, 0) << endl;
               count = count + 1;
               btMode = true;
-              //                            backTracking = true;
-              //                            updatePathMetrics(&count, &target,
-              //                            &previous, actualPose,
-              //                                              &nearCandidates,
-              //                                              &graph2, &map,
-              //                                              &function,
-              //                                              &tabuList,
-              //                                              &posToEsclude,
-              //                                              &history,
-              //                                              encodedKeyValue,
-              //                                              &astar,
-              //                                              &numConfiguration,
-              //                                              &totalAngle,
-              //                                              &travelledDistance,
-              //                                              &numOfTurning,
-              //                                              scanAngle,
-              //                                              &path_client,
-              //                                              backTracking);
-              //                            showMarkerandNavigate(target,
-              //                            &marker_pub, &path, &path_client,
-              //                            &tabuList,
-              //                                                  &posToEsclude);
+
               scan = false;
             }
             //...otherwise, if the graph does not contain cells that can be
@@ -625,11 +576,6 @@ int main(int argc, char **argv) {
               frontiers.push_back(p7);
               // frontiers.push_back(p8);
             }
-            //            cout << "Frontiers" << endl;
-            //            for (auto it = frontiers.begin(); it !=
-            //            frontiers.end(); it++) {
-            //              cout << " " << record.getEncodedKey(*it) << endl;
-            //            }
             unexploredFrontiers = frontiers;
 
             // Evaluate the frontiers and return a list of <frontier,
@@ -640,43 +586,23 @@ int main(int argc, char **argv) {
             // Print the frontiers with the respective evaluation
             cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
             unordered_map<string, double> evaluation = record->getEvaluations();
-            //            for (auto it = evaluation.begin(); it !=
-            //            evaluation.end(); it++) {
-            //              string tmp = (*it).first;
-            //              double value = (*it).second;
-            //              cout << tmp << " " << value << endl;
-            //            }
-
-            //            cout << "Size of record: " << record->size() << endl;
-
             // If there are candidate positions
             if (record->size() > 0) {
               // Set the previous pose equal to the current one (represented by
               // target)
               previous = target;
               // Select the new robot destination from the list of candidates
-
               std::pair<Pose, double> result = function.selectNewPose(record);
               target = result.first;
+
+              cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
+              target = selectFreePoseInLocalCostmap(target, &nearCandidates, &map, &function, threshold,
+                  &path_client, &posToEsclude, record);
+              targetPos = std::make_pair(target.getX(), target.getY());
+
               // If the selected destination does not appear among the cells
               // already visited
-//              auto tabuList_it = tabuList.begin();
-              //              cout << "Tabulist:" << endl;
-              //              for ( tabuList_it; tabuList_it != tabuList.end();
-              //              tabuList_it++ )
-              //              {
-              //                cout << record->getEncodedKey(*tabuList_it) <<
-              //                endl;
-              //              }
-              cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
-//              cout << "PoseToEsclude:" << endl;
-//              for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
-//                  cout << " " << iter->first << "," << iter->second << endl;
-//              }
-              targetPos = std::make_pair(target.getX(), target.getY());
-              //                            cout << "1" << endl;
-              //                          if ( ! contains ( tabuList,target ))
-              if ((!containsPos(&posToEsclude, targetPos)) & (freeInLocalCostmap(target)  ) ) {
+              if ((!containsPos(&posToEsclude, targetPos))) {
                 //                                cout << "2" << endl;
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
@@ -689,7 +615,7 @@ int main(int argc, char **argv) {
                   updatePathMetrics(
                       &count, &target, &previous, actualPose, &nearCandidates,
                       &graph2, &map, &function, &tabuList, &posToEsclude,
-                      &history, encodedKeyValue, &astar, &numConfiguration,
+                      &history, encodedKeyValue, &numConfiguration,
                       &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
                       &path_client, backTracking);
 //                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
@@ -730,39 +656,15 @@ int main(int argc, char **argv) {
                       target = result.first;
                       targetPos = make_pair(target.getX(), target.getY());
                       //                      if (!contains(tabuList, target)) {
-                      if (!containsPos(&posToEsclude, targetPos) & (freeInLocalCostmap(target) )) {
+                      if (!containsPos(&posToEsclude, targetPos)) {
                         // If the new selected position is not in the Tabulist
 
                         encodedKeyValue = 1;
-                        //                                                backTracking
-                        //                                                =
-                        //                                                true;
-                        //                                                updatePathMetrics(&count,
-                        //                                                &target,
-                        //                                                &previous,
-                        //                                                actualPose,
-                        //                                                                  &nearCandidates, &graph2, &map,
-                        //                                                                  &function, &tabuList, &posToEsclude, &history,
-                        //                                                                  encodedKeyValue, &astar, &numConfiguration,
-                        //                                                                  &totalAngle,
-                        //                                                                  &travelledDistance, &numOfTurning, scanAngle,
-                        //                                                                  &path_client, backTracking);
-                        //                                                showMarkerandNavigate(target,
-                        //                                                &marker_pub,
-                        //                                                &path,
-                        //                                                &path_client,
-                        //                                                &tabuList,
-                        //                                                                      &posToEsclude);
-                        //                                                btMode
-                        //                                                =
-                        //                                                true;
                         scan = false;
                         // Set that we are now in backtracking
                         cout << "[BT1] Break the while" << endl;
                         break; // the while loop
                       } else {
-                        //                        cout << "Inside the while" <<
-                        //                        endl;
                         // Remove the current position from possible candidates
                         cleanPossibleDestination2(&nearCandidates, target);
                         // Get the list of new candidate position with
@@ -773,18 +675,6 @@ int main(int argc, char **argv) {
                     // If there are no more candidate position from the last
                     // position in the graph
                     else {
-                      // if the graph is now empty, stop the navigation
-//                                if (graph2.size() == 0) break;
-//                                // Otherwise, select as new position the last cell in the
-//                                // graph and then remove it from there
-//                                // TODO: in reality, I don't want to go to the previous position in the graph but to the best candidate from there (FIXME)
-//                                string targetString = graph2.at(graph2.size() - 1).first;
-//                                graph2.pop_back();
-//                                previous = target;
-//                                target = record->getPoseFromEncoding(targetString);
-//                                scan = false;
-//                                cout << "[BT1] 2" << endl;
-//                                break;
                       cout << "[BT2 - New]There are visible cells but the selected one is already "
                               "explored! Come back to best frontier from the two positions back in the graph. Start selecting the new record"
                            << endl;
@@ -799,10 +689,6 @@ int main(int argc, char **argv) {
                     }
                   }
                   cout << "[BT1-2]Target: " << target.getX() << ", " << target.getY() << endl;
-//                  cout << "Pose to Esclude: " << endl ;
-//                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
-//                      cout << " " << iter->first << "," << iter->second << endl;
-//                  }
                   backTracking = true;
                   previous = getCurrentPose(resolution, costresolution, &map, initFov, initRange);
                   success = showMarkerandNavigate(target, &marker_pub, &path,
@@ -813,7 +699,7 @@ int main(int argc, char **argv) {
                     updatePathMetrics(
                         &count, &target, &previous, actualPose, &nearCandidates,
                         &graph2, &map, &function, &tabuList, &posToEsclude,
-                        &history, encodedKeyValue, &astar, &numConfiguration,
+                        &history, encodedKeyValue, &numConfiguration,
                         &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
                         &path_client, backTracking);
 //                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
@@ -847,12 +733,8 @@ int main(int argc, char **argv) {
             // ... otherwise, if there are no candidate positions
             else {
               // If the graph is empty, stop the navigation
-              if (graph2.size() == 0)
-                break;
-//              cout << "Graph size: " << graph2.size() << endl;
-//              for (auto it = graph2.begin(); it != graph2.end(); it++) {
-//                cout << " " << it->first << endl;
-//              }
+              if (graph2.size() == 0)  break;
+
               cout << "[BT3] There are no visible cells so come back to "
                       "previous position in the graph"
                       " structure:"
@@ -877,30 +759,6 @@ int main(int argc, char **argv) {
                 history.push_back(function.getEncodedKey(target, 2));
                 count = count + 1;
                 btMode = true;
-                //                                backTracking = true;
-                //                                updatePathMetrics(&count,
-                //                                &target, &previous,
-                //                                actualPose, &nearCandidates,
-                //                                &graph2,
-                //                                                  &map,
-                //                                                  &function,
-                //                                                  &tabuList,
-                //                                                  &posToEsclude,
-                //                                                  &history,
-                //                                                  encodedKeyValue,
-                //                                                  &astar,
-                //                                                  &numConfiguration,
-                //                                                  &totalAngle,
-                //                                                  &travelledDistance,
-                //                                                  &numOfTurning,
-                //                                                  scanAngle,
-                //                                                  &path_client,
-                //                                                  backTracking);
-                //                                showMarkerandNavigate(target,
-                //                                &marker_pub, &path,
-                //                                &path_client, &tabuList,
-                //                                                      &posToEsclude);
-
                 scan = true;
               }
               // If the selected cell is the old robot position
@@ -995,7 +853,7 @@ int main(int argc, char **argv) {
 
             // If this cells has not been visited before
             //            if ( ! contains ( tabuList,target ) )
-            if ((!containsPos(&posToEsclude, targetPos)) & (freeInLocalCostmap(target)  ) ) {
+            if ((!containsPos(&posToEsclude, targetPos))) {
 
               // Add it to the list of visited cells as first-view
               encodedKeyValue = 1;
@@ -1009,7 +867,7 @@ int main(int argc, char **argv) {
                 updatePathMetrics(
                     &count, &target, &previous, actualPose, &nearCandidates,
                     &graph2, &map, &function, &tabuList, &posToEsclude,
-                    &history, encodedKeyValue, &astar, &numConfiguration,
+                    &history, encodedKeyValue,  &numConfiguration,
                     &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
                     &path_client, backTracking);
 //                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
@@ -1045,7 +903,7 @@ int main(int argc, char **argv) {
                 updatePathMetrics(
                     &count, &target, &previous, actualPose, &nearCandidates,
                     &graph2, &map, &function, &tabuList, &posToEsclude,
-                    &history, encodedKeyValue, &astar, &numConfiguration,
+                    &history, encodedKeyValue,  &numConfiguration,
                     &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
                     &path_client, backTracking);
               }
@@ -1060,25 +918,6 @@ int main(int argc, char **argv) {
                 target = record->getPoseFromEncoding(targetString);
                 // Add it to the history of cell as already more than once
                 encodedKeyValue = 2;
-                //                                backTracking = true;
-                //                                updatePathMetrics(&count,
-                //                                &target, &previous,
-                //                                actualPose, &nearCandidates,
-                //                                &graph2,
-                //                                                  &map,
-                //                                                  &function,
-                //                                                  &tabuList,
-                //                                                  &posToEsclude,
-                //                                                  &history,
-                //                                                  encodedKeyValue,
-                //                                                  &astar,
-                //                                                  &numConfiguration,
-                //                                                  &totalAngle,
-                //                                                  &travelledDistance,
-                //                                                  &numOfTurning,
-                //                                                  scanAngle,
-                //                                                  &path_client,
-                //                                                  backTracking);
                 // Leave backtracking
                 btMode = true;
                 // Clear candidate list
@@ -1103,26 +942,6 @@ int main(int argc, char **argv) {
                   target = record->getPoseFromEncoding(targetString);
                   // and the remove it form the graph
                   graph2.pop_back();
-
-                  // Add it in history as cell visited more than once
-                  //                            encodedKeyValue = 2;
-                  //                        backTracking = true;
-                  //                        updatePathMetrics(&count, &target,
-                  //                        &previous, actualPose,
-                  //                        &nearCandidates, &graph2, &map,
-                  //                                          &function,
-                  //                                          &tabuList,
-                  //                                          &posToEsclude,
-                  //                                          &history,
-                  //                                          encodedKeyValue,
-                  //                                          &astar,
-                  //                                          &numConfiguration,
-                  //                                          &totalAngle,
-                  //                                          &travelledDistance,
-                  //                                          &numOfTurning,
-                  //                                          scanAngle,
-                  //                                          &path_client,
-                  //                                          backTracking);
                   // Leave backtracking
                   btMode = true;
                   cout << "[BT-MODE3] There are no candidate frontiers in the "
@@ -1351,7 +1170,7 @@ void updatePathMetrics(
     list<Pose> *nearCandidates, vector<pair<string, list<Pose> >> *graph2,
     dummy::Map *map, MCDMFunction *function, list<Pose> *tabuList,
     list<pair<float, float> > *posToEsclude, vector<string> *history,
-    int encodedKeyValue, Astar *astar, long *numConfiguration,
+    int encodedKeyValue, long *numConfiguration,
     double *totalAngle, double *travelledDistance, int *numOfTurning,
     double scanAngle, ros::ServiceClient *path_client, bool backTracking) {
 
@@ -1740,10 +1559,6 @@ bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
        posToEsclude); // full resolution
 }
 
-
-
-
-
 void loadROSParams(){
 
   ros::NodeHandle private_node_handle("~");
@@ -1780,7 +1595,6 @@ void printROSParams(){
   printf("/////////////////////////////////////////////////////////////////////////\n");
 
 }
-
 
 void createROSComms(){
 
@@ -1883,4 +1697,33 @@ bool freeInLocalCostmap(Pose target){
 //      printf("............................................................ \n");
       return ans;
 
+}
+
+
+Pose selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
+    double threshold, ros::ServiceClient *path_client, std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record)
+{
+  bool isFreeFromObstacle = false;
+  while (isFreeFromObstacle == false) {
+    cout << "===> Checking against localmap!" << endl;
+    // check that the current target is free from obstacles in the local map
+    isFreeFromObstacle = freeInLocalCostmap(target);
+    cout << "   isFree: " << isFreeFromObstacle << endl;
+    if (isFreeFromObstacle == true) break;// if it's free, the while will be break immediately
+    // Otherwise you have to select a new target and continue in the while
+    // 1) Add this cell to the list of cell not reachebale
+    std::pair<int, int> pairToRemove = make_pair(target.getX(), target.getY());
+    posToEsclude->push_back(pairToRemove);
+    // remove the current target from the list of candidate position
+    cleanPossibleDestination2(nearCandidates, target);
+    // Get the list of new candidate position with  associated evaluation
+    record = function->evaluateFrontiers(*nearCandidates, map, threshold, path_client);
+    // Get a new target
+    std::pair<Pose, double> result = function->selectNewPose(record);
+    cout << "     record size: " << record->size() << endl;
+    target = result.first;
+    cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
+    // and start the new iteration
+  }
+  return target;
 }

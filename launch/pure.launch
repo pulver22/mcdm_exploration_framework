@@ -6,7 +6,7 @@
 
 <launch>
   <!-- PARAMS .............................................................. -->
-  <arg name="pure_args"  	default="180 3 0.8 0.15 0.5"/>-->
+  <arg name="pure_args"  	default="180 3 0.8 0.1 0.3"/>-->
 
   <env name="ROSCONSOLE_CONFIG_FILE"
     value="$(find mcdm_exploration_framework)/config/custom_rosconsole.conf"/>
@@ -22,7 +22,7 @@
   </node>
 
   <!-- base bringup-->
-  <node pkg="mcdm_exploration_framework" type="pure_navigation" name="ric" output="screen" args="$(arg pure_args)">
+  <node pkg="mcdm_exploration_framework" type="pure_navigation" name="ric" output="screen"  args="$(arg pure_args)">
     <param name="move_base_costmap_topic_name" value="/map"/>
     <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>
   </node>
