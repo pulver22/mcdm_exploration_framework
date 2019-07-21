@@ -2,8 +2,8 @@
 // Created by pulver on 20/07/19.
 //
 
-#ifndef MCDM_EXPLORATION_FRAMEWORK_NAVIGATION_UTILITIES_H
-#define MCDM_EXPLORATION_FRAMEWORK_NAVIGATION_UTILITIES_H
+#ifndef NAVIGATION_UTILITIES_H
+#define NAVIGATION_UTILITIES_H
 
 #include "map.h"
 #include "pose.h"
@@ -31,17 +31,16 @@
 #include <tf/transform_listener.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-// mfc ...
 #include <ros/console.h>
 #include "record_ros/record.h"
 #include "record_ros/String_cmd.h"
-// mfc ...
 
 using namespace std;
 using namespace dummy;
 
 
 class NavigationUtilities {
+
   public:
     NavigationUtilities();
     ~NavigationUtilities();
@@ -56,7 +55,7 @@ class NavigationUtilities {
                               int range, int FOV, double threshold,
                               string actualPose,
                               vector<pair<string, list<Pose> >> *graph2,
-    ros::ServiceClient *path_client);
+                              ros::ServiceClient *path_client);
 
     double calculateScanTime(double scanAngle);
 
@@ -64,14 +63,13 @@ class NavigationUtilities {
 
     Pose createFromInitialPose(Pose pose, float variation, int range, int FOV);
 
-    void updatePathMetrics(
-        int *count, Pose *target, Pose *previous, string actualPose,
-        list<Pose> *nearCandidates, vector<pair<string, list<Pose> >> *graph2,
-    dummy::Map *map, MCDMFunction *function, list<Pose> *tabuList,
-        list<pair<float, float> > *posToEsclude, vector<string> *history,
-    int encodedKeyValue, long *numConfiguration,
-    double *totalAngle, double *travelledDistance, int *numOfTurning,
-    double scanAngle, ros::ServiceClient *path_client, bool backTracking, double robot_radius);
+    void updatePathMetrics(int *count, Pose *target, Pose *previous, string actualPose,
+                            list<Pose> *nearCandidates, vector<pair<string, list<Pose> >> *graph2,
+                            dummy::Map *map, MCDMFunction *function, list<Pose> *tabuList,
+                            list<pair<float, float> > *posToEsclude, vector<string> *history,
+                            int encodedKeyValue, long *numConfiguration,
+                            double *totalAngle, double *travelledDistance, int *numOfTurning,
+                            double scanAngle, ros::ServiceClient *path_client, bool backTracking, double robot_radius);
 
     double getAngleBetPoses(geometry_msgs::PoseStamped ps1, geometry_msgs::PoseStamped ps2);
 
@@ -90,7 +88,7 @@ class NavigationUtilities {
 
     bool freeInLocalCostmap(Pose target, std::string move_base_local_costmap_topic_name);
 
-  // ROS varies
+    // ROS varies
     bool move(float x, float y, float orientation, float time_travel,
               list<Pose> *tabuList,
               std::list<std::pair<float, float> > *posToEsclude);
@@ -110,4 +108,4 @@ class NavigationUtilities {
 };
 
 
-#endif //MCDM_EXPLORATION_FRAMEWORK_NAVIGATION_UTILITIES_H
+#endif //NAVIGATION_UTILITIES_H

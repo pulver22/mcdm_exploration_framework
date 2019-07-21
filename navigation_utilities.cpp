@@ -2,7 +2,7 @@
 // Created by pulver on 20/07/19.
 //
 
-#include "navigation_utilities.h"
+#include "include/navigation_utilities.h"
 
 NavigationUtilities::NavigationUtilities() {};
 NavigationUtilities::~NavigationUtilities() {};
@@ -576,5 +576,3 @@ Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *
   }
   return target;
 }
-
-
