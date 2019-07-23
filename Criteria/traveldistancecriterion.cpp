@@ -32,7 +32,7 @@ double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
   Astar astar;
   Pose robotPosition = map->getRobotPosition();
   nav_msgs::GetPlan path;
-  double path_len;
+  double path_len = 0;
   double startX_meter, startY_meter;
   double goalX_meter, goalY_meter;
   // double distance = robotPosition.getDistance(p);

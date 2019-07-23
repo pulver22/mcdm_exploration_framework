@@ -120,7 +120,6 @@ int main(int argc, char **argv) {
   //   ros::console::notifyLoggerLevelsChanged();
   //  }
   // mfc ...........................
-  auto startMCDM = chrono::high_resolution_clock::now();
   ros::init(argc, argv, "mcdm_exploration_framework_node");
 
   //mfc Load params from ros
@@ -248,6 +247,7 @@ int main(int argc, char **argv) {
       double targetX_meter, targetY_meter;
       bool success = false;
 
+      auto startMCDM = ros::Time::now().toSec();
 
       do {
 //        cout << "Graph size: " << graph2.size() << endl;
@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
           cout << "New iteration, position: " << target.getX() << "," << target.getY() <<
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
-            (chrono::duration<double, milli>(chrono::high_resolution_clock::now() - startMCDM).count() ) / 60000.0 << " min ]" << endl;
+            (ros::Time::now().toSec() - startMCDM ) / 60.0 << " min ]" << endl;
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
@@ -462,12 +462,10 @@ int main(int argc, char **argv) {
               nav_utils.printResult(newSensedCells, totalFreeCells, precision,
                           numConfiguration, travelledDistance, numOfTurning,
                           totalAngle, totalScanTime, resolution);
-              auto endMCDM = chrono::high_resolution_clock::now();
-              double totalTimeMCDM =
-                  chrono::duration<double, milli>(endMCDM - startMCDM).count();
+              auto endMCDM = ros::Time::now().toSec();
+              double totalTimeMCDM = endMCDM - startMCDM;
               cout << "Total time for MCDM algorithm : " << totalTimeMCDM
-                   << "ms, " << totalTimeMCDM / 1000 << " s, "
-                   << totalTimeMCDM / 60000 << " m " << endl;
+                   << "s, " << totalTimeMCDM / 60 << " m " << endl;
               cout << "Total time in empirical way : "
                    << travelledDistance / 0.25 + timeOfScanning / 1000 << endl;
 
@@ -526,6 +524,10 @@ int main(int argc, char **argv) {
             // evaluation> pairs
             EvaluationRecords *record = function.evaluateFrontiers(frontiers, &map, threshold, &path_client);
             nearCandidates = record->getFrontiers();
+            // NOTE: This may not be needed because  we are in an unexplored area
+            cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
+            nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+            nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
 
             // Print the frontiers with the respective evaluation
             cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
@@ -542,7 +544,7 @@ int main(int argc, char **argv) {
               cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
               target = nav_utils.selectFreePoseInLocalCostmap(target, &nearCandidates, &map, &function, threshold,
                   &path_client, &posToEsclude, record, move_base_local_costmap_topic_name);
-              targetPos = std::make_pair(target.getX(), target.getY());
+              targetPos = std::make_pair(int(target.getX()), int(target.getY()));
 
               // If the selected destination does not appear among the cells
               // already visited
@@ -571,8 +573,8 @@ int main(int argc, char **argv) {
               else {
                 //                                cout << "3" << endl;
                 // If the graph is empty, stop the navigation
-                if (graph2.size() == 0)
-                  break;
+                if (graph2.size() == 0) break;
+                cout << "   NearCandidates: " << graph2.at(graph2.size() - 1).second.size() << endl;
                 // If there still are more candidates to explore from the last
                 // pose in the graph
                 if (graph2.at(graph2.size() - 1).second.size() != 0) {
@@ -583,7 +585,10 @@ int main(int argc, char **argv) {
                        << endl;
                   // Remove the current position from possible candidates
                   nearCandidates = graph2.at(graph2.size() - 1).second;
+                  cout << "[main] candidateposition before: " << nearCandidates.size() << endl;
                   nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+                  nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                  cout << "[main] candidateposition after: " << nearCandidates.size() << endl;
                   // Get the list of new candidate position with associated
                   // evaluation
                   record = function.evaluateFrontiers(nearCandidates, &map,
@@ -593,12 +598,17 @@ int main(int argc, char **argv) {
                   for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
                       cout << " " << iter->first << "," << iter->second << endl;
                   }
+                  cout << "Candidates:" << endl;
+                  for (auto iter = nearCandidates.begin(); iter != nearCandidates.end(); iter++) {
+                    cout << " " << iter->getX() << "," << iter->getY() << endl;
+                  }
                   while (1) {
                     if (record->size() != 0) {
                       // Select the new pose of the robot
                       std::pair<Pose, double> result = function.selectNewPose(record);
                       target = result.first;
-                      targetPos = make_pair(target.getX(), target.getY());
+                      targetPos = make_pair(int(target.getX()), int(target.getY()));
+                      cout << "   TargetPos: " << targetPos.first << ", " << targetPos.second << endl;
                       //                      if (!contains(tabuList, target)) {
                       if (!nav_utils.containsPos(&posToEsclude, targetPos)) {
                         // If the new selected position is not in the Tabulist
@@ -611,6 +621,7 @@ int main(int argc, char **argv) {
                       } else {
                         // Remove the current position from possible candidates
                         nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+                        nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                         // Get the list of new candidate position with
                         // associated evaluation
                         record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
@@ -628,8 +639,13 @@ int main(int argc, char **argv) {
                       graph2.pop_back();
                       // Select the new record from two position back in the graph
                       nearCandidates = graph2.at(graph2.size() - 1).second;
+                      cout << "nearCandidates before: " <<nearCandidates.size() << endl;
+                      nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+                      nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                      cout << "nearCandidates after: " <<nearCandidates.size() << endl;
                       record = function.evaluateFrontiers(nearCandidates, &map,
                                                           threshold, &path_client);
+                      cout << "record: " << record->size() << endl;
                     }
                   }
                   cout << "[BT1-2]Target: " << target.getX() << ", " << target.getY() << endl;
@@ -657,6 +673,7 @@ int main(int argc, char **argv) {
                           "selected one is already "
                           "explored! Come back to two positions ago"
                        << endl;
+                  cout << "Graph_size: " << graph2.size() << endl;
                   // Remove the last element (cell and associated candidate from
                   // there) from the graph
                   if (graph2.size() == 1) break;
@@ -664,6 +681,10 @@ int main(int argc, char **argv) {
                   // Select as new target, the new last element of the graph
                   string targetString = graph2.at(graph2.size() - 1).first;
                   nearCandidates = graph2.at(graph2.size() - 1).second;
+                  cout << "nearCandidates before: " << nearCandidates.size() << endl;
+                  nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+                  nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                  cout << "nearCandidates after: " << nearCandidates.size() << endl;
                   target = record->getPoseFromEncoding(targetString);
                   // Save it history as cell visited more than once
                   history.push_back(function.getEncodedKey(target, 2));
@@ -686,12 +707,14 @@ int main(int argc, char **argv) {
               // Select as new target the last one in the graph structure
               string targetString = graph2.at(graph2.size() - 1).first;
               nearCandidates = graph2.at(graph2.size() - 1).second;
+              nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+              nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
               // Remove it from the graph
               graph2.pop_back();
               target = record->getPoseFromEncoding(targetString);
               cout << "--> " << function.getEncodedKey(target, 0) << endl;
-              cout << "Previous: " << function.getEncodedKey(previous, 2)
-                   << endl;
+//              cout << "Previous: " << function.getEncodedKey(previous, 2)
+//                   << endl;
               // Check if the selected cell in the graph is the previous robot
               // position
               if (!target.isEqual(previous)) {
@@ -714,6 +737,8 @@ int main(int argc, char **argv) {
                 // Select the last position in the graph
                 string targetString = graph2.at(graph2.size() - 1).first;
                 nearCandidates = graph2.at(graph2.size() - 1).second;
+                nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+                nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // and remove it from the graph
                 graph2.pop_back();
                 target = record->getPoseFromEncoding(targetString);
@@ -744,7 +769,7 @@ int main(int argc, char **argv) {
         else {
           cout << "-------------- BTMODE --------------" << endl;
 //          cout << "Previous: " << previous.getX() << ", " << previous.getY() << endl;
-//          cout << "Target: " << target.getX() << ", " << target.getY() << endl;
+          cout << "Target: " << target.getX() << ", " << target.getY() << endl;
           float x = target.getX();
           float y = target.getY();
           float orientation = roundf(target.getOrientation() * 100) / 100;
@@ -782,22 +807,26 @@ int main(int argc, char **argv) {
           //            map.getNumGridCols() - target.getX(), target.getY(),
           //            target.getOrientation(), -0.5, 7.0);
           // Remove the current pose from the list of possible candidate cells
+          cout << "NearCandidates before cleaning: " << nearCandidates.size() << endl;
           nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+          nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+          cout << "NearCandidates after cleaning: " << nearCandidates.size() << endl;
 //          cout << "Cleaned" << endl;
           // Get the list of the candidate cells with their evaluation
           EvaluationRecords *record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
-//          cout << "Record obtained, size is " << record->size() << endl;
+          cout << "Record obtained, size is " << record->size() << endl;
 
           // If there are candidate cells
           if (record->size() > 0) {
             // Find the new destination
             std::pair<Pose, double> result = function.selectNewPose(record);
             target = result.first;
-            targetPos = make_pair(target.getX(), target.getY());
+            targetPos = make_pair(int(target.getX()), int(target.getY()));
 
             // If this cells has not been visited before
             //            if ( ! contains ( tabuList,target ) )
             if ((!nav_utils.containsPos(&posToEsclude, targetPos))) {
+              cout << "Selected target has not been visited YET! Going there now...." << endl;
 
               // Add it to the list of visited cells as first-view
               encodedKeyValue = 1;
@@ -819,24 +848,25 @@ int main(int argc, char **argv) {
               // Leave the backtracking branch
               btMode = false;
               nearCandidates.clear();
-              cout << "[BT-MODE4] Go back to the best frontiers from the "
+              cout << "   [BT-MODE4] Go back to the best frontiers from the "
                       "previous positions in the graph"
                    << endl;
               cout << "       " << function.getEncodedKey(target, 0) << endl;
             }
             // ... otherwise, if the cells has already been visisted
             else {
+              cout << "The selected target has ALREADY been visited! " << endl;
               // If there are other candidates
               if (nearCandidates.size() != 0) {
-                cout << "[BT-MODE1]Already visited, but there are other "
+                cout << "   [BT-MODE1]Already visited, but there are other "
                         "candidates"
                      << endl;
 
                 // Remove the destination from the candidate list
                 nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+                nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // Get the candidates with their evaluation
-                EvaluationRecords *record = function.evaluateFrontiers(
-                    nearCandidates, &map, threshold, &path_client);
+                EvaluationRecords *record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
                 // Select the new destination
                 std::pair<Pose, double> result = function.selectNewPose(record);
                 target = result.first;
@@ -857,6 +887,8 @@ int main(int argc, char **argv) {
                 // Select as target the last element in the graph
                 string targetString = graph2.at(graph2.size() - 1).first;
                 nearCandidates = graph2.at(graph2.size() - 1).second;
+                nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+                nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // And remove from the graph
                 graph2.pop_back();
                 target = record->getPoseFromEncoding(targetString);
@@ -866,7 +898,7 @@ int main(int argc, char **argv) {
                 btMode = true;
                 // Clear candidate list
                 nearCandidates.clear();
-                cout << "[BT-MODE2] Go back to previous positions in the graph"
+                cout << "   [BT-MODE2] No more candidates. Go back to previous positions in the graph"
                      << endl;
                 cout << "       " << targetString << endl;
               }
@@ -876,31 +908,35 @@ int main(int argc, char **argv) {
           else {
             // Select as new pose, the last cell in the graph
             while (1) {
-              if (graph2.size() != 0) { // If there are still position on which
-                                        // doing backtracking
-                if ((graph2.at(graph2.size() - 1).second).size() >
-                    0) // If there are still frontiers from the current position
+              // If there are still position on which doing backtracking
+              if (graph2.size() != 0) {
+                // If there are still frontiers from the current position
+                if ((graph2.at(graph2.size() - 1).second).size() > 0)
                 {
                   string targetString = graph2.at(graph2.size() - 1).first;
                   nearCandidates = graph2.at(graph2.size() - 1).second;
+                  nav_utils.cleanPossibleDestination2(&nearCandidates, target);
+                  nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                   target = record->getPoseFromEncoding(targetString);
                   // and the remove it form the graph
                   graph2.pop_back();
-                  // Leave backtracking
+                  std::pair <float, float> tmp_position (target.getX(), target.getY());
+                  // Leave backtracking if the selected cell does not appeat in the forbidden position list
+//                  btMode = ! nav_utils.containsPos(&posToEsclude, tmp_position);
                   btMode = true;
-                  cout << "[BT-MODE3] There are no candidate frontiers in the "
+                  cout << "   [BT-MODE3] There are no candidate frontiers in the "
                           "record. Go back to previous positions in the graph"
                        << endl;
                   cout << "       " << targetString << endl;
                   break;
                 } else {
-                  cout << "[BT-MODE3] No more frontiers with the associate "
+                  cout << "   [BT-MODE3] No more frontiers with the associate "
                           "position in the graph"
                        << endl;
                   graph2.pop_back();
                 }
               } else {
-                cout << "[BT-MODE3] Graph2 is empty. Navigation is finished"
+                cout << "   [BT-MODE3] Graph2 is empty. Navigation is finished"
                      << endl;
                 break;
               }
@@ -950,13 +986,11 @@ int main(int argc, char **argv) {
       cout
           << "-----------------------------------------------------------------"
           << endl;
-      auto endMCDM = chrono::high_resolution_clock::now();
+      auto endMCDM = ros::Time::now().toSec();;
 
-      double totalTimeMCDM =
-          chrono::duration<double, milli>(endMCDM - startMCDM).count();
-      cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "ms, "
-           << totalTimeMCDM / 1000 << " s, " << totalTimeMCDM / 60000 << " m "
-           << endl;
+      double totalTimeMCDM = endMCDM - startMCDM;
+      cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "s, "
+           << totalTimeMCDM / 60 << " m " << endl;
       cout << "Spinning at the end" << endl;
 
       // Stop recording the bag

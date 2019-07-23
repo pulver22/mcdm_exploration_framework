@@ -33,7 +33,7 @@ double SensingTimeCriterion::SensingTimeCriterion::evaluate(
     Pose &p, dummy::Map *map, ros::ServiceClient *path_client) {
   NewRay ray;
   double sensingTime;
-  double angle;
+  double angle = 0;
   float orientation = p.getOrientation();
 
   float startingPhi = (float)orientation - (p.getFOV()) / 2;
