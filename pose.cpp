@@ -1,6 +1,8 @@
 #include "pose.h"
 #include <cmath>
 #include <iostream>
+#include <grid_map_core/TypeDefs.hpp>
+
 using namespace std;
 
 Pose::Pose(float aX, float aY, float orientation, int range, double FOV) {
@@ -65,3 +67,11 @@ void Pose::setOrientation(float orientation) {
 }
 
 std::pair<double, double> Pose::getScanAngles() { return scanAngles; }
+
+void Pose::updateFromGridMapPosition(grid_map::Position p, float orientation, int range, double FOV) {
+  this->aX = p(0);
+  this->aY = p(1);
+  this->orientation = orientation;
+  this->range = range;
+  this->FOV = FOV;
+}

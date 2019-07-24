@@ -1,7 +1,15 @@
 #ifndef POSE_H
 #define POSE_H
+#include "grid_map_core/GridMap.hpp"
+#include "grid_map_core/Polygon.hpp"
+#include <grid_map_core/grid_map_core.hpp>
 
+#include "grid_map_ros/GridMapRosConverter.hpp"
+#include <grid_map_ros/grid_map_ros.hpp>
+
+#include "grid_map_cv/grid_map_cv.hpp"
 #include <utility>
+using namespace grid_map;
 
 class Pose {
 public:
@@ -21,6 +29,7 @@ public:
   void setScanAngles(std::pair<double, double> angles);
   void setOrientation(float orientation);
   std::pair<double, double> getScanAngles();
+  void updateFromGridMapPosition(grid_map::Position p, float orientation, int range, double FOV);
 
 protected:
   float aX, aY;      // x and y coordinates of the cell

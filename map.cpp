@@ -1077,7 +1077,7 @@ long Map::getTotalFreeCells() {
   long n_vist = 0;
   long n_others = 0;
 
-  countCells(&n_obsts, &n_free, &n_vist, &n_others, &nav_grid_);
+  countCells(&n_obsts, &n_free, &n_vist, &n_others, &obst_cells, &free_cells, &vist_cells, &nav_grid_);
 
   return n_free;
 }
@@ -1307,7 +1307,7 @@ void Map::printGridData(std::string grid_name, const grid_map::GridMap *gm) {
       printf(" \t\t bottomLeft cell: [%d, %d] == [%3.3f, %3.3f] m.\n",
                 bottomLeftI.x(), bottomLeftI.y(), bottomLeftP.x(), bottomLeftP.y());
 
-      countCells(&n_obsts, &n_free, &n_vist, &n_others, gm);
+      countCells(&n_obsts, &n_free, &n_vist, &n_others, &obst_cells, &free_cells, &vist_cells,gm);
       total = n_obsts + n_free + n_vist + n_others;
       printf("[Map.cpp@printGridData] Grid has (%d) %3.3f %% of free cells, (%d) %3.3f %% "
                 "of occupied cells and (%d) %3.3f %% of visited cells\n",
@@ -1324,32 +1324,53 @@ void Map::printGridData(std::string grid_name, const grid_map::GridMap *gm) {
 
 void Map::countGridCells(long *n_obsts, long *n_free, long *n_vist,
                          long *n_others) {
-  countCells(n_obsts, n_free, n_vist, n_others, &nav_grid_);
+  countCells(n_obsts, n_free, n_vist, n_others, &obst_cells, &free_cells, &vist_cells,&nav_grid_);
 }
 
 void Map::countPathPlanningCells(long *n_obsts, long *n_free, long *n_vist,
                                  long *n_others) {
-  countCells(n_obsts, n_free, n_vist, n_others, &planning_grid_);
+  countCells(n_obsts, n_free, n_vist, n_others, &obst_cells, &free_cells, &vist_cells, &planning_grid_);
 }
 
 void Map::countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others,
+                     vector<grid_map::Index> *obst, vector<grid_map::Index> *free, vector<grid_map::Index> *vist,
                      const grid_map::GridMap *gm) {
   *n_obsts = 0;
   *n_free = 0;
   *n_others = 0;
   *n_vist = 0;
+  obst->clear();
+  free->clear();
+  vist->clear();
   for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd();
        ++iterator) {
     if (gm->at("layer", *iterator) == Map::CellValue::OBST) {
       (*n_obsts)++;
+      obst->push_back(*iterator);
     } else if (gm->at("layer", *iterator) == Map::CellValue::FREE) {
       (*n_free)++;
+      free->push_back(*iterator);
     } else if (gm->at("layer", *iterator) == Map::CellValue::VIST) {
       (*n_vist)++;
+      vist->push_back(*iterator);
     } else {
       (*n_others)++;
     }
   }
+}
+
+grid_map::Position Map::getRandomFreeCellPosition(){
+  long tot_free_cells = free_cells.size();
+  std::random_device rd;     // only used once to initialise (seed) engine
+  std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+  std::uniform_int_distribution<int> uni(0, tot_free_cells); // guaranteed unbiased
+
+  auto random_integer = uni(rng);
+  grid_map::Index random_cell = free_cells[random_integer];
+  grid_map::Position random_cell_pp;
+  planning_grid_.getPosition(random_cell, random_cell_pp);
+  return random_cell_pp;
+
 }
 
 void Map::plotMyGrid(std::string fileURI, const grid_map::GridMap *gm) {
