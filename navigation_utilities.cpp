@@ -576,7 +576,7 @@ Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *
 //    cout << "===> Checking against localmap!" << endl;
     // check that the current target is free from obstacles in the local map
     isFreeFromObstacle = freeInLocalCostmap(target, move_base_local_costmap_topic_name);
-//    cout << "   isFree: " << isFreeFromObstacle << endl;
+    cout << "   isFree: " << isFreeFromObstacle << endl;
     if (isFreeFromObstacle == true) break;// if it's free, the while will be break immediately
     // Otherwise you have to select a new target and continue in the while
     // 1) Add this cell to the list of cell not reachebale

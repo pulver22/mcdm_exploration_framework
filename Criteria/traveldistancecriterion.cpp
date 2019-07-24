@@ -72,13 +72,13 @@ double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
     ROS_INFO("Path_finding Service call failed! ");
     path_len = 1000;
   }
-  Criterion::insertEvaluation(p, path_len);
   bool collision = map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
   if (collision == true)
   {
     path_len = 50000;
-    cout << "[ "<< p.getX() << "," << p.getY() <<"] CELL TOO CLOSE TO WALL" << endl;
+//    cout << "[ "<< p.getX() << "," << p.getY() <<"] CELL TOO CLOSE TO WALL" << endl;
   }
+  Criterion::insertEvaluation(p, path_len);
   return path_len;
 }
 
