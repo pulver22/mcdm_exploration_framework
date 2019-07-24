@@ -722,8 +722,8 @@ bool Map::checkWallsPathPlanningGrid(float posX, float posY, float rangeInMeters
     }
 
     if (numObstNavCellsPerPathCell >=
-        0.5 * gridToPathGridScale * gridToPathGridScale) {
-      setPathPlanningGridValue(Map::CellValue::VIST, (*planning_iterator)(0),
+        0.1 * gridToPathGridScale * gridToPathGridScale) {
+      setPathPlanningGridValue(Map::CellValue::OBST, (*planning_iterator)(0),
                                (*planning_iterator)(1));
       result = true;
     }
