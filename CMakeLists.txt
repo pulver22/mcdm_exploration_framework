@@ -16,13 +16,14 @@ find_package(catkin REQUIRED COMPONENTS
   grid_map_msgs
   grid_map_cv
   cv_bridge
+  rfid_node
 )
 
 
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mcdm_exploration_framework
-  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs record_ros
+  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs record_ros rfid_node
 #  DEPENDS system_lib
 )
 
@@ -52,7 +53,7 @@ target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRAR
 add_executable(mcdm_slim mcdm_slim.cpp)
 target_link_libraries(mcdm_slim mcdm_exploration_framework ${catkin_LIBRARIES})
 
-add_executable(rfid_navigation rfid_navigation.cpp)
+add_executable(rfid_navigation rfid_navigation_updated.cpp)
 target_link_libraries(rfid_navigation mcdm_exploration_framework ${catkin_LIBRARIES})
 
 ## Declare a C++ executable
