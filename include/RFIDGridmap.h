@@ -1,3 +1,5 @@
+#ifndef RFIDGRIDMAP_H
+#define RFIDGRIDMAP_H
 
 
 // todo clean imports ...
@@ -55,6 +57,8 @@ public:
   RFIDGridmap(std::string fileURI, double mapResolution, double gridResolution,
               bool debug);
 
+  RFIDGridmap(nav_msgs::OccupancyGrid occGrid, double mapResolution,
+              double gridResolution, bool debug);
   /**
    * Constructor without debug information
    */
@@ -194,3 +198,5 @@ private:
    */
   string type2str(int type);
 };
+
+#endif

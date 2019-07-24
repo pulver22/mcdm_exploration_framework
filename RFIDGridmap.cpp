@@ -1,6 +1,27 @@
 
 #include "RFIDGridmap.h"
 
+
+
+RFIDGridmap::RFIDGridmap(nav_msgs::OccupancyGrid occGrid, double mapResolution,
+                         double gridResolution, bool debug)
+    : global_frame_("world"), layer_name_("rfid"), format_("mono8") {
+
+
+  ROS_DEBUG("[RFIDGridmap.cpp@constructor] Creating RFIDGridmap");
+  std::string fileURI="tmp/rfid_in_grid.png";
+  GridMapRosConverter::fromOccupancyGrid(occGrid, layer_name_, RFIDGridmap_);
+  saveLayer(RFIDGridmap_, layer_name_, fileURI, debug_, format_);
+  createGrid(RFIDGridmap_, layer_name_, fileURI, mapResolution, gridResolution,
+             debug_, global_frame_, format_);
+  ROS_DEBUG("[RFIDGridmap.cpp@main] grid created");
+
+};
+
+
+
+
+
 RFIDGridmap::RFIDGridmap(std::string fileURI, double mapResolution,
                          double gridResolution, bool debug)
     : global_frame_("world"), layer_name_("rfid"), format_("mono8") {
@@ -339,6 +360,30 @@ void RFIDGridmap::setPosition(grid_map::GridMap &map_, std::string layerName,
   map_.at(layerName, index) = value;
 };
 // Auxiliary functions.........................................................
+
+
+// not needed ?
+// void RFIDGridmap::encodeGrid(grid_map::GridMap *gm, std::string layerName, int obstValue, int freeValue) {
+//   long n_obsts = 0;
+//   long n_others = 0;
+//   long total = 0;
+//   for (grid_map::GridMapIterator iterator(*gm); !iterator.isPastEnd();
+//        ++iterator) {
+//     if (gm->at(layerName, *iterator) >= obstValue) {
+//       gm->at(layerName, *iterator) = -1;
+//       n_obsts++;
+//     } else
+//     {
+//       gm->at(layerName, *iterator) = 0;
+//       n_others++;
+//     }
+//   }
+//
+//   total = n_obsts +  n_others;
+//   ROS_DEBUG("[RFIDGridmap.cpp@encodeGrid] Encoded grid with %3.3f %% of occupied cells CASTED to  (-1)", 100.0 * n_obsts / (1.0 * total));
+//   ROS_DEBUG("[RFIDGridmap.cpp@encodeGrid] %3.3f %% cells under obst threshold (%d), CASTED to (0)", 100.0 * n_others / (1.0 * total), obstValue);
+// }
+
 
 string RFIDGridmap::type2str(int type) {
   string r;
