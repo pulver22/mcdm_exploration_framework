@@ -51,6 +51,8 @@ class NavigationUtilities {
 
     void cleanPossibleDestination2(std::list<Pose> *possibleDestinations, Pose &p);
 
+    void cleanDestinationFromTabulist(std::list<Pose> *possibleDestinations, std::list<std::pair<float, float> > *posToEsclude);
+
     void pushInitialPositions(dummy::Map map, float x, float y, float orientation,
                               int range, int FOV, double threshold,
                               string actualPose,

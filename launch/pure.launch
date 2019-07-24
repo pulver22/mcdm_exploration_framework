@@ -6,7 +6,7 @@
 
 <launch>
   <!-- PARAMS .............................................................. -->
-  <arg name="pure_args"  	default="180 3 0.8 0.1 0.3"/>-->
+  <arg name="pure_args"  	default="180 3 1 0.01 0.3"/>-->
 
   <env name="ROSCONSOLE_CONFIG_FILE"
     value="$(find mcdm_exploration_framework)/config/custom_rosconsole.conf"/>
