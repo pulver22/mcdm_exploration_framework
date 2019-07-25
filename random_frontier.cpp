@@ -227,7 +227,6 @@ int main(int argc, char **argv) {
       // ( final value expressed in second)
       unsigned int microseconds = 5 * 1000 * 1000;
       // cout << "total free cells in the main: " << totalFreeCells << endl;
-      list<Pose> unexploredFrontiers;
       list<Pose> tabuList;
       std::list<std::pair<float, float> > posToEsclude;
       list<Pose> nearCandidates;
@@ -306,15 +305,7 @@ int main(int argc, char **argv) {
           // Get the sensing time required for scanning
           target.setScanAngles(
               map.getSensingTime(x, y, orientation, FOV, range));
-          // Perform a scanning operation
-          //          map.getGridIndex(x, y, cell_i, cell_j);
-          //          newSensedCells = sensedCells + ray.performSensingOperation
-          //          ( &map, x, y, orientation, FOV, range,
-          //          target.getScanAngles().first,
-          //          target.getScanAngles().second );
-          newSensedCells =
-              sensedCells +
-              map.performSensingOperation(x, y, orientation, FOV, range,
+          newSensedCells = sensedCells + map.performSensingOperation(x, y, orientation, FOV, range,
                                           target.getScanAngles().first,
                                           target.getScanAngles().second);
           // Calculate the scanning angle
@@ -322,29 +313,10 @@ int main(int argc, char **argv) {
               target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanning time
           totalScanTime += nav_utils.calculateScanTime(scanAngle * 180 / M_PI);
-          // Calculare the relative RFID tag position to the robot position
-          //            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY,
-          //            target.getX(), target.getY());
-          // Calculate the received power and phase
-          //            double rxPower = received_power_friis(relTagCoord.first,
-          //            relTagCoord.second, freq, txtPower);
-          //            double phase = phaseDifference(relTagCoord.first,
-          //            relTagCoord.second, freq);
-          // Update the path planning and RFID map
-          //          cout << endl << "[pure_navigation.cpp]" <<
-          //          map.getGridValue(target.getX() + 1, target.getY() + 1) <<
-          //          endl;
+
 
           map.getPathPlanningIndex(x, y, cell_i, cell_j);
-          //          range = range / costresolution;
-          //          cout << "[pure_navigation.cpp@main](x,y) = (" << x << ","
-          //          << y << ")" << endl;
           map.updatePathPlanningGrid(x, y, range);
-          //            myGrid.addEllipse(rxPower - SENSITIVITY,
-          //            map.getNumGridCols() - target.getX(),  target.getY(),
-          //            target.getOrientation(), -0.5, 7.0);
-          // Search for new candidate position
-          //          map.getGridIndex(x, y, cell_i, cell_j);
 
           gridPub.publish(map.toMessageGrid());
           planningPub.publish(map.toMessagePathPlanning());
@@ -456,7 +428,7 @@ int main(int argc, char **argv) {
               }else{
                 cout << "Error occurring while stopping recording the bag. Exiting now!" << endl;
               }
-              exit(0);
+              ros::shutdown();
             }
 
             sensedCells = newSensedCells;
@@ -497,21 +469,19 @@ int main(int argc, char **argv) {
               frontiers.push_back(p7);
               // frontiers.push_back(p8);
             }
-            unexploredFrontiers = frontiers;
 
+
+            // NOTE: This may not be needed because  we are in an unexplored area
+            cout << "Number of frontiers identified: " << frontiers.size() << endl;
+            nav_utils.cleanPossibleDestination2(&frontiers, target);
+            nav_utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
+            // Print the frontiers with the respective evaluation
+            cout << "Number of frontiers identified: " << frontiers.size() << endl;
+            // If there are candidate positions
             // Evaluate the frontiers and return a list of <frontier,
             // evaluation> pairs
             EvaluationRecords *record = function.evaluateFrontiers(frontiers, &map, threshold, &path_client);
             nearCandidates = record->getFrontiers();
-            // NOTE: This may not be needed because  we are in an unexplored area
-            cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
-            nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-            nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
-
-            // Print the frontiers with the respective evaluation
-            cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
-            unordered_map<string, double> evaluation = record->getEvaluations();
-            // If there are candidate positions
             if (record->size() > 0) {
               // Set the previous pose equal to the current one (represented by
               // target)
@@ -949,7 +919,7 @@ int main(int argc, char **argv) {
       }
 
       sleep(1);
-      exit(0);
+      ros::shutdown();
     }
 
     ros::spinOnce();
