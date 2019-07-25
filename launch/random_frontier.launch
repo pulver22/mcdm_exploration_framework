@@ -1,0 +1,286 @@
+<?xml version="1.0"?>
+ <!--
+
+      Spawns a rfid equipped thorvald in ncfm facilities.
+-->
+
+<launch>
+  <!-- PARAMS .............................................................. -->
+  <arg name="pure_args"  	default="180 3 1 0.1 0.3"/>-->
+
+  <env name="ROSCONSOLE_CONFIG_FILE"
+    value="$(find mcdm_exploration_framework)/config/custom_rosconsole.conf"/>
+
+  <!-- Launch the grid map visualizer: can be removed after debug!-->
+  <node pkg="grid_map_visualization" type="grid_map_visualization" name="nav_grid_visualization_debug" output="screen">
+      <rosparam command="load" file="$(find mcdm_exploration_framework)/config/visualization.yaml" />
+  </node>
+
+  <!-- Launch the grid map visualizer: can be removed after debug!-->
+  <node pkg="grid_map_visualization" type="grid_map_visualization" name="plan_grid_visualization_debug" output="screen">
+      <rosparam command="load" file="$(find mcdm_exploration_framework)/config/visualization2.yaml" />
+  </node>
+
+  <!-- base bringup-->
+  <node pkg="mcdm_exploration_framework" type="random_frontier" name="ric" output="screen"  args="$(arg pure_args)">
+    <param name="move_base_costmap_topic_name" value="/map"/>
+    <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>
+  </node>
+
+  <!-- start recording the experiment -->
+<!--  <include file="$(find record_ros)/launch/record_ros.launch">-->
+<!--    <arg name="path_save"   value="/media/pulver/PulverHDD/mcdm_experiments/pure_navigation/"/>-->
+<!--    <arg name="file_name"  	value="sim_INB3123"/>-->
+<!--    <arg name="topic"       value="/amcl/parameter_descriptions-->
+<!--                                    /amcl/parameter_updates-->
+<!--                                    /amcl_pose-->
+<!--                                    /attached_collision_object-->
+<!--                                    /base_imu-->
+<!--                                    /clicked_point-->
+<!--                                    /clock-->
+<!--                                    /collision_object-->
+<!--                                    /diagnostics-->
+<!--                                    /dynamic_footprint_publisher/footprint_stamped-->
+<!--                                    /execute_trajectory/cancel-->
+<!--                                    /execute_trajectory/feedback-->
+<!--                                    /execute_trajectory/goal-->
+<!--                                    /execute_trajectory/result-->
+<!--                                    /execute_trajectory/status-->
+<!--                                    /floating_base_pose_simulated-->
+<!--                                    /gains/head_1_joint/parameter_descriptions-->
+<!--                                    /gains/head_1_joint/parameter_updates-->
+<!--                                    /gains/head_2_joint/parameter_descriptions-->
+<!--                                    /gains/head_2_joint/parameter_updates-->
+<!--                                    /gains/torso_lift_joint/parameter_descriptions-->
+<!--                                    /gains/torso_lift_joint/parameter_updates-->
+<!--                                    /gazebo/link_states-->
+<!--                                    /gazebo/model_states-->
+<!--                                    /gazebo/parameter_descriptions-->
+<!--                                    /gazebo/parameter_updates-->
+<!--                                    /gazebo/set_link_state-->
+<!--                                    /gazebo/set_model_state-->
+<!--                                    /goal_pt-->
+<!--                                    /ground_truth_odom-->
+<!--                                    /head_controller/command-->
+<!--                                    /head_controller/follow_joint_trajectory/cancel-->
+<!--                                    /head_controller/follow_joint_trajectory/feedback-->
+<!--                                    /head_controller/follow_joint_trajectory/goal-->
+<!--                                    /head_controller/follow_joint_trajectory/result-->
+<!--                                    /head_controller/follow_joint_trajectory/status-->
+<!--                                    /head_controller/increment/cancel-->
+<!--                                    /head_controller/increment/feedback-->
+<!--                                    /head_controller/increment/goal-->
+<!--                                    /head_controller/increment/result-->
+<!--                                    /head_controller/increment/status-->
+<!--                                    /head_controller/point_head_action/cancel-->
+<!--                                    /head_controller/point_head_action/feedback-->
+<!--                                    /head_controller/point_head_action/goal-->
+<!--                                    /head_controller/point_head_action/result-->
+<!--                                    /head_controller/point_head_action/status-->
+<!--                                    /head_controller/state-->
+<!--                                    /inertial_mass_markers-->
+<!--                                    /initialpose-->
+<!--                                    /input_joy/cmd_vel-->
+<!--                                    /introspection_data/full-->
+<!--                                    /introspection_data/names-->
+<!--                                    /introspection_data/values-->
+<!--                                    /joint_states-->
+<!--                                    /joy-->
+<!--                                    /joy_priority-->
+<!--                                    /joy_priority_action/cancel-->
+<!--                                    /joy_priority_action/feedback-->
+<!--                                    /joy_priority_action/goal-->
+<!--                                    /joy_priority_action/result-->
+<!--                                    /joy_priority_action/status-->
+<!--                                    /joy_turbo_angular_decrease/cancel-->
+<!--                                    /joy_turbo_angular_decrease/feedback-->
+<!--                                    /joy_turbo_angular_decrease/goal-->
+<!--                                    /joy_turbo_angular_decrease/result-->
+<!--                                    /joy_turbo_angular_decrease/status-->
+<!--                                    /joy_turbo_angular_increase/cancel-->
+<!--                                    /joy_turbo_angular_increase/feedback-->
+<!--                                    /joy_turbo_angular_increase/goal-->
+<!--                                    /joy_turbo_angular_increase/result-->
+<!--                                    /joy_turbo_angular_increase/status-->
+<!--                                    /joy_turbo_decrease/cancel-->
+<!--                                    /joy_turbo_decrease/feedback-->
+<!--                                    /joy_turbo_decrease/goal-->
+<!--                                    /joy_turbo_decrease/result-->
+<!--                                    /joy_turbo_decrease/status-->
+<!--                                    /joy_turbo_increase/cancel-->
+<!--                                    /joy_turbo_increase/feedback-->
+<!--                                    /joy_turbo_increase/goal-->
+<!--                                    /joy_turbo_increase/result-->
+<!--                                    /joy_turbo_increase/status-->
+<!--                                    /joy_turbo_reset/cancel-->
+<!--                                    /joy_turbo_reset/feedback-->
+<!--                                    /joy_turbo_reset/goal-->
+<!--                                    /joy_turbo_reset/result-->
+<!--                                    /joy_turbo_reset/status-->
+<!--                                    /joy_vel-->
+<!--                                    /key_vel-->
+<!--                                    /loc_map-->
+<!--                                    /loc_map_updates-->
+<!--                                    /loc_measure/loc_status_marker-->
+<!--                                    /loc_measure/loc_status_marker_array-->
+<!--                                    /map-->
+<!--                                    /map_metadata-->
+<!--                                    /map_updates-->
+<!--                                    /marker_teleop_srv/feedback-->
+<!--                                    /marker_teleop_srv/update-->
+<!--                                    /marker_vel-->
+<!--                                    /mobile_base_controller/cmd_vel-->
+<!--                                    /mobile_base_controller/odom-->
+<!--                                    /mobile_base_controller/parameter_descriptions-->
+<!--                                    /mobile_base_controller/parameter_updates-->
+<!--                                    /move_base/DWAPlannerROS/local_plan-->
+<!--                                    /move_base/EBandPlannerROS/eband_visualization-->
+<!--                                    /move_base/EBandPlannerROS/eband_visualization_array-->
+<!--                                    /move_base/EBandPlannerROS/global_plan-->
+<!--                                    /move_base/EBandPlannerROS/local_plan-->
+<!--                                    /move_base/GlobalPlanner/parameter_descriptions-->
+<!--                                    /move_base/GlobalPlanner/parameter_updates-->
+<!--                                    /move_base/GlobalPlanner/plan-->
+<!--                                    /move_base/GlobalPlanner/potential-->
+<!--                                    /move_base/NavfnROS/plan-->
+<!--                                    /move_base/PalPlannerROS/local_plan-->
+<!--                                    /move_base/TrajectoryPlannerROS/cost_cloud-->
+<!--                                    /move_base/TrajectoryPlannerROS/local_plan-->
+<!--                                    /move_base/cancel-->
+<!--                                    /move_base/current_goal-->
+<!--                                    /move_base/feedback-->
+<!--                                    /move_base/global_costmap/costmap-->
+<!--                                    /move_base/global_costmap/costmap_updates-->
+<!--                                    /move_base/global_costmap/footprint-->
+<!--                                    /move_base/global_costmap/inflation_layer/parameter_descriptions-->
+<!--                                    /move_base/global_costmap/inflation_layer/parameter_updates-->
+<!--                                    /move_base/global_costmap/obstacle_laser_layer/parameter_descriptions-->
+<!--                                    /move_base/global_costmap/obstacle_laser_layer/parameter_updates-->
+<!--                                    /move_base/global_costmap/obstacle_rgbd_layer/parameter_descriptions-->
+<!--                                    /move_base/global_costmap/obstacle_rgbd_layer/parameter_updates-->
+<!--                                    /move_base/global_costmap/parameter_descriptions-->
+<!--                                    /move_base/global_costmap/parameter_updates-->
+<!--                                    /move_base/global_costmap/static_layer/parameter_descriptions-->
+<!--                                    /move_base/global_costmap/static_layer/parameter_updates-->
+<!--                                    /move_base/goal-->
+<!--                                    /move_base/local_costmap/costmap-->
+<!--                                    /move_base/local_costmap/costmap_updates-->
+<!--                                    /move_base/local_costmap/footprint-->
+<!--                                    /move_base/local_costmap/footprint_layer/footprint_stamped-->
+<!--                                    /move_base/local_costmap/inflation_layer/parameter_descriptions-->
+<!--                                    /move_base/local_costmap/inflation_layer/parameter_updates-->
+<!--                                    /move_base/local_costmap/obstacle_laser_layer/parameter_descriptions-->
+<!--                                    /move_base/local_costmap/obstacle_laser_layer/parameter_updates-->
+<!--                                    /move_base/local_costmap/obstacle_rgbd_layer/parameter_descriptions-->
+<!--                                    /move_base/local_costmap/obstacle_rgbd_layer/parameter_updates-->
+<!--                                    /move_base/local_costmap/obstacle_sonar_layer/parameter_descriptions-->
+<!--                                    /move_base/local_costmap/obstacle_sonar_layer/parameter_updates-->
+<!--                                    /move_base/local_costmap/parameter_descriptions-->
+<!--                                    /move_base/local_costmap/parameter_updates-->
+<!--                                    /move_base/parameter_descriptions-->
+<!--                                    /move_base/parameter_updates-->
+<!--                                    /move_base/result-->
+<!--                                    /move_base/status-->
+<!--                                    /move_base_simple/goal-->
+<!--                                    /move_group/cancel-->
+<!--                                    /move_group/display_contacts-->
+<!--                                    /move_group/display_planned_path-->
+<!--                                    /move_group/feedback-->
+<!--                                    /move_group/goal-->
+<!--                                    /move_group/monitored_planning_scene-->
+<!--                                    /move_group/ompl/parameter_descriptions-->
+<!--                                    /move_group/ompl/parameter_updates-->
+<!--                                    /move_group/plan_execution/parameter_descriptions-->
+<!--                                    /move_group/plan_execution/parameter_updates-->
+<!--                                    /move_group/planning_scene_monitor/parameter_descriptions-->
+<!--                                    /move_group/planning_scene_monitor/parameter_updates-->
+<!--                                    /move_group/result-->
+<!--                                    /move_group/sense_for_plan/parameter_descriptions-->
+<!--                                    /move_group/sense_for_plan/parameter_updates-->
+<!--                                    /move_group/status-->
+<!--                                    /move_group/trajectory_execution/parameter_descriptions-->
+<!--                                    /move_group/trajectory_execution/parameter_updates-->
+<!--                                    /nav_grid_visualization_debug/visited-->
+<!--                                    /nav_vel-->
+<!--                                    /particlecloud-->
+<!--                                    /path-->
+<!--                                    /pause_navigation-->
+<!--                                    /phone_vel-->
+<!--                                    /pickup/cancel-->
+<!--                                    /pickup/feedback-->
+<!--                                    /pickup/goal-->
+<!--                                    /pickup/result-->
+<!--                                    /pickup/status-->
+<!--                                    /place/cancel-->
+<!--                                    /place/feedback-->
+<!--                                    /place/goal-->
+<!--                                    /place/result-->
+<!--                                    /place/status-->
+<!--                                    /plan_grid_visualization_debug/visited-->
+<!--                                    /planning_scene-->
+<!--                                    /planning_scene_world-->
+<!--                                    /play_motion/cancel-->
+<!--                                    /play_motion/feedback-->
+<!--                                    /play_motion/goal-->
+<!--                                    /play_motion/result-->
+<!--                                    /play_motion/status-->
+<!--                                    /rgbd_scan-->
+<!--                                    /rosout-->
+<!--                                    /rosout_agg-->
+<!--                                    /rviz_joy_vel-->
+<!--                                    /scan-->
+<!--                                    /servoing_cmd_vel-->
+<!--                                    /slam_graph_edges-->
+<!--                                    /slam_graph_edges_array-->
+<!--                                    /slam_graph_marker_array-->
+<!--                                    /slam_graph_vertices-->
+<!--                                    /slam_graph_vertices_array-->
+<!--                                    /slam_trajectory-->
+<!--                                    /sonar_base-->
+<!--                                    /sonar_cloud-->
+<!--                                    /sonar_max_range_cloud-->
+<!--                                    /stop_closing_loop-->
+<!--                                    /tab_vel-->
+<!--                                    /text_marker-->
+<!--                                    /text_marker_array-->
+<!--                                    /tf-->
+<!--                                    /tf_lookup/cancel-->
+<!--                                    /tf_lookup/feedback-->
+<!--                                    /tf_lookup/goal-->
+<!--                                    /tf_lookup/result-->
+<!--                                    /tf_lookup/status-->
+<!--                                    /tf_static-->
+<!--                                    /tf_stream/cancel-->
+<!--                                    /tf_stream/feedback-->
+<!--                                    /tf_stream/goal-->
+<!--                                    /tf_stream/result-->
+<!--                                    /tf_stream/status-->
+<!--                                    /torso_controller/command-->
+<!--                                    /torso_controller/follow_joint_trajectory/cancel-->
+<!--                                    /torso_controller/follow_joint_trajectory/feedback-->
+<!--                                    /torso_controller/follow_joint_trajectory/goal-->
+<!--                                    /torso_controller/follow_joint_trajectory/result-->
+<!--                                    /torso_controller/follow_joint_trajectory/status-->
+<!--                                    /torso_controller/increment/cancel-->
+<!--                                    /torso_controller/increment/feedback-->
+<!--                                    /torso_controller/increment/goal-->
+<!--                                    /torso_controller/increment/result-->
+<!--                                    /torso_controller/increment/status-->
+<!--                                    /torso_controller/safe_command-->
+<!--                                    /torso_controller/state-->
+<!--                                    /trajectories-->
+<!--                                    /trajectory_execution_event-->
+<!--                                    /twist_marker-->
+<!--                                    /twist_marker_array-->
+<!--                                    /velocity/pid_gains/wheel_left_joint/parameter_descriptions-->
+<!--                                    /velocity/pid_gains/wheel_left_joint/parameter_updates-->
+<!--                                    /velocity/pid_gains/wheel_right_joint/parameter_descriptions-->
+<!--                                    /velocity/pid_gains/wheel_right_joint/parameter_updates-->
+<!--                                    /vo_cloud-->
+<!--                                    /vo_map-->
+<!--                                    /voxel_grid_global_marker-->
+<!--                                    /voxel_grid_global_marker_array-->
+<!--                                    "/>-->
+<!--  </include>-->
+
+</launch>

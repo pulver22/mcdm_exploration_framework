@@ -255,6 +255,11 @@ int main(int argc, char **argv) {
       std::random_device rd; // obtain a random number from hardware
       std::mt19937 eng(rd()); // seed the generator
       std::uniform_int_distribution<> distr(0, 359); // define the range
+      float x;
+      float y;
+      float orientation;
+      int range;
+      double FOV;
 
       do {
 //
@@ -276,12 +281,12 @@ int main(int argc, char **argv) {
           path.request.start.pose.position.y = target.getY();
           path.request.start.pose.orientation.w = 1;
 
-          float x = target.getX();
-          float y = target.getY();
-          float orientation = roundf(target.getOrientation() * 100) / 100;
+          x = target.getX();
+          y = target.getY();
+          orientation = roundf(target.getOrientation() * 100) / 100;
           ; // cast orientation in [0, 360]
-          int range = target.getRange();
-          double FOV = target.getFOV();
+          range = target.getRange();
+          FOV = target.getFOV();
           string actualPose = function.getEncodedKey(target, 0);
           map.setCurrentPose(target);
           string encoding = to_string(target.getX()) + to_string(target.getY());
@@ -321,6 +326,7 @@ int main(int argc, char **argv) {
                 &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
                 &path_client, backTracking, robot_radius);
           }
+          sensedCells = newSensedCells;
 
 
       }
