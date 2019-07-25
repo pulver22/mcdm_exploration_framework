@@ -1363,7 +1363,7 @@ grid_map::Position Map::getRandomFreeCellPosition(){
   long tot_free_cells = free_cells.size();
   std::random_device rd;     // only used once to initialise (seed) engine
   std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-  std::uniform_int_distribution<int> uni(0, tot_free_cells); // guaranteed unbiased
+  std::uniform_int_distribution<int> uni(0, tot_free_cells-1); // guaranteed unbiased
 
   auto random_integer = uni(rng);
   grid_map::Index random_cell = free_cells[random_integer];
