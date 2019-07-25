@@ -190,6 +190,7 @@ double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map,
       insertEvaluation(p,unExploredMap);
   */
   NewRay ray;
+  double unExploredMap = 0;
   // Map *map2 = &map;
   //    cout << " [informationGainCriterion.cpp@Evaluate][1] [posX, posY] = ["
   //    << px << "," << py << "]" << endl;
@@ -199,7 +200,7 @@ double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map,
   //    << x_meter << "," << y_meter << "]" << endl;
   //  double unExploredMap = ray.getInformationGain( map, px, py, orientation,
   //  angle, range);
-  double unExploredMap = map->getInformationGain(px, py, orientation, angle, range);
+  unExploredMap = map->getInformationGain(px, py, orientation, angle, range);
 //  cout << "[informationGainCriterion.cpp@Evaluate] [posX, posY] = [" << px << "," << py << "]" << endl;
 //  cout << "   [informationGainCriterion.cpp@Evaluate] unExploredMap = " << unExploredMap << endl;
   //

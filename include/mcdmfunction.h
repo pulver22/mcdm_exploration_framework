@@ -15,7 +15,7 @@ class MCDMFunction {
 public:
   MCDMFunction();
   ~MCDMFunction();
-  double evaluateFrontier(Pose &p, dummy::Map *map,
+  void evaluateFrontier(Pose &p, dummy::Map *map,
                           ros::ServiceClient *path_client);
   EvaluationRecords *evaluateFrontiers(const std::list<Pose> &frontiers,
                                        dummy::Map *map, double threshold,

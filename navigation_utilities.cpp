@@ -24,42 +24,61 @@ bool NavigationUtilities::containsPos(std::list<std::pair<float, float>> *positi
                  std::pair<float, float> p) {
   bool result = false;
   std::pair<float, float> tmp_p = make_pair(float(int(p.first)), float(int(p.second)));
-//  cout << "   [pure_navigation.py@containsPos] tmp_p: " << tmp_p.first << "," << tmp_p.second << endl;
+  cout << "   [navigation_utilties.py@containsPos] tmp_p: " << tmp_p.first << "," << tmp_p.second << endl;
 
   auto findIter = std::find(positionEscluded->begin(), positionEscluded->end(), tmp_p);
   if (findIter != positionEscluded->end()) {
     result = true;
   }
-//  cout << "Is it already visited and excluded: " << result << endl;
+  cout << "Is it already visited and excluded: " << result << endl;
   return result;
 }
 
 void NavigationUtilities::cleanPossibleDestination2(std::list<Pose> *possibleDestinations, Pose &p) {
   MCDMFunction function;
-  //  cout << "[pure_navigation.cpp@cleanPossibleDestination2] I want to remove
-  //  "<< function.getEncodedKey(p,0) << endl;
-  //  cout << "[pure_navigation.cpp@cleanPossibleDestination2] Size possible
-  //  destination: " << possibleDestinations->size() << endl;
-  //  for (auto it = possibleDestinations->begin(); it !=
-  //  possibleDestinations->end(); it++)
-  //  {
-  //    cout << function.getEncodedKey(*it, 0) << endl;
-  //  }
-  std::list<Pose>::iterator findIter =
-      std::find(possibleDestinations->begin(), possibleDestinations->end(), p);
+
+//  for (auto it = possibleDestinations->begin(); it != possibleDestinations->end(); it++)
+//  {
+//    cout << function.getEncodedKey(*it, 0) << endl;
+//  }
+
+  std::list<Pose>::iterator findIter = std::find(possibleDestinations->begin(), possibleDestinations->end(), p);
   if (findIter != possibleDestinations->end()) {
-    //    cout << "[pure_navigation.cpp@cleanPossibleDestination2] EncodedKey:"
+    //    cout << "[navigation_utilties.cpp@cleanPossibleDestination2] EncodedKey:"
     //    <<  function.getEncodedKey(*findIter,0) << "\n" << endl;
     possibleDestinations->erase(findIter);
   }
-  //  else cout<< "[pure_navigation.cpp@cleanPossibleDestination2] Cell not
+  //  else cout<< "[navigation_utilties.cpp@cleanPossibleDestination2] Cell not
   //  found\n" << endl;
 
-  //  for (auto it = possibleDestinations->begin(); it !=
-  //  possibleDestinations->end(); it++)
-  //  {
-  //    cout << function.getEncodedKey(*it, 0) << endl;
-  //  }
+//    for (auto it = possibleDestinations->begin(); it !=
+//    possibleDestinations->end(); it++)
+//    {
+//      cout << function.getEncodedKey(*it, 0) << endl;
+//    }
+
+  cout << "[navigation_utilies.cpp@cleanPossibleDestination2] cleanedFronties: " << possibleDestinations->size() << endl;
+}
+
+void NavigationUtilities::cleanDestinationFromTabulist(std::list<Pose> *possibleDestinations,
+                                                       std::list<std::pair<float, float> > *posToEsclude) {
+
+  std::list<Pose> finalDestination;
+  cout << "Size of possibleDestinations: " << possibleDestinations->size() << endl;
+  for (auto it = possibleDestinations->begin(); it != possibleDestinations->end(); it++)
+    {
+      // create a temporary position pair
+      std::pair<float, float> tmp_position (int(it->getX()), int(it->getY()));
+      // look for this position in the list of forbidden positions
+      std::list<std::pair<float, float>>::iterator findIter = std::find(posToEsclude->begin(), posToEsclude->end(), tmp_position);
+      // if it's not found, add it to the list of final Destination
+      if (findIter == posToEsclude->end()) {
+        finalDestination.push_back(*it);
+      }
+    }
+  cout << "Size of finalDestination: " << finalDestination.size() << endl;
+  *possibleDestinations = finalDestination;
+  cout << "Size of possibleDestinations after update: " << possibleDestinations->size() << endl;
 }
 
 void NavigationUtilities::pushInitialPositions(dummy::Map map, float x, float y, float orientation,
@@ -126,7 +145,7 @@ void NavigationUtilities::calculateDistance(list<Pose> history, ros::ServiceClie
         path_len = 1000;
       }
     } else {
-      cout << "[pure_navigation.cpp@calculateDistance] Service call failed! " << endl;
+      cout << "[navigation_utilties.cpp@calculateDistance] Service call failed! " << endl;
       path_len = 1000;
     }
     travelledDistance = travelledDistance + path_len;
@@ -195,7 +214,7 @@ void NavigationUtilities::updatePathMetrics(
     //      path_len = 1000;
     //    }
   } else {
-    cout << "[pure_navigation@updatePathMetrics] Path_finding Service call failed! " << endl;
+    cout << "[navigation_utilties@updatePathMetrics] Path_finding Service call failed! " << endl;
   }
 //    cout << "1: " << *travelledDistance << endl;
   // Update the distance counting
@@ -332,7 +351,7 @@ bool NavigationUtilities::move(float x, float y, float orientation, float time_t
 
   MoveBaseClient ac("move_base", true);
   while (!ac.waitForServer(ros::Duration(5.0))) {
-    cout << "[pure_navigation@createROSComms]... waiting ..." << endl;
+    cout << "[navigation_utilties@createROSComms]... waiting ..." << endl;
   }
   // we'll send a goal to the robot to move 1 meter forward
   goal.target_pose.header.frame_id = "map";
@@ -355,35 +374,35 @@ bool NavigationUtilities::move(float x, float y, float orientation, float time_t
   double roll, pitch, yaw;
   m.getRPY(roll, pitch, yaw);
 
-  cout << "[pure_navigation.cpp@move] Sending goal = (" << x << "," << y <<
+  cout << "[navigation_utilties.cpp@move] Sending goal = (" << x << "," << y <<
        ") with orientation: " << _orientation << "(" << _orientation * 180 / M_PI
        << ")"<< endl;
   ac.sendGoal(goal);
-  //  cout << "[pure_navigation.cpp@move] I'm moving..." << endl;
+  //  cout << "[navigation_utilties.cpp@move] I'm moving..." << endl;
 
   actionlib::SimpleClientGoalState curr_state = actionlib::SimpleClientGoalState::PENDING;
   float total_wait_time = 0.0;
   while (!curr_state.isDone()){
     time_travel = std::min(time_travel, (float) 5.0);
     total_wait_time +=  time_travel;
-    cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << " seconds to reach goal" << endl;
+    cout << "     [navigation_utilties.cpp@move] Waiting for " << total_wait_time << "/60.0 seconds to reach goal" << endl;
     ac.waitForResult(ros::Duration(time_travel));
     curr_state = ac.getState();
-    cout << "Result: " << curr_state.getText() << endl;
+    cout << "     Result: " << curr_state.getText() << endl;
 
 
     if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
-      cout << "[pure_navigation.cpp@move] Goal position reached!" << endl;
+      cout << "[navigation_utilties.cpp@move] Goal position reached!" << endl;
       success = true;
     } else if (curr_state.isDone()) {
-      cout << "[pure_navigation.cpp@move] The base failed to move, adding this "
+      cout << "[navigation_utilties.cpp@move] The base failed to move, adding this "
               "pose to the Tabulist and posToEsclude" << endl;
       success = false;
       std::pair<int, int> pairToRemove;
       pairToRemove = make_pair(int(x), int(y));
       posToEsclude->push_back(pairToRemove);
-    } else if (total_wait_time> 60.0) {
-      cout << "[pure_navigation.cpp@move] Is taking too long" << endl;
+    } else if (total_wait_time > 60.0) {
+      cout << "[navigation_utilties.cpp@move] Is taking too long" << endl;
       success = false;
       curr_state = actionlib::SimpleClientGoalState::ABORTED;
     }
@@ -397,7 +416,7 @@ double NavigationUtilities::getPathLen(std::vector<geometry_msgs::PoseStamped> p
   double len = 0;
   geometry_msgs::Point p1, p2;
   int npoints = poses.size();
-//  cout << "[pure_navigation.cpp@getPathLen]Path has [" <<npoints << "] points" << endl;
+//  cout << "[navigation_utilties.cpp@getPathLen]Path has [" <<npoints << "] points" << endl;
   if (npoints > 0) {
     for (int i = 1; i < npoints; i++) {
       p1 = poses[i].pose.position;
@@ -407,7 +426,7 @@ double NavigationUtilities::getPathLen(std::vector<geometry_msgs::PoseStamped> p
     }
   } else {
     len = std::numeric_limits<double>::max();
-//    cout << "[pure_navigation.cpp@getPathLen]Empty path. Len set to infinite... " << endl;
+//    cout << "[navigation_utilties.cpp@getPathLen]Empty path. Len set to infinite... " << endl;
   }
 
   return len;
@@ -464,20 +483,20 @@ bool NavigationUtilities::showMarkerandNavigate(Pose target, ros::Publisher *mar
     // calculate path length
     path_len = getPathLen(path->response.plan.poses, robot_radius);
     if (path_len < 1e3) {
-      //            printf("[pure_navigation.cpp@showMarkerandNavigate] Path
+      //            printf("[navigation_utilties.cpp@showMarkerandNavigate] Path
       //            len is [%3.3f m.]", path_len);
     } else {
-      //            printf("[pure_navigation.cpp@showMarkerandNavigate] Path
+      //            printf("[navigation_utilties.cpp@showMarkerandNavigate] Path
       //            len is infinite");
       path_len = 1000;
     }
   } else {
-    cout << "[pure_navigation.cpp@showMarkerandNavigate] Service call failed! " << endl;
+    cout << "[navigation_utilties.cpp@showMarkerandNavigate] Service call failed! " << endl;
     path_len = 1000;
   }
 
   float time_travel = 2 * path_len / min_robot_speed;
-//      cout << "[pure_navigation.cpp@showMarkerandNavigate] Target is at " <<
+//      cout << "[navigation_utilties.cpp@showMarkerandNavigate] Target is at " <<
 //      path_len << " m from the robot" << endl;
 
   return move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) / 100,
@@ -554,7 +573,7 @@ Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *
 {
   bool isFreeFromObstacle = false;
   while (isFreeFromObstacle == false) {
-    cout << "===> Checking against localmap!" << endl;
+//    cout << "===> Checking against localmap!" << endl;
     // check that the current target is free from obstacles in the local map
     isFreeFromObstacle = freeInLocalCostmap(target, move_base_local_costmap_topic_name);
     cout << "   isFree: " << isFreeFromObstacle << endl;
@@ -569,9 +588,9 @@ Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *
     record = function->evaluateFrontiers(*nearCandidates, map, threshold, path_client);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
-    cout << "     record size: " << record->size() << endl;
+//    cout << "     record size: " << record->size() << endl;
     target = result.first;
-    cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
+//    cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
     // and start the new iteration
   }
   return target;

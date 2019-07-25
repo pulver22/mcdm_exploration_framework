@@ -663,6 +663,8 @@ public:
   void countGridCells(long *n_obsts, long *n_free, long *n_vist,
                       long *n_others);
 
+  grid_map::Position getRandomFreeCellPosition();
+
 protected:
 
   /**
@@ -783,6 +785,12 @@ protected:
   // number of cols of the navigation grid
   long numGridCols;
 
+  //list of obstacle cells, free cells and visited cells
+  vector<grid_map::Index> obst_cells;
+  vector<grid_map::Index> free_cells;
+  vector<grid_map::Index> vist_cells;
+
+
 private:
   // TODO: meaningful description here
   std::vector<std::pair<float, float> > edgePoints;
@@ -897,6 +905,7 @@ private:
   float toFloat(Map::CellValue value) const;
   void encodeGrid(grid_map::GridMap *gm, int obstValue, int freeValue);
   void countCells(long *n_obsts, long *n_free, long *n_vist, long *n_others,
+                  vector<grid_map::Index> *obst, vector<grid_map::Index> *free, vector<grid_map::Index> *vist,
                   const grid_map::GridMap *gm);
   void printSubmapBoundaries(grid_map::Index startIndex,
                              grid_map::Index bufferSize,

@@ -22,7 +22,7 @@
   </node>
 
   <!-- base bringup-->
-  <node pkg="mcdm_exploration_framework" type="pure_navigation" name="ric" output="screen"  args="$(arg pure_args)">
+  <node pkg="mcdm_exploration_framework" type="random_walk" name="ric" output="screen"  args="$(arg pure_args)">
     <param name="move_base_costmap_topic_name" value="/map"/>
     <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>
   </node>
