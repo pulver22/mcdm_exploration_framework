@@ -6,7 +6,17 @@
 
 <launch>
   <!-- PARAMS .............................................................. -->
-  <arg name="pure_args"  	default="180 3 1 0.01 0.3"/>-->
+  <arg name="pure_args"  	default="180 3 1 0.01 0.3"/>
+  <arg name="bag_descriptor" default="mcdm_navigation_180_3_1_0.01_0.3_date_"/>
+  <!-- I highly recomend you that the bag descriptor has correct pure nav params -->
+  <arg name="save_bag"  	default="false"/>
+
+  <!-- Topics to record:
+    These two were removed because they suppose lots of data
+      /nav_grid_visualization_debug/visited
+      /plan_grid_visualization_debug/visited
+  -->
+  <arg name="topic_list" default="/tf /tf_static /scan_filtered /mcdm_stats /scan_filtered /map /loc_map /move_base/current_goal"/>
 
   <env name="ROSCONSOLE_CONFIG_FILE"
     value="$(find mcdm_exploration_framework)/config/custom_rosconsole.conf"/>
@@ -28,6 +38,12 @@
   </node>
 
   <!-- start recording the experiment -->
+  <group  if="$(arg save_bag)">
+    <node pkg="rosbag" type="record" name="bag_recorder"
+    args="record  -o $(arg bag_descriptor) $(arg topic_list)" output="screen"/>
+  </group>
+
+
 <!--  <include file="$(find record_ros)/launch/record_ros.launch">-->
 <!--    <arg name="path_save"   value="/media/pulver/PulverHDD/mcdm_experiments/pure_navigation/"/>-->
 <!--    <arg name="file_name"  	value="sim_INB3123"/>-->
