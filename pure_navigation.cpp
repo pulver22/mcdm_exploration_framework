@@ -140,6 +140,13 @@ int main(int argc, char **argv) {
   std_msgs::String stats_msg;
   std::stringstream stats_buffer;
   double coverage;
+
+  // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
+  stats_buffer.str("coveragePercent, numConfiguration, backTracking");
+  stats_msg.data=stats_buffer.str();
+  stats_pub.publish(stats_msg);
+
+
   // Start recording the bag
   srv_rosbag.request.cmd = "record";
   if (rosbag_client.call(srv_rosbag)){
@@ -953,6 +960,7 @@ int main(int argc, char **argv) {
         }
 
         // after 1 loop is complete, publish some stats
+        // IF YOU CHANGE WHAT'S PUBLISHED HERE CHANGE HEADER PUBLISHING ABOVE!!!
         coverage = 100 * float(newSensedCells)/float(totalFreeCells);
         stats_buffer.str(std::string()); // remove old data
         stats_buffer << (coverage) << ", " << (numConfiguration) << ", " << (btMode);
