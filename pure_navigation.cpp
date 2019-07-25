@@ -134,6 +134,8 @@ std::string  marker_pub_topic_name;
 std::string rosbag_srv_name;
 double robot_radius;
 NavigationUtilities nav_utils;
+std::string stats_topic_name;
+
 
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_;
@@ -147,6 +149,7 @@ ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
 record_ros::String_cmd srv_rosbag;
+ros::Publisher stats_pub;
 
 // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm
 // 100 75 5 0 15 180 0.95 0.12
@@ -189,6 +192,9 @@ int main(int argc, char **argv) {
   bool path_srv_call;
   ros::Rate r(1);
 
+  std_msgs::String stats_msg;
+  std::stringstream stats_buffer;
+  double coverage;
   // Start recording the bag
   srv_rosbag.request.cmd = "record";
   if (rosbag_client.call(srv_rosbag)){
@@ -963,6 +969,16 @@ int main(int argc, char **argv) {
           }
           delete record;
         }
+
+        // after 1 loop is complete, publish some stats
+        coverage = 100 * float(newSensedCells)/float(totalFreeCells);
+        stats_buffer.str(std::string()); // remove old data
+        stats_buffer << (coverage) << ", " << (numConfiguration) << ", " << (btMode);
+        stats_msg.data=stats_buffer.str();
+
+        stats_pub.publish(stats_msg);
+
+
       }
       // Perform exploration until a certain coverage is achieved
       while (sensedCells < precision * totalFreeCells);
@@ -1574,6 +1590,7 @@ void loadROSParams(){
   private_node_handle.param("move_base_local_costmap_topic_name", move_base_local_costmap_topic_name, std::string("/move_base/local_costmap/costmap"));
   private_node_handle.param("marker_pub_topic_name", marker_pub_topic_name, std::string("goal_pt"));
   private_node_handle.param("rosbag_srv_name", rosbag_srv_name, std::string("/record/cmd"));
+  private_node_handle.param("stats_topic_name", stats_topic_name, std::string("/mcdm_stats"));
 
 }
 
@@ -1590,6 +1607,8 @@ void printROSParams(){
   printf("   - move_base_costmap_topic_name [%s]\n", move_base_costmap_topic_name.c_str());
   printf("   - move_base_costmap_updates_topic_name [%s]\n", move_base_costmap_updates_topic_name.c_str());
   printf("   - marker_pub_topic_name [%s]\n", marker_pub_topic_name.c_str());
+  printf("   - stats_topic_name [%s]\n", stats_topic_name.c_str());
+
   printf("/////////////////////////////////////////////////////////////////////////\n");
 
 }
@@ -1610,6 +1629,7 @@ void createROSComms(){
   gridPub = nh.advertise<grid_map_msgs::GridMap>(nav_grid_debug_topic_name, 1, true);
   planningPub = nh.advertise<grid_map_msgs::GridMap>(planning_grid_debug_topic_name, 1, true);
   marker_pub =  nh.advertise<geometry_msgs::PointStamped>(marker_pub_topic_name, 10);
+  stats_pub =  nh.advertise<std_msgs::String>(stats_topic_name, 1, true);
 
 
   // create subscribers, only when we are sure the right people is publishing
