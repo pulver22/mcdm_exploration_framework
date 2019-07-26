@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
     sleep(5);
   }else{
     cout << "Error occurring while recording the bag. Exiting now!" << endl;
-//    exit(0);
+//    ros::shutdown();
   }
 
 
@@ -357,6 +357,7 @@ int main(int argc, char **argv) {
           map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
           map.plotGridColor("/tmp/nav_lastLoop.png");
           map.findCandidatePositions(x, y, orientation, FOV, range);
+          map.findFrontierPosition();
           vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
 
             map.emptyCandidatePositions();
@@ -424,6 +425,7 @@ int main(int argc, char **argv) {
           if (candidatePosition.size() == 0) {
             // Find candidates
             map.findCandidatePositions2(x, y, orientation, FOV, range);
+            map.findFrontierPosition();  //TODO:check
             candidatePosition = map.getCandidatePositions();
             map.emptyCandidatePositions();
 
@@ -490,7 +492,7 @@ int main(int argc, char **argv) {
               }else{
                 cout << "Error occurring while stopping recording the bag. Exiting now!" << endl;
               }
-              exit(0);
+              ros::shutdown();
             }
 
             sensedCells = newSensedCells;
@@ -502,7 +504,7 @@ int main(int argc, char **argv) {
             // need to convert from a <int,int pair> to a Pose with also
             // orientation,laser range and angle
             list<Pose> frontiers;
-            // For every candidate positio, create 8 pose with a different
+            // For every candidate position, create 8 pose with a different
             // orientation each and consider them as frontiers
             vector<pair<float, float> >::iterator it = candidatePosition.begin();
             for (it; it != candidatePosition.end(); it++) {
@@ -607,14 +609,14 @@ int main(int argc, char **argv) {
                   record = function.evaluateFrontiers(nearCandidates, &map,
                                                       threshold, &path_client);
                   // If there are candidate positions
-                  cout << "PoseToEsclude:" << endl;
-                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
-                      cout << " " << iter->first << "," << iter->second << endl;
-                  }
-                  cout << "Candidates:" << endl;
-                  for (auto iter = nearCandidates.begin(); iter != nearCandidates.end(); iter++) {
-                    cout << " " << iter->getX() << "," << iter->getY() << endl;
-                  }
+//                  cout << "PoseToEsclude:" << endl;
+//                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
+//                      cout << " " << iter->first << "," << iter->second << endl;
+//                  }
+//                  cout << "Candidates:" << endl;
+//                  for (auto iter = nearCandidates.begin(); iter != nearCandidates.end(); iter++) {
+//                    cout << " " << iter->getX() << "," << iter->getY() << endl;
+//                  }
                   while (1) {
                     if (record->size() != 0) {
                       // Select the new pose of the robot
@@ -1027,7 +1029,7 @@ int main(int argc, char **argv) {
       }
 
       sleep(1);
-      exit(0);
+      ros::shutdown();
     }
 
     ros::spinOnce();
