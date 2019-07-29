@@ -13,7 +13,7 @@ using namespace dummy;
 class MCDMFunction {
 
 public:
-  MCDMFunction();
+  MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3);
   ~MCDMFunction();
   void evaluateFrontier(Pose &p, dummy::Map *map,
                           ros::ServiceClient *path_client);

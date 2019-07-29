@@ -5,13 +5,13 @@
 
 using namespace std;
 
-WeightMatrix *MCDMWeightReader::getMatrix() {
+WeightMatrix *MCDMWeightReader::getMatrix(float w_criterion_1, float w_criterion_2, float w_criterion_3) {
   WeightMatrix *matrix = NULL;
   matrix = new WeightMatrix(3);
   // int numCriteria = 3;
-  matrix->insertSingleCriterion(INFORMATION_GAIN, 0.6, true);
-  matrix->insertSingleCriterion(TRAVEL_DISTANCE, 0.2, true);
-  matrix->insertSingleCriterion(SENSING_TIME, 0.2, true);
+  matrix->insertSingleCriterion(INFORMATION_GAIN, w_criterion_1, true);
+  matrix->insertSingleCriterion(TRAVEL_DISTANCE, w_criterion_2, true);
+  matrix->insertSingleCriterion(SENSING_TIME, w_criterion_3, true);
   string str1(INFORMATION_GAIN);
   string str2(TRAVEL_DISTANCE);
   string str3(SENSING_TIME);
@@ -28,10 +28,10 @@ WeightMatrix *MCDMWeightReader::getMatrix() {
   list4.push_back(str1);
   list4.push_back(str2);
   list4.push_back(str3);
-  matrix->insertCombinationWeight(list1, 0.9);
-  matrix->insertCombinationWeight(list2, 0.5);
-  matrix->insertCombinationWeight(list3, 0.9);
-  matrix->insertCombinationWeight(list4, 1.0);
+  matrix->insertCombinationWeight(list1, (w_criterion_1 + w_criterion_2 + 0.1));
+  matrix->insertCombinationWeight(list2, (w_criterion_1 + w_criterion_3 + 0.1));
+  matrix->insertCombinationWeight(list3, (w_criterion_2 + w_criterion_3 + 0.1));
+  matrix->insertCombinationWeight(list4, (w_criterion_1 + w_criterion_2 + w_criterion_3));
 
   return matrix;
 }

@@ -57,7 +57,8 @@ class NavigationUtilities {
                               int range, int FOV, double threshold,
                               string actualPose,
                               vector<pair<string, list<Pose> >> *graph2,
-                              ros::ServiceClient *path_client);
+                              ros::ServiceClient *path_client,
+                              MCDMFunction *function);
 
     double calculateScanTime(double scanAngle);
 
@@ -79,7 +80,8 @@ class NavigationUtilities {
 
     void printResult(long newSensedCells, long totalFreeCells, double precision,
                      long numConfiguration, double travelledDistance,
-                     int numOfTurning, double totalAngle, double totalScanTime, double resolution);
+                     int numOfTurning, double totalAngle, double totalScanTime, double resoion,
+                     float w_info_gain, float w_travel_distance, float w_sensing_time, std::string fileURI);
 
     bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                                nav_msgs::GetPlan *path,

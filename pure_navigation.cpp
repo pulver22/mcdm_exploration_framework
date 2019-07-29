@@ -178,6 +178,10 @@ int main(int argc, char **argv) {
        * resolution = X -> X%(full resolution)
        *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
       double resolution = atof(argv[5]);
+      double w_info_gain = atof(argv[6]);
+      double w_travel_distance = atof(argv[7]);
+      double w_sensing_time = atof(argv[8]);
+      std::string out_log (argv[9]);
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -223,7 +227,7 @@ int main(int argc, char **argv) {
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
-      MCDMFunction function;
+      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -417,7 +421,7 @@ int main(int argc, char **argv) {
             // Add to the graph the initial positions and the candidates from
             // there (calculated inside the function)
             nav_utils.pushInitialPositions(map, x, y, orientation, range, FOV, threshold,
-                                 actualPose, &graph2, &path_client);
+                                 actualPose, &graph2, &path_client, &function);
           }
 
           // If there are no new candidate positions from the current pose of
@@ -476,7 +480,8 @@ int main(int argc, char **argv) {
               }
               nav_utils.printResult(newSensedCells, totalFreeCells, precision,
                           numConfiguration, travelledDistance, numOfTurning,
-                          totalAngle, totalScanTime, resolution);
+                          totalAngle, totalScanTime, resolution,
+                          w_info_gain, w_travel_distance, w_sensing_time, out_log);
               auto endMCDM = ros::Time::now().toSec();
               double totalTimeMCDM = endMCDM - startMCDM;
               cout << "Total time for MCDM algorithm : " << totalTimeMCDM
@@ -1001,7 +1006,8 @@ int main(int argc, char **argv) {
       }
 
       nav_utils.printResult(newSensedCells, totalFreeCells, precision, numConfiguration,
-                  travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution);
+                  travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution,
+                  w_info_gain, w_travel_distance, w_sensing_time, out_log);
       // Find the tag
       //        std::pair<int,int> tag = map.findTag();
       //        cout << "RFID pose: [" << tag.second << "," << tag.first << "]"
