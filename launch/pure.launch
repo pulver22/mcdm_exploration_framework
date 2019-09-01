@@ -6,7 +6,7 @@
 
 <launch>
   <!-- PARAMS .............................................................. -->
-  <arg name="pure_args"  	default="180 3 1 0.01 0.3"/>
+  <arg name="pure_args"  	default="180 3 0.99 0.08 0.25 1 0 0 /home/pulver/Desktop/mcdm_result.csv /home/pulver/Desktop/coverage_mcdm.csv"/>
   <arg name="bag_descriptor" default="mcdm_navigation_180_3_1_0.01_0.3_date_"/>
   <!-- I highly recomend you that the bag descriptor has correct pure nav params -->
   <arg name="save_bag"  	default="false"/>

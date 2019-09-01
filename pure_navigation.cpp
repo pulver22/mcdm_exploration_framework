@@ -181,7 +181,8 @@ int main(int argc, char **argv) {
       double w_info_gain = atof(argv[6]);
       double w_travel_distance = atof(argv[7]);
       double w_sensing_time = atof(argv[8]);
-      std::string out_log (argv[9]);
+      std::string out_log = (argv[9]);
+      std::string coverage_log = (argv[10]);
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -291,6 +292,10 @@ int main(int argc, char **argv) {
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (ros::Time::now().toSec() - startMCDM ) / 60.0 << " min ]" << endl;
+
+          content = to_string(numConfiguration) + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) + "," + to_string(tag_coverage_percentage) + "\n" ;
+          nav_utils.saveCoverage(coverage_log, content, true );
+          cout << "  ==> Saving the coverage log ..." << endl;
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
