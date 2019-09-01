@@ -23,6 +23,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/GetMap.h>
 #include <nav_msgs/GetPlan.h>
+#include <std_msgs/Float32.h>
 #include <ros/ros.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -46,6 +47,7 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
 void printROSParams();
 void loadROSParams();
 void createROSComms();
+void tag_coverage_callback(const std_msgs::Float32 msg);
 
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>MoveBaseClient;
@@ -65,6 +67,7 @@ double timeOfScanning = 0;
 bool btMode = false;
 double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
+float tag_coverage_percentage = 0.0;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
@@ -91,6 +94,7 @@ nav_msgs::GetMap srv_map;
 ros::Publisher moveBasePub;
 ros::Subscriber costmap_sub;
 ros::Subscriber costmap_update_sub;
+ros::Subscriber tag_coverage_sub;
 ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
@@ -266,6 +270,7 @@ int main(int argc, char **argv) {
       bool success = false;
 
       auto startMCDM = ros::Time::now().toSec();
+      string content;
 
       do {
 //        cout << "Graph size: " << graph2.size() << endl;
@@ -1150,7 +1155,7 @@ void createROSComms(){
 //  while (!ac.waitForServer(ros::Duration(5.0))) {
 //    printf("[pure_navigation@createROSComms]... waiting ...");
 //  }
-
+  tag_coverage_sub = nh.subscribe<std_msgs::Float32>("/tag_coverage", 10, tag_coverage_callback);
 
   while (disConnected) {
     cout << "[pure_navigation@createROSComms] Waiting for static_map service to respond..." << endl;
@@ -1165,4 +1170,9 @@ void createROSComms(){
     }
   }
 
+}
+
+
+void tag_coverage_callback(const std_msgs::Float32 msg){
+  tag_coverage_percentage = msg.data;
 }
