@@ -542,7 +542,7 @@ int main(int argc, char **argv) {
 
             // Evaluate the frontiers and return a list of <frontier,
             // evaluation> pairs
-            EvaluationRecords *record = function.evaluateFrontiers(frontiers, &map, threshold, &path_client);
+            EvaluationRecords *record = function.evaluateFrontiers(&frontiers, &map, threshold, &path_client);
             nearCandidates = record->getFrontiers();
             // NOTE: This may not be needed because  we are in an unexplored area
             cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
@@ -611,7 +611,7 @@ int main(int argc, char **argv) {
                   cout << "[main] candidateposition after: " << nearCandidates.size() << endl;
                   // Get the list of new candidate position with associated
                   // evaluation
-                  record = function.evaluateFrontiers(nearCandidates, &map,
+                  record = function.evaluateFrontiers(&nearCandidates, &map,
                                                       threshold, &path_client);
                   // If there are candidate positions
 //                  cout << "PoseToEsclude:" << endl;
@@ -644,7 +644,7 @@ int main(int argc, char **argv) {
                         nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                         // Get the list of new candidate position with
                         // associated evaluation
-                        record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
+                        record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
                       }
                     }
                     // If there are no more candidate position from the last
@@ -663,7 +663,7 @@ int main(int argc, char **argv) {
                       nav_utils.cleanPossibleDestination2(&nearCandidates, target);
                       nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                       cout << "nearCandidates after: " <<nearCandidates.size() << endl;
-                      record = function.evaluateFrontiers(nearCandidates, &map,
+                      record = function.evaluateFrontiers(&nearCandidates, &map,
                                                           threshold, &path_client);
                       cout << "record: " << record->size() << endl;
                     }
@@ -833,7 +833,7 @@ int main(int argc, char **argv) {
           cout << "NearCandidates after cleaning: " << nearCandidates.size() << endl;
 //          cout << "Cleaned" << endl;
           // Get the list of the candidate cells with their evaluation
-          EvaluationRecords *record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
+          EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
           cout << "Record obtained, size is " << record->size() << endl;
 
           // If there are candidate cells
@@ -886,7 +886,7 @@ int main(int argc, char **argv) {
                 nav_utils.cleanPossibleDestination2(&nearCandidates, target);
                 nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // Get the candidates with their evaluation
-                EvaluationRecords *record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
+                EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
                 // Select the new destination
                 std::pair<Pose, double> result = function.selectNewPose(record);
                 target = result.first;
@@ -1018,7 +1018,7 @@ int main(int argc, char **argv) {
       cout
           << "-----------------------------------------------------------------"
           << endl;
-      auto endMCDM = ros::Time::now().toSec();;
+      auto endMCDM = ros::Time::now().toSec();
 
       double totalTimeMCDM = endMCDM - startMCDM;
       cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "s, "

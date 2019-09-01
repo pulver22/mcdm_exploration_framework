@@ -165,10 +165,11 @@ int main(int argc, char **argv) {
        * resolution = X -> X%(full resolution)
        *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
       double resolution = atof(argv[5]);
-      double w_info_gain = atof(argv[6]);
-      double w_travel_distance = atof(argv[7]);
-      double w_sensing_time = atof(argv[8]);
-      std::string out_log (argv[9]);
+      double w_info_gain = 0.33;//atof(argv[6]);
+      double w_travel_distance = 0.33;//atof(argv[7]);
+      double w_sensing_time = 0.3;//atof(argv[8]);
+      std::string out_log = "/home/pulver/Desktop/MCDM/random_walk/gazebo_inb3123_v2.csv";
+      std::string coverage_log = "/home/pulver/Desktop/MCDM/random_walk/gazebo_inb3123_coverage_v2.csv";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -264,6 +265,7 @@ int main(int argc, char **argv) {
       float orientation;
       int range;
       double FOV;
+      string content;
 
       do {
 //
@@ -273,6 +275,10 @@ int main(int argc, char **argv) {
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (ros::Time::now().toSec() - startMCDM ) / 60.0 << " min ]" << endl;
+
+          content = to_string(numConfiguration) + ","
+                + to_string(100 * float(newSensedCells)/float(totalFreeCells)) + "\n";
+          nav_utils.saveCoverage(coverage_log, content, true );
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);

@@ -81,14 +81,14 @@ void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
 
 // Scan a list of candidate positions,then apply the Choquet fuzzy algorithm
 EvaluationRecords *
-MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers,
+MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
                                 dummy::Map *map, double threshold,
                                 ros::ServiceClient *path_client) {
 
   // Create the EvaluationRecords
   EvaluationRecords *toRet = new EvaluationRecords();
 
-  if (frontiers.size() > 0) {
+  if (frontiers->size() > 0) {
     // Clean the last evaluation
     // NOTE: probably working
     unordered_map<string, Criterion *>::iterator it;
@@ -108,7 +108,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers,
     // Evaluate the frontiers
     list<Pose>::const_iterator it2;
     int counter = 1;
-    for (it2 = frontiers.begin(); it2 != frontiers.end(); it2++) {
+    for (it2 = frontiers->begin(); it2 != frontiers->end(); it2++) {
       Pose f = *it2;
       evaluateFrontier(f, map, path_client);
       // cout << "[mcdmfunction.cpp@evaluateFrontiers] Evaluating frontiers: "
@@ -124,7 +124,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> &frontiers,
 
     // analyze every single frontier f, and add in the evaluationRecords
     // <frontier, evaluation>
-    for (list<Pose>::const_iterator i = frontiers.begin(); i != frontiers.end();
+    for (list<Pose>::const_iterator i = frontiers->begin(); i != frontiers->end();
          i++) {
 
       // cout <<"---------------------NEW FRONTIER -------------------"<<endl;

@@ -108,7 +108,7 @@ class NavigationUtilities {
                                       std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
                                       std::string move_base_local_costmap_topic_name);
 
-
+    void saveCoverage(const std::string& name, const std::string& content, bool append);
 };
 
 

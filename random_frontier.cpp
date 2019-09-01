@@ -23,6 +23,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/GetMap.h>
 #include <nav_msgs/GetPlan.h>
+#include <std_msgs/Float32.h>
 #include <ros/ros.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -47,7 +48,7 @@ void printROSParams();
 void loadROSParams();
 void createROSComms();
 Pose getRandomFrontier(list<Pose> nearCandidates);
-
+void tag_coverage_callback(const std_msgs::Float32 msg);
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>MoveBaseClient;
 vector<int> occdata;
@@ -66,6 +67,7 @@ double timeOfScanning = 0;
 bool btMode = false;
 double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
+float tag_coverage_percentage = 0.0;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
@@ -90,6 +92,7 @@ nav_msgs::GetMap srv_map;
 ros::Publisher moveBasePub;
 ros::Subscriber costmap_sub;
 ros::Subscriber costmap_update_sub;
+ros::Subscriber tag_coverage_sub;
 ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
@@ -166,10 +169,11 @@ int main(int argc, char **argv) {
        * resolution = X -> X%(full resolution)
        *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
       double resolution = atof(argv[5]);
-      double w_info_gain = atof(argv[6]);
-      double w_travel_distance = atof(argv[7]);
-      double w_sensing_time = atof(argv[8]);
-      std::string out_log (argv[9]);
+      double w_info_gain = 0.33;
+      double w_travel_distance = 0.33;
+      double w_sensing_time = 0.33;
+      std::string out_log = "/home/pulver/Desktop/MCDM/random_frontier/gazebo_inb3123_v2.csv";
+      std::string coverage_log = "/home/pulver/Desktop/MCDM/random_frontier/gazebo_inb3123_coverage_v2.csv";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -258,6 +262,7 @@ int main(int argc, char **argv) {
       double FOV;
 
       auto startMCDM = ros::Time::now().toSec();
+      string content;
 
       do {
 //        cout << "Graph size: " << graph2.size() << endl;
@@ -284,6 +289,10 @@ int main(int argc, char **argv) {
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (ros::Time::now().toSec() - startMCDM ) / 60.0 << " min ]" << endl;
+
+          content = to_string(numConfiguration) + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) + "," + to_string(tag_coverage_percentage) + "\n" ;
+          nav_utils.saveCoverage(coverage_log, content, true );
+          cout << "  ==> Saving the coverage log ..." << endl;
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
@@ -485,9 +494,12 @@ int main(int argc, char **argv) {
             // If there are candidate positions
             // Evaluate the frontiers and return a list of <frontier,
             // evaluation> pairs
-            EvaluationRecords *record = function.evaluateFrontiers(frontiers, &map, threshold, &path_client);
+            EvaluationRecords *record = function.evaluateFrontiers(&frontiers, &map, threshold, &path_client);
             nearCandidates = record->getFrontiers();
             if (record->size() > 0) {
+                        // EvaluationRecords *record;
+                        // nearCandidates = frontiers;
+                        // if (nearCandidates.size() > 0) {
               // Set the previous pose equal to the current one (represented by
               // target)
               previous = target;
@@ -541,19 +553,20 @@ int main(int argc, char **argv) {
                   cout << "[main] candidateposition after: " << nearCandidates.size() << endl;
                   // Get the list of new candidate position with associated
                   // evaluation
-                  record = function.evaluateFrontiers(nearCandidates, &map,
+                  record = function.evaluateFrontiers(&nearCandidates, &map,
                                                       threshold, &path_client);
                   // If there are candidate positions
-                  cout << "PoseToEsclude:" << endl;
-                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
-                      cout << " " << iter->first << "," << iter->second << endl;
-                  }
-                  cout << "Candidates:" << endl;
-                  for (auto iter = nearCandidates.begin(); iter != nearCandidates.end(); iter++) {
-                    cout << " " << iter->getX() << "," << iter->getY() << endl;
-                  }
+                  // cout << "PoseToEsclude:" << endl;
+                  // for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
+                  //     cout << " " << iter->first << "," << iter->second << endl;
+                  // }
+                  // cout << "Candidates:" << endl;
+                  // for (auto iter = nearCandidates.begin(); iter != nearCandidates.end(); iter++) {
+                  //   cout << " " << iter->getX() << "," << iter->getY() << endl;
+                  // }
                   while (1) {
                     if (record->size() != 0) {
+                                  // if (nearCandidates.size() != 0) {
                       // Select the new RANDOM pose of the robot
                       target = getRandomFrontier(nearCandidates);
                       targetPos = make_pair(int(target.getX()), int(target.getY()));
@@ -572,7 +585,7 @@ int main(int argc, char **argv) {
                         nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                         // Get the list of new candidate position with
                         // associated evaluation
-                        record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
+                        record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
                       }
                     }
                     // If there are no more candidate position from the last
@@ -591,8 +604,7 @@ int main(int argc, char **argv) {
                       nav_utils.cleanPossibleDestination2(&nearCandidates, target);
                       nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                       cout << "nearCandidates after: " <<nearCandidates.size() << endl;
-                      record = function.evaluateFrontiers(nearCandidates, &map,
-                                                          threshold, &path_client);
+                      record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
                       cout << "record: " << record->size() << endl;
                     }
                   }
@@ -739,10 +751,11 @@ int main(int argc, char **argv) {
           nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
           cout << "NearCandidates after cleaning: " << nearCandidates.size() << endl;
           // Get the list of the candidate cells with their evaluation
-          EvaluationRecords *record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
-          cout << "Record obtained, size is " << record->size() << endl;
+          EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
+          // cout << "Record obtained, size is " << record->size() << endl;
 
           // If there are candidate cells
+                        // if (nearCandidates.size() > 0) {
           if (record->size() > 0) {
             // Find the new RANDOM destination
             target = getRandomFrontier(nearCandidates);
@@ -812,6 +825,7 @@ int main(int argc, char **argv) {
                 nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // And remove from the graph
                 graph2.pop_back();
+                          // target = record.getPoseFromEncoding(targetString);
                 target = record->getPoseFromEncoding(targetString);
                 // Add it to the history of cell as already more than once
                 encodedKeyValue = 2;
@@ -838,6 +852,7 @@ int main(int argc, char **argv) {
                   nearCandidates = graph2.at(graph2.size() - 1).second;
                   nav_utils.cleanPossibleDestination2(&nearCandidates, target);
                   nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                              // target = record.getPoseFromEncoding(targetString);
                   target = record->getPoseFromEncoding(targetString);
                   // and the remove it form the graph
                   graph2.pop_back();
@@ -1033,6 +1048,7 @@ void createROSComms(){
 //  while (!ac.waitForServer(ros::Duration(5.0))) {
 //    printf("[pure_navigation@createROSComms]... waiting ...");
 //  }
+  tag_coverage_sub = nh.subscribe<std_msgs::Float32>("/tag_coverage", 10, tag_coverage_callback);
 
 
   while (disConnected) {
@@ -1060,4 +1076,8 @@ Pose getRandomFrontier(list<Pose> nearCandidates){
                     std::make_move_iterator(std::end(nearCandidates)) };
   auto random_integer = uni(rng);
   return v.at(random_integer);
+}
+
+void tag_coverage_callback(const std_msgs::Float32 msg){
+  tag_coverage_percentage = msg.data;
 }

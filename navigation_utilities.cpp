@@ -101,7 +101,7 @@ void NavigationUtilities::pushInitialPositions(dummy::Map map, float x, float y,
     frontiers.push_back(p4);
   }
   EvaluationRecords *record =
-      function->evaluateFrontiers(frontiers, &map, threshold, path_client);
+      function->evaluateFrontiers(&frontiers, &map, threshold, path_client);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose> > pair = make_pair(actualPose, nearCandidates);
@@ -586,15 +586,40 @@ Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *
     std::pair<int, int> pairToRemove = make_pair(target.getX(), target.getY());
     posToEsclude->push_back(pairToRemove);
     // remove the current target from the list of candidate position
+    cout << "nearCandidate before: " << nearCandidates->size() << endl;
     cleanPossibleDestination2(nearCandidates, target);
+    cout << "nearCandidate after: " << nearCandidates->size() << endl;
     // Get the list of new candidate position with  associated evaluation
-    record = function->evaluateFrontiers(*nearCandidates, map, threshold, path_client);
+    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
 //    cout << "     record size: " << record->size() << endl;
     target = result.first;
-//    cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
+   cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
     // and start the new iteration
   }
   return target;
+}
+
+void NavigationUtilities::saveCoverage(const std::string& name, const std::string& content, bool append ) {
+  std::ofstream outfile;
+  std::ifstream pFile(name);
+  if (outfile.fail()){
+    cout << "Error while opening the stream." << endl;
+    // cout << "File does not exist! Create a new one!" << endl;
+    // outfile.open(name);
+    // outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,coverage,numConfiguration,travelledDistance,totalScanTime";
+  }
+  else
+  {
+    if (pFile.peek() == std::ifstream::traits_type::eof()){ // file is empty
+      // cout << "File does not exist! Create a new one!" << endl;
+      outfile.open(name);
+      outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,numConfiguration,incrementalCoverage" << endl;
+    }else{
+      cout << "File exists! Appending data!" << endl;
+      outfile.open(name, std::ios_base::app);
+    }
+  }
+  outfile << content;
 }
