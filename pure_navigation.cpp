@@ -23,6 +23,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/GetMap.h>
 #include <nav_msgs/GetPlan.h>
+#include <std_msgs/Float32.h>
 #include <ros/ros.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -46,6 +47,7 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
 void printROSParams();
 void loadROSParams();
 void createROSComms();
+void tag_coverage_callback(const std_msgs::Float32 msg);
 
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>MoveBaseClient;
@@ -65,6 +67,7 @@ double timeOfScanning = 0;
 bool btMode = false;
 double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
+float tag_coverage_percentage = 0.0;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
@@ -91,6 +94,7 @@ nav_msgs::GetMap srv_map;
 ros::Publisher moveBasePub;
 ros::Subscriber costmap_sub;
 ros::Subscriber costmap_update_sub;
+ros::Subscriber tag_coverage_sub;
 ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
@@ -154,7 +158,7 @@ int main(int argc, char **argv) {
     sleep(5);
   }else{
     cout << "Error occurring while recording the bag. Exiting now!" << endl;
-//    exit(0);
+//    ros::shutdown();
   }
 
 
@@ -178,6 +182,11 @@ int main(int argc, char **argv) {
        * resolution = X -> X%(full resolution)
        *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
       double resolution = atof(argv[5]);
+      double w_info_gain = atof(argv[6]);
+      double w_travel_distance = atof(argv[7]);
+      double w_sensing_time = atof(argv[8]);
+      std::string out_log = (argv[9]);
+      std::string coverage_log = (argv[10]);
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -223,7 +232,7 @@ int main(int argc, char **argv) {
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
-      MCDMFunction function;
+      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -261,6 +270,7 @@ int main(int argc, char **argv) {
       bool success = false;
 
       auto startMCDM = ros::Time::now().toSec();
+      string content;
 
       do {
 //        cout << "Graph size: " << graph2.size() << endl;
@@ -287,6 +297,10 @@ int main(int argc, char **argv) {
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (ros::Time::now().toSec() - startMCDM ) / 60.0 << " min ]" << endl;
+
+          content = to_string(numConfiguration) + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) + "," + to_string(tag_coverage_percentage) + "\n" ;
+          nav_utils.saveCoverage(coverage_log, content, true );
+          cout << "  ==> Saving the coverage log ..." << endl;
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
@@ -357,6 +371,7 @@ int main(int argc, char **argv) {
           map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
           map.plotGridColor("/tmp/nav_lastLoop.png");
           map.findCandidatePositions(x, y, orientation, FOV, range);
+          map.findFrontierPosition();
           vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
 
             map.emptyCandidatePositions();
@@ -416,7 +431,7 @@ int main(int argc, char **argv) {
             // Add to the graph the initial positions and the candidates from
             // there (calculated inside the function)
             nav_utils.pushInitialPositions(map, x, y, orientation, range, FOV, threshold,
-                                 actualPose, &graph2, &path_client);
+                                 actualPose, &graph2, &path_client, &function);
           }
 
           // If there are no new candidate positions from the current pose of
@@ -424,6 +439,7 @@ int main(int argc, char **argv) {
           if (candidatePosition.size() == 0) {
             // Find candidates
             map.findCandidatePositions2(x, y, orientation, FOV, range);
+            map.findFrontierPosition();  //TODO:check
             candidatePosition = map.getCandidatePositions();
             map.emptyCandidatePositions();
 
@@ -474,7 +490,8 @@ int main(int argc, char **argv) {
               }
               nav_utils.printResult(newSensedCells, totalFreeCells, precision,
                           numConfiguration, travelledDistance, numOfTurning,
-                          totalAngle, totalScanTime, resolution);
+                          totalAngle, totalScanTime, resolution,
+                          w_info_gain, w_travel_distance, w_sensing_time, out_log);
               auto endMCDM = ros::Time::now().toSec();
               double totalTimeMCDM = endMCDM - startMCDM;
               cout << "Total time for MCDM algorithm : " << totalTimeMCDM
@@ -490,7 +507,7 @@ int main(int argc, char **argv) {
               }else{
                 cout << "Error occurring while stopping recording the bag. Exiting now!" << endl;
               }
-              exit(0);
+              ros::shutdown();
             }
 
             sensedCells = newSensedCells;
@@ -502,7 +519,7 @@ int main(int argc, char **argv) {
             // need to convert from a <int,int pair> to a Pose with also
             // orientation,laser range and angle
             list<Pose> frontiers;
-            // For every candidate positio, create 8 pose with a different
+            // For every candidate position, create 8 pose with a different
             // orientation each and consider them as frontiers
             vector<pair<float, float> >::iterator it = candidatePosition.begin();
             for (it; it != candidatePosition.end(); it++) {
@@ -535,7 +552,7 @@ int main(int argc, char **argv) {
 
             // Evaluate the frontiers and return a list of <frontier,
             // evaluation> pairs
-            EvaluationRecords *record = function.evaluateFrontiers(frontiers, &map, threshold, &path_client);
+            EvaluationRecords *record = function.evaluateFrontiers(&frontiers, &map, threshold, &path_client);
             nearCandidates = record->getFrontiers();
             // NOTE: This may not be needed because  we are in an unexplored area
             cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
@@ -604,17 +621,17 @@ int main(int argc, char **argv) {
                   cout << "[main] candidateposition after: " << nearCandidates.size() << endl;
                   // Get the list of new candidate position with associated
                   // evaluation
-                  record = function.evaluateFrontiers(nearCandidates, &map,
+                  record = function.evaluateFrontiers(&nearCandidates, &map,
                                                       threshold, &path_client);
                   // If there are candidate positions
-                  cout << "PoseToEsclude:" << endl;
-                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
-                      cout << " " << iter->first << "," << iter->second << endl;
-                  }
-                  cout << "Candidates:" << endl;
-                  for (auto iter = nearCandidates.begin(); iter != nearCandidates.end(); iter++) {
-                    cout << " " << iter->getX() << "," << iter->getY() << endl;
-                  }
+//                  cout << "PoseToEsclude:" << endl;
+//                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
+//                      cout << " " << iter->first << "," << iter->second << endl;
+//                  }
+//                  cout << "Candidates:" << endl;
+//                  for (auto iter = nearCandidates.begin(); iter != nearCandidates.end(); iter++) {
+//                    cout << " " << iter->getX() << "," << iter->getY() << endl;
+//                  }
                   while (1) {
                     if (record->size() != 0) {
                       // Select the new pose of the robot
@@ -637,7 +654,7 @@ int main(int argc, char **argv) {
                         nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                         // Get the list of new candidate position with
                         // associated evaluation
-                        record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
+                        record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
                       }
                     }
                     // If there are no more candidate position from the last
@@ -656,7 +673,7 @@ int main(int argc, char **argv) {
                       nav_utils.cleanPossibleDestination2(&nearCandidates, target);
                       nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                       cout << "nearCandidates after: " <<nearCandidates.size() << endl;
-                      record = function.evaluateFrontiers(nearCandidates, &map,
+                      record = function.evaluateFrontiers(&nearCandidates, &map,
                                                           threshold, &path_client);
                       cout << "record: " << record->size() << endl;
                     }
@@ -826,7 +843,7 @@ int main(int argc, char **argv) {
           cout << "NearCandidates after cleaning: " << nearCandidates.size() << endl;
 //          cout << "Cleaned" << endl;
           // Get the list of the candidate cells with their evaluation
-          EvaluationRecords *record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
+          EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
           cout << "Record obtained, size is " << record->size() << endl;
 
           // If there are candidate cells
@@ -879,7 +896,7 @@ int main(int argc, char **argv) {
                 nav_utils.cleanPossibleDestination2(&nearCandidates, target);
                 nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // Get the candidates with their evaluation
-                EvaluationRecords *record = function.evaluateFrontiers(nearCandidates, &map, threshold, &path_client);
+                EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
                 // Select the new destination
                 std::pair<Pose, double> result = function.selectNewPose(record);
                 target = result.first;
@@ -999,7 +1016,8 @@ int main(int argc, char **argv) {
       }
 
       nav_utils.printResult(newSensedCells, totalFreeCells, precision, numConfiguration,
-                  travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution);
+                  travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution,
+                  w_info_gain, w_travel_distance, w_sensing_time, out_log);
       // Find the tag
       //        std::pair<int,int> tag = map.findTag();
       //        cout << "RFID pose: [" << tag.second << "," << tag.first << "]"
@@ -1010,7 +1028,7 @@ int main(int argc, char **argv) {
       cout
           << "-----------------------------------------------------------------"
           << endl;
-      auto endMCDM = ros::Time::now().toSec();;
+      auto endMCDM = ros::Time::now().toSec();
 
       double totalTimeMCDM = endMCDM - startMCDM;
       cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "s, "
@@ -1027,7 +1045,7 @@ int main(int argc, char **argv) {
       }
 
       sleep(1);
-      exit(0);
+      ros::shutdown();
     }
 
     ros::spinOnce();
@@ -1137,7 +1155,7 @@ void createROSComms(){
 //  while (!ac.waitForServer(ros::Duration(5.0))) {
 //    printf("[pure_navigation@createROSComms]... waiting ...");
 //  }
-
+  tag_coverage_sub = nh.subscribe<std_msgs::Float32>("/tag_coverage", 10, tag_coverage_callback);
 
   while (disConnected) {
     cout << "[pure_navigation@createROSComms] Waiting for static_map service to respond..." << endl;
@@ -1152,4 +1170,9 @@ void createROSComms(){
     }
   }
 
+}
+
+
+void tag_coverage_callback(const std_msgs::Float32 msg){
+  tag_coverage_percentage = msg.data;
 }

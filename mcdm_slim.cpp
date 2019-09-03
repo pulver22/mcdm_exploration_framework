@@ -173,6 +173,10 @@ int main(int argc, char **argv) {
        * resolution = X -> X%(full resolution)
        * NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
       double resolution = atof(argv[5]);
+      double w_info_gain = atof(argv[6]);
+      double w_travel_distance = atof(argv[7]);
+      double w_sensing_time = atof(argv[8]);
+      std::string out_log (argv[9]);
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -215,7 +219,7 @@ int main(int argc, char **argv) {
 
       long numConfiguration = 1;
       vector<pair<string, list<Pose> >> graph2;
-      MCDMFunction function;
+      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();

@@ -537,6 +537,12 @@ public:
                                     double range_m);
 
   /**
+   * Gop trhough the list of candidate position and remove those which are not on
+   * the edge of scanned and unscanned area (meaning that are neighbour with unscanned cells).
+   */
+  void findFrontierPosition();
+
+  /**
    * Given a starting point and heading, updates candidatePositions.
    * Candidate positions  are:
    *        -  closer to starter point than range
@@ -637,6 +643,20 @@ public:
    * @return int          Number of free cells at nav grid area.
    */
   int getInformationGain(double pos_X_m, double pos_Y_m, double heading_rad,
+                         double FOV_rad, double range_m);
+
+  /**
+   * Returns number of free cells in scanning area at RFID grid
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in
+   * radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in
+   * radians)
+   * @param  range_m      Max. distance to consider in m.
+   * @return int          Number of free cells at nav grid area.
+   */
+  int getRFIDReading(double pos_X_m, double pos_Y_m, double heading_rad,
                          double FOV_rad, double range_m);
   // ...........................................................................
   // End of methos previously at newray.cpp ....................................

@@ -165,6 +165,11 @@ int main(int argc, char **argv) {
        * resolution = X -> X%(full resolution)
        *NOTE: LOWER RES VALUE, HIGHER REAL RESOLUTION*/
       double resolution = atof(argv[5]);
+      double w_info_gain = 0.33;//atof(argv[6]);
+      double w_travel_distance = 0.33;//atof(argv[7]);
+      double w_sensing_time = 0.3;//atof(argv[8]);
+      std::string out_log = "/home/pulver/Desktop/MCDM/random_walk/gazebo_inb3123_v2.csv";
+      std::string coverage_log = "/home/pulver/Desktop/MCDM/random_walk/gazebo_inb3123_coverage_v2.csv";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -210,7 +215,7 @@ int main(int argc, char **argv) {
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
-      MCDMFunction function;
+      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -260,6 +265,7 @@ int main(int argc, char **argv) {
       float orientation;
       int range;
       double FOV;
+      string content;
 
       do {
 //
@@ -269,6 +275,10 @@ int main(int argc, char **argv) {
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (ros::Time::now().toSec() - startMCDM ) / 60.0 << " min ]" << endl;
+
+          content = to_string(numConfiguration) + ","
+                + to_string(100 * float(newSensedCells)/float(totalFreeCells)) + "\n";
+          nav_utils.saveCoverage(coverage_log, content, true );
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
@@ -355,8 +365,11 @@ int main(int argc, char **argv) {
         travelledDistance = travelledDistance / 2;
       }
 
-      nav_utils.printResult(newSensedCells, totalFreeCells, precision, numConfiguration,
-                  travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution);
+      nav_utils.printResult(newSensedCells, totalFreeCells, precision,
+                            numConfiguration, travelledDistance, numOfTurning,
+                            totalAngle, totalScanTime, resolution,
+                            w_info_gain, w_travel_distance, w_sensing_time, out_log);
+
       cout << "-----------------------------------------------------------------" << endl;
       auto endMCDM = ros::Time::now().toSec();;
 

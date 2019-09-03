@@ -50,8 +50,8 @@ PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp navigation_utilities.
 add_executable(pure_navigation pure_navigation.cpp)
 target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRARIES})
 
-add_executable(mcdm_slim mcdm_slim.cpp)
-target_link_libraries(mcdm_slim mcdm_exploration_framework ${catkin_LIBRARIES})
+#add_executable(mcdm_slim mcdm_slim.cpp)
+#target_link_libraries(mcdm_slim mcdm_exploration_framework ${catkin_LIBRARIES})
 
 add_executable(random_walk random_walk.cpp)
 target_link_libraries(random_walk mcdm_exploration_framework ${catkin_LIBRARIES})

@@ -10,7 +10,6 @@ NavigationUtilities::~NavigationUtilities() {};
 
 bool NavigationUtilities::contains(std::list<Pose> &list, Pose &p) {
   bool result = false;
-  MCDMFunction function;
 
   std::list<Pose>::iterator findIter = std::find(list.begin(), list.end(), p);
   if (findIter != list.end()) {
@@ -35,7 +34,6 @@ bool NavigationUtilities::containsPos(std::list<std::pair<float, float>> *positi
 }
 
 void NavigationUtilities::cleanPossibleDestination2(std::list<Pose> *possibleDestinations, Pose &p) {
-  MCDMFunction function;
 
 //  for (auto it = possibleDestinations->begin(); it != possibleDestinations->end(); it++)
 //  {
@@ -85,8 +83,8 @@ void NavigationUtilities::pushInitialPositions(dummy::Map map, float x, float y,
                           int range, int FOV, double threshold,
                           string actualPose,
                           vector<pair<string, list<Pose> >> *graph2,
-                          ros::ServiceClient *path_client) {
-  MCDMFunction function;
+                          ros::ServiceClient *path_client, MCDMFunction *function) {
+
   map.findCandidatePositions(x, y, orientation, FOV, range);
   vector<pair<float, float> > candidatePosition = map.getCandidatePositions();
   map.emptyCandidatePositions();
@@ -103,7 +101,7 @@ void NavigationUtilities::pushInitialPositions(dummy::Map map, float x, float y,
     frontiers.push_back(p4);
   }
   EvaluationRecords *record =
-      function.evaluateFrontiers(frontiers, &map, threshold, path_client);
+      function->evaluateFrontiers(&frontiers, &map, threshold, path_client);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose> > pair = make_pair(actualPose, nearCandidates);
@@ -243,7 +241,8 @@ list<Pose> NavigationUtilities::cleanHistory(vector<string> *history, Evaluation
 
 void NavigationUtilities::printResult(long newSensedCells, long totalFreeCells, double precision,
                  long numConfiguration, double travelledDistance,
-                 int numOfTurning, double totalAngle, double totalScanTime, double resolution) {
+                 int numOfTurning, double totalAngle, double totalScanTime, double resolution,
+                 float w_info_gain, float w_travel_distance, float w_sensing_time, std::string fileURI) {
   cout << "-----------------------------------------------------------------"
        << endl;
   cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells << "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %]" << endl;
@@ -266,7 +265,11 @@ void NavigationUtilities::printResult(long newSensedCells, long totalFreeCells, 
   } else {
     cout << "FINAL: MAP EXPLORED!" << endl;
   }
-
+  std::ofstream txt(fileURI.c_str());
+  txt << w_info_gain << ","  << w_travel_distance << "," << w_sensing_time  << ","
+    << float(newSensedCells)/float(totalFreeCells) << "," << numConfiguration << ","
+    << travelledDistance << "," << totalScanTime << endl;
+  txt.close();
   cout << "-----------------------------------------------------------------"
        << endl;
 }
@@ -583,15 +586,40 @@ Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *
     std::pair<int, int> pairToRemove = make_pair(target.getX(), target.getY());
     posToEsclude->push_back(pairToRemove);
     // remove the current target from the list of candidate position
+    cout << "nearCandidate before: " << nearCandidates->size() << endl;
     cleanPossibleDestination2(nearCandidates, target);
+    cout << "nearCandidate after: " << nearCandidates->size() << endl;
     // Get the list of new candidate position with  associated evaluation
-    record = function->evaluateFrontiers(*nearCandidates, map, threshold, path_client);
+    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
 //    cout << "     record size: " << record->size() << endl;
     target = result.first;
-//    cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
+   cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
     // and start the new iteration
   }
   return target;
+}
+
+void NavigationUtilities::saveCoverage(const std::string& name, const std::string& content, bool append ) {
+  std::ofstream outfile;
+  std::ifstream pFile(name);
+  if (outfile.fail()){
+    cout << "Error while opening the stream." << endl;
+    // cout << "File does not exist! Create a new one!" << endl;
+    // outfile.open(name);
+    // outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,coverage,numConfiguration,travelledDistance,totalScanTime";
+  }
+  else
+  {
+    if (pFile.peek() == std::ifstream::traits_type::eof()){ // file is empty
+      // cout << "File does not exist! Create a new one!" << endl;
+      outfile.open(name);
+      outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,numConfiguration,incrementalCoverage" << endl;
+    }else{
+      cout << "File exists! Appending data!" << endl;
+      outfile.open(name, std::ios_base::app);
+    }
+  }
+  outfile << content;
 }

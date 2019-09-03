@@ -7,7 +7,7 @@
 class MCDMWeightReader {
 
 public:
-  WeightMatrix *getMatrix();
+  WeightMatrix *getMatrix(float w_criterion_1, float w_criterion_2, float w_criterion_3) ;
 
 private:
   void listCasual(std::string str2);
