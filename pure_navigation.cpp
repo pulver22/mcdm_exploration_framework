@@ -48,6 +48,7 @@ void printROSParams();
 void loadROSParams();
 void createROSComms();
 void tag_coverage_callback(const std_msgs::Float32 msg);
+void sensing();
 
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>MoveBaseClient;
@@ -139,7 +140,7 @@ int main(int argc, char **argv) {
   createROSComms();
   double path_len;
   bool path_srv_call;
-  ros::Rate r(1);
+  ros::Rate r(20);
 
   std_msgs::String stats_msg;
   std::stringstream stats_buffer;
@@ -168,6 +169,8 @@ int main(int argc, char **argv) {
       ROS_INFO_STREAM_THROTTLE(60, "waiting for costmap" << std::endl);
       // cout << "Waiting for costmap" << endl;
     }
+
+    // boost::thread mythread(sensing); // Starting listening to RFID
     if (costmapReceived == 1) {
       double initFov = atof(argv[1]);
       initFov = initFov * M_PI / 180;
@@ -298,7 +301,15 @@ int main(int argc, char **argv) {
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (ros::Time::now().toSec() - startMCDM ) / 60.0 << " min ]" << endl;
 
-          content = to_string(numConfiguration) + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) + "," + to_string(tag_coverage_percentage) + "\n" ;
+          // Look for the RFID coverage value
+          std_msgs::Float32ConstPtr msg = ros::topic::waitForMessage<std_msgs::Float32>("/tag_coverage", ros::Duration(1));
+          if(msg != NULL){
+            tag_coverage_percentage = msg->data;
+          }        
+          
+          content = to_string(numConfiguration) + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) 
+                    + "," + to_string(tag_coverage_percentage) + "\n" ;
+          cout << tag_coverage_percentage << endl;
           nav_utils.saveCoverage(coverage_log, content, true );
           cout << "  ==> Saving the coverage log ..." << endl;
 
@@ -552,15 +563,15 @@ int main(int argc, char **argv) {
 
             // Evaluate the frontiers and return a list of <frontier,
             // evaluation> pairs
+            // cout << "Number of frontiers identified: " << frontiers.size() << endl;
+            nav_utils.cleanPossibleDestination2(&frontiers, target);
+            nav_utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
+            // Print the frontiers with the respective evaluation
+            // cout << "Number of frontiers identified: " << frontiers.size() << endl;
             EvaluationRecords *record = function.evaluateFrontiers(&frontiers, &map, threshold, &path_client);
             nearCandidates = record->getFrontiers();
             // NOTE: This may not be needed because  we are in an unexplored area
-            cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
-            nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-            nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
-
-            // Print the frontiers with the respective evaluation
-            cout << "Number of frontiers identified: " << nearCandidates.size() << endl;
+            
             unordered_map<string, double> evaluation = record->getEvaluations();
             // If there are candidate positions
             if (record->size() > 0) {
@@ -1058,7 +1069,7 @@ int main(int argc, char **argv) {
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg) {
   // printf("RECEIVED A MAP!");
   if (costmapReceived == 0) {
-    cout << "CALLBACK FIRST!" << endl;
+    // cout << "CALLBACK FIRST!" << endl;
     costmap_grid = *msg;
     costresolution = msg->info.resolution;
     costwidth = msg->info.width;
@@ -1067,10 +1078,10 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg) {
     for (int i = 0; i < msg.get()->data.size(); ++i) {
       occdata.push_back(msg->data.at(i));
     }
-    std::cout << "size of occdata " << occdata.size()
-              << " size of message data " << msg->data.size() << std::endl;
-    std::cout << "height " << msg->info.height << " width " << msg->info.width
-              << " resolution " << msg->info.resolution << std::endl;
+    // std::cout << "size of occdata " << occdata.size()
+    //           << " size of message data " << msg->data.size() << std::endl;
+    // std::cout << "height " << msg->info.height << " width " << msg->info.width
+    //           << " resolution " << msg->info.resolution << std::endl;
     costmapReceived = 1;
   }
 }
@@ -1155,7 +1166,7 @@ void createROSComms(){
 //  while (!ac.waitForServer(ros::Duration(5.0))) {
 //    printf("[pure_navigation@createROSComms]... waiting ...");
 //  }
-  tag_coverage_sub = nh.subscribe<std_msgs::Float32>("/tag_coverage", 10, tag_coverage_callback);
+  
 
   while (disConnected) {
     cout << "[pure_navigation@createROSComms] Waiting for static_map service to respond..." << endl;
@@ -1169,10 +1180,28 @@ void createROSComms(){
       r.sleep();
     }
   }
-
+  tag_coverage_sub = nh.subscribe<std_msgs::Float32>("tag_coverage", 10, tag_coverage_callback);
 }
 
 
 void tag_coverage_callback(const std_msgs::Float32 msg){
+  cout << "   [CALLBACK] : " << msg.data << endl;
   tag_coverage_percentage = msg.data;
+  // cout << "   [CALLBACK] : " << tag_coverage_callback << endl;
 }
+
+
+
+// void sensing(){
+//     ros::NodeHandle nh("~");
+//     ros::Subscriber rfid_sub;
+//     rfid_sub = nh.subscribe<std_msgs::Float32>("tag_coverage", 10, tag_coverage_callback);
+//     ros::AsyncSpinner spinner(0);
+//     spinner.start();
+//     auto start = chrono::high_resolution_clock::now();
+//     // gasDetection();
+//     while(ros::ok()){
+//         ROS_INFO("RFID sensing ...");
+//     }
+
+// }

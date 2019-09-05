@@ -1659,7 +1659,7 @@ void Map::findCandidatePositions_inner(int mode, double pos_X_m, double pos_Y_m,
 
 void Map::findFrontierPosition() {
   std::vector<std::pair<float, float>> frontiers;
-  cout << "[map.cpp@findFrontierPosition] candidatePosition: " << edgePoints.size() << endl;
+  // cout << "[map.cpp@findFrontierPosition] candidatePosition: " << edgePoints.size() << endl;
   long i, j;
   grid_map::Index index;
   grid_map::Position position;
@@ -1704,7 +1704,7 @@ void Map::findFrontierPosition() {
   }
   // Update the frontiers list
   edgePoints = frontiers;
-  cout << "[map.cpp@findFrontierPosition] frontiers: " << edgePoints.size() << endl;
+  // cout << "[map.cpp@findFrontierPosition] frontiers: " << edgePoints.size() << endl;
 }
 
 vector<std::pair<float, float> > Map::getCandidatePositions() {

@@ -87,6 +87,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
 
   // Create the EvaluationRecords
   EvaluationRecords *toRet = new EvaluationRecords();
+  // cout << "[mcdmfunction.cpp@evaluateFrontiers] frontiers size: " << frontiers->size() << endl;
 
   if (frontiers->size() > 0) {
     // Clean the last evaluation
@@ -96,7 +97,6 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
       std::pair<string, Criterion *> pair = *it;
       (criteria.at(pair.first))->clean();
     }
-
     // listActiveCriteria contains the name of the criteria while "criteria
     // struct" contain the pairs <name, criterion>
     vector<string> listActiveCriteria = matrix->getActiveCriteria();
@@ -115,13 +115,11 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
       // << counter << endl;
       counter++;
     }
-
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();
          it != activeCriteria.end(); ++it) {
       (*it)->normalize();
     }
-
     // analyze every single frontier f, and add in the evaluationRecords
     // <frontier, evaluation>
     for (list<Pose>::const_iterator i = frontiers->begin(); i != frontiers->end();
@@ -136,8 +134,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
       //    << endl;
 
       // order criteria depending on the considered frontier
-      sort(activeCriteria.begin(), activeCriteria.end(),
-           CriterionComparator(f));
+      sort(activeCriteria.begin(), activeCriteria.end(), CriterionComparator(f));
 
       // apply the choquet integral
       Criterion *lastCrit = NULL;
@@ -173,7 +170,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
           if (eval <= 0.0001 or isnan(eval))
             eval = 0;
           finalValue += eval * weight;
-//          cout << "[mcdmfunctionc.pp@evaluateFrontiers] nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
+          //         cout << "[mcdmfunctionc.pp@evaluateFrontiers] nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
 
           //        if (c->getEvaluation(f) <= 0)
           //        {
@@ -194,7 +191,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
 
           double tmpValue = eval - eval2;
           finalValue += tmpValue * weight;
-//          cout << "[mcdmfunctionc.pp@evaluateFrontiers] nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
+          //          cout << "[mcdmfunctionc.pp@evaluateFrontiers] nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
 
           // cout << tmpValue <<"," << weight<<endl;
           //        if (c->getEvaluation(f) <= 0)
@@ -207,10 +204,11 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
         lastCrit = c;
       }
 
-//      cout << " [mcdmfunctionc.pp@evaluateFrontiers] Frontier coord = (" << f.getX() << "," << f.getY() << "),  Final value: " << finalValue << endl;
+      // cout << " [mcdmfunctionc.pp@evaluateFrontiers] Frontier coord = (" << f.getX() << "," << f.getY() << "),  Final value: " << finalValue << endl;
       if (finalValue > threshold) {
         toRet->putEvaluation(f, finalValue);
       }
+      // cout << " [mcdmfunctionc.pp@evaluateFrontiers] Inserted into record" << endl;
     }
 
     activeCriteria.clear();

@@ -55,14 +55,14 @@ void NavigationUtilities::cleanPossibleDestination2(std::list<Pose> *possibleDes
 //      cout << function.getEncodedKey(*it, 0) << endl;
 //    }
 
-  cout << "[navigation_utilies.cpp@cleanPossibleDestination2] cleanedFronties: " << possibleDestinations->size() << endl;
+  // cout << "[navigation_utilies.cpp@cleanPossibleDestination2] cleanedFronties: " << possibleDestinations->size() << endl;
 }
 
 void NavigationUtilities::cleanDestinationFromTabulist(std::list<Pose> *possibleDestinations,
                                                        std::list<std::pair<float, float> > *posToEsclude) {
 
   std::list<Pose> finalDestination;
-  cout << "Size of possibleDestinations: " << possibleDestinations->size() << endl;
+  // cout << "Size of possibleDestinations: " << possibleDestinations->size() << endl;
   for (auto it = possibleDestinations->begin(); it != possibleDestinations->end(); it++)
     {
       // create a temporary position pair
@@ -74,9 +74,9 @@ void NavigationUtilities::cleanDestinationFromTabulist(std::list<Pose> *possible
         finalDestination.push_back(*it);
       }
     }
-  cout << "Size of finalDestination: " << finalDestination.size() << endl;
+  // cout << "Size of finalDestination: " << finalDestination.size() << endl;
   *possibleDestinations = finalDestination;
-  cout << "Size of possibleDestinations after update: " << possibleDestinations->size() << endl;
+  // cout << "Size of possibleDestinations after update: " << possibleDestinations->size() << endl;
 }
 
 void NavigationUtilities::pushInitialPositions(dummy::Map map, float x, float y, float orientation,

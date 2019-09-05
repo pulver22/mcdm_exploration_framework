@@ -6,10 +6,10 @@
 
 <launch>
   <!-- PARAMS .............................................................. -->
-  <arg name="pure_args"  	default="180 3 0.99 0.08 0.25 1 0 0 /home/pulver/Desktop/mcdm_result.csv /home/pulver/Desktop/coverage_mcdm.csv"/>
-  <arg name="bag_descriptor" default="mcdm_navigation_180_3_1_0.01_0.3_date_"/>
+  <arg name="pure_args"  	default="180 3 0.99 0.08 0.25 0.2 0.6 0.2 /home/pulver/Desktop/MCDM/mcdm/mcdm_result.csv /home/pulver/Desktop/MCDM/mcdm/coverage_mcdm.csv"/>
+  <arg name="bag_descriptor" default="mcdm_navigation_0.2_0.6_0.2_date_"/>
   <!-- I highly recomend you that the bag descriptor has correct pure nav params -->
-  <arg name="save_bag"  	default="false"/>
+  <arg name="save_bag"  	default="true"/>
 
   <!-- Topics to record:
     These two were removed because they suppose lots of data

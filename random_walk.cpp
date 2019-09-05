@@ -23,6 +23,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/GetMap.h>
 #include <nav_msgs/GetPlan.h>
+#include <std_msgs/Float32.h>
 #include <ros/ros.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -266,6 +267,7 @@ int main(int argc, char **argv) {
       int range;
       double FOV;
       string content;
+      float tag_coverage_percentage = 0.0;
 
       do {
 //
@@ -276,8 +278,15 @@ int main(int argc, char **argv) {
             "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %] - [" <<
             (ros::Time::now().toSec() - startMCDM ) / 60.0 << " min ]" << endl;
 
-          content = to_string(numConfiguration) + ","
-                + to_string(100 * float(newSensedCells)/float(totalFreeCells)) + "\n";
+          // Look for the RFID coverage value
+          std_msgs::Float32ConstPtr msg = ros::topic::waitForMessage<std_msgs::Float32>("/tag_coverage", ros::Duration(1));
+          if(msg != NULL){
+            tag_coverage_percentage = msg->data;
+          }
+
+          content = to_string(numConfiguration) 
+                    + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) 
+                    + "," + to_string(tag_coverage_percentage) + "\n" ;
           nav_utils.saveCoverage(coverage_log, content, true );
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
