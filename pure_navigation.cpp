@@ -307,8 +307,10 @@ int main(int argc, char **argv) {
             tag_coverage_percentage = msg->data;
           }        
           
-          content = to_string(numConfiguration) + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) 
-                    + "," + to_string(tag_coverage_percentage) + "\n" ;
+          content = to_string(numConfiguration) 
+                    + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) 
+                    + "," + to_string(tag_coverage_percentage)  
+                    + "," + to_string(travelledDistance) + "\n" ;
           cout << tag_coverage_percentage << endl;
           nav_utils.saveCoverage(coverage_log, content, true );
           cout << "  ==> Saving the coverage log ..." << endl;
