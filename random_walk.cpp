@@ -286,7 +286,8 @@ int main(int argc, char **argv) {
 
           content = to_string(numConfiguration) 
                     + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) 
-                    + "," + to_string(tag_coverage_percentage) + "\n" ;
+                    + "," + to_string(tag_coverage_percentage) 
+                    + "," + to_string(travelledDistance) + "\n" ;
           nav_utils.saveCoverage(coverage_log, content, true );
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
