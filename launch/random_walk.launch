@@ -6,7 +6,18 @@
 
 <launch>
   <!-- PARAMS .............................................................. -->
-  <arg name="pure_args"  	default="180 3 0.99 0.08 0.25"/>-->
+  <arg name="fov"                 default="180"/>
+  <arg name="radius"              default="3"/>
+  <arg name="coverage_percentage" default="0.99"/>
+  <arg name="frontier_threshold"  default="0.08"/>
+  <arg name="map_resolution"      default="0.2"/>
+  <arg name="dest_folder"  	      default="/home/pulver/Desktop/MCDM/mcdm/"/>
+  <arg name="scenario_name"  	    default="INB"/>
+  <arg name="pure_args"  	default="$(arg fov) 
+                                   $(arg radius) 
+                                   $(arg coverage_percentage) 
+                                   $(arg frontier_threshold) 
+                                   $(arg map_resolution)"/>
 
   <env name="ROSCONSOLE_CONFIG_FILE"
     value="$(find mcdm_exploration_framework)/config/custom_rosconsole.conf"/>
