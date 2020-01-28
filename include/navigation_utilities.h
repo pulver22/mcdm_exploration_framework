@@ -32,8 +32,10 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <ros/console.h>
-#include "record_ros/record.h"
-#include "record_ros/String_cmd.h"
+
+// mfc: we will record using stats_pub
+//#include "record_ros/record.h"
+//#include "record_ros/String_cmd.h"
 
 using namespace std;
 using namespace dummy;

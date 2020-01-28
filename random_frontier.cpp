@@ -31,8 +31,9 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 // mfc ...
 #include <ros/console.h>
-#include "record_ros/record.h"
-#include "record_ros/String_cmd.h"
+// mfc: we will record using stats_pub
+// #include "record_ros/record.h"
+// #include "record_ros/String_cmd.h"
 // mfc ...
 
 using namespace std;
@@ -87,7 +88,8 @@ NavigationUtilities nav_utils;
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_;
 ros::ServiceClient path_client;
-ros::ServiceClient rosbag_client;
+// mfc: we will record using stats_pub
+//ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;
 ros::Publisher moveBasePub;
 ros::Subscriber costmap_sub;
@@ -96,7 +98,8 @@ ros::Subscriber tag_coverage_sub;
 ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
-record_ros::String_cmd srv_rosbag;
+// mfc: we will record using stats_pub
+//record_ros::String_cmd srv_rosbag;
 
 // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm
 // 100 75 5 0 15 180 0.95 0.12
@@ -138,15 +141,16 @@ int main(int argc, char **argv) {
   bool path_srv_call;
   ros::Rate r(1);
 
-  // Start recording the bag
-  srv_rosbag.request.cmd = "record";
-  if (rosbag_client.call(srv_rosbag)){
-    cout << "Start recording the bag..." << endl;
-    sleep(5);
-  }else{
-    cout << "Error occurring while recording the bag. Exiting now!" << endl;
-//    exit(0);
-  }
+// mfc: we will record using stats_pub
+//   // Start recording the bag
+//   srv_rosbag.request.cmd = "record";
+//   if (rosbag_client.call(srv_rosbag)){
+//     cout << "Start recording the bag..." << endl;
+//     sleep(5);
+//   }else{
+//     cout << "Error occurring while recording the bag. Exiting now!" << endl;
+// //    exit(0);
+//   }
 
 
   while (ros::ok()) {
@@ -443,15 +447,16 @@ int main(int argc, char **argv) {
               cout << "Total time in empirical way : "
                    << travelledDistance / 0.25 + timeOfScanning / 1000 << endl;
 
-              // Stop recording the bag
-              srv_rosbag.request.cmd = "stop";
-              if (rosbag_client.call(srv_rosbag)){
-                cout << "Stop recording the bag..." << endl;
-                sleep(5);
-              }else{
-                cout << "Error occurring while stopping recording the bag. Exiting now!" << endl;
-              }
-              ros::shutdown();
+              // mfc: we will record using stats_pub
+              // // Stop recording the bag
+              // srv_rosbag.request.cmd = "stop";
+              // if (rosbag_client.call(srv_rosbag)){
+              //   cout << "Stop recording the bag..." << endl;
+              //   sleep(5);
+              // }else{
+              //   cout << "Error occurring while stopping recording the bag. Exiting now!" << endl;
+              // }
+              // ros::shutdown();
             }
 
             sensedCells = newSensedCells;
@@ -941,14 +946,15 @@ int main(int argc, char **argv) {
            << totalTimeMCDM / 60 << " m " << endl;
       cout << "Spinning at the end" << endl;
 
+      // mfc: we will record using stats_pub
       // Stop recording the bag
-      srv_rosbag.request.cmd = "stop";
-      if (rosbag_client.call(srv_rosbag)){
-        cout << "Stop recording the bag..." << endl;
-        sleep(5);
-      }else{
-        cout << "Error occurring while stop recording the bag. Exiting now!" << endl;
-      }
+      // srv_rosbag.request.cmd = "stop";
+      // if (rosbag_client.call(srv_rosbag)){
+      //   cout << "Stop recording the bag..." << endl;
+      //   sleep(5);
+      // }else{
+      //   cout << "Error occurring while stop recording the bag. Exiting now!" << endl;
+      // }
 
       sleep(1);
       ros::shutdown();
@@ -1042,7 +1048,8 @@ void createROSComms(){
   // create service clients
   map_service_client_ = nh.serviceClient<nav_msgs::GetMap>(static_map_srv_name);
   path_client =   nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
-  rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
+  // mfc: we will record using stats_pub
+  //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
 
   // create publishers
   moveBasePub =   nh.advertise<geometry_msgs::PoseStamped>(move_base_goal_topic_name, 1000);

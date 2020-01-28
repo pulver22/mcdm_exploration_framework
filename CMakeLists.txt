@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.8.3)
 project(mcdm_exploration_framework)
 
 find_package(catkin REQUIRED COMPONENTS
-  record_ros
+  # mfc: we will record using stats_pub
+  #record_ros
   ptu_control
   amtec
   actionlib
@@ -23,7 +24,9 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mcdm_exploration_framework
-  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs record_ros
+  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs 
+  # mfc: we will record using stats_pub
+  # record_ros
 #  DEPENDS system_lib
 )
 
