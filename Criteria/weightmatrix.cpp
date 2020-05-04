@@ -132,7 +132,7 @@ double WeightMatrix::getWeight(const string &encoding) {
   int numActiveCrit = numOfActiveCriteria;
   // mutex.unlock();
   // cout << card << " " << numActiveCrit << endl;
-  if (card > numActiveCrit)
+  if (card >= numActiveCrit)
     return 1;
   if (card <= 0)
     return 0;

@@ -17,48 +17,49 @@
 
 #ifndef CRITERION_H
 #define CRITERION_H
-#include "map.h"
-#include "pose.h"
-#include <string>
 #include <unordered_map>
+#include <string>
+#include "pose.h"
+#include "map.h"
+#include "RadarModel.hpp"
+#include "constants.h"
 
-// using namespace import_map;
+//using namespace import_map;
 using namespace std;
 using namespace dummy;
-class Criterion {
-public:
-  // Constructor and destructor
-  Criterion();
-  Criterion(string name, double weight, bool highGood);
-  ~Criterion();
+class Criterion
+{
+    public:
+	//Constructor and destructor
+	Criterion();
+	Criterion( string name, double weight,bool highGood);
+	~Criterion();
 
-  // Other methods
-  virtual double evaluate(Pose &p, dummy::Map *map,
-                          ros::ServiceClient *path_client){};
-  double getEvaluation(Pose &p) const;
-  void insertEvaluation(Pose &p, double value);
-  void clean();
-  void normalize();
+	//Other methods
+	virtual double evaluate( Pose &p, dummy::Map *map, RFID_tools *rfid_tools, double *batteryTime) {};
+	double getEvaluation(Pose &p) const;
+	void insertEvaluation(Pose &p, double value);
+	void clean();
+	void normalize();
 
-  // Setters and getters
-  string getName();
-  double getWeight();
-  void setName(string name);
-  void setWeight(double weight);
+	//Setters and getters
+	string getName() ;
+	double getWeight() ;
+	void setName( string name);
+	void setWeight(double weight);
+    private:
+	void normalizeHighGood();
+	void normalizeLowGood();
+	string getEncodedKey(Pose &p);
 
-private:
-  void normalizeHighGood();
-  void normalizeLowGood();
-  string getEncodedKey(Pose &p);
+  protected:
+	string name;
+	double weight = 0.0;
+	bool highGood;
+	double maxValue, minValue;
 
-protected:
-  string name;
-  double weight;
-  bool highGood;
-  double maxValue, minValue;
-
-private:
-  unordered_map<string, double> evaluation;
+  private:
+	unordered_map<string , double> evaluation;
 };
 
 #endif // CRITERION_H

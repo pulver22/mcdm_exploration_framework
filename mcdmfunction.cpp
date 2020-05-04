@@ -49,6 +49,52 @@ MCDMFunction::MCDMFunction(float w_criterion_1, float w_criterion_2, float w_cri
   }
 }
 
+MCDMFunction::MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3, float w_criterion_4, bool use_mcdm)
+{
+  this->use_mcdm = use_mcdm;
+
+  // Initialization ad-hoc: create a weightmatrix for 3 criteria with predefined weight
+  MCDMWeightReader reader;
+  //cout << "test" << endl;
+  matrix = reader.getMatrix(w_criterion_1, w_criterion_2, w_criterion_3, w_criterion_4);
+
+  // get the list of all criteria to be considered
+  list<string> listCriteria = matrix->getKnownCriteria();
+  for (list<string>::iterator it = listCriteria.begin(); it != listCriteria.end(); ++it) {
+    string name = *it;
+    // retrieve the weight of the criterion using the encoded version of the name
+    double weight = matrix->getWeight(matrix->getNameEncoding(name));
+    Criterion *c = createCriterion(name, weight);
+    if (c != NULL) {
+      criteria.emplace(name, c);
+    }
+  }
+
+}
+
+MCDMFunction::MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3, float w_criterion_4, float w_criterion_5, bool use_mcdm)
+{
+  this->use_mcdm = use_mcdm;
+
+  // Initialization ad-hoc: create a weightmatrix for 3 criteria with predefined weight
+  MCDMWeightReader reader;
+  //cout << "test" << endl;
+  matrix = reader.getMatrix(w_criterion_1, w_criterion_2, w_criterion_3, w_criterion_4, w_criterion_5);
+
+  // get the list of all criteria to be considered
+  list<string> listCriteria = matrix->getKnownCriteria();
+  for (list<string>::iterator it = listCriteria.begin(); it != listCriteria.end(); ++it) {
+    string name = *it;
+    // retrieve the weight of the criterion using the encoded version of the name
+    double weight = matrix->getWeight(matrix->getNameEncoding(name));
+    Criterion *c = createCriterion(name, weight);
+    if (c != NULL) {
+      criteria.emplace(name, c);
+    }
+  }
+
+}
+
 MCDMFunction::~MCDMFunction() {
   // delete matrix;
 }
@@ -62,6 +108,10 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
     toRet = new InformationGainCriterion(weight);
   } else if (name == (TRAVEL_DISTANCE)) {
     toRet = new TravelDistanceCriterion(weight);
+  } else if (name == (RFID_READING)) {
+    toRet = new RFIDCriterion(weight);
+  }else if (name == (BATTERY_STATUS)) {
+    toRet = new BatteryStatusCriterion(weight);
   }
   return toRet;
 }
@@ -70,12 +120,12 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
 // criteria and put it in the evaluation record (through
 // the evaluate method provided by Criterion class)
 void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
-                                      ros::ServiceClient *path_client) {
+                                      ros::ServiceClient *path_client, RFID_tools *rfid_tools, double *batteryTime) {
 
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
     //    cout << "Criterion: " << i << " : " << c->getName() <<  endl;
-    c->evaluate(p, map, path_client);
+    c->evaluate(p, map, path_client, rfid_tools, batteryTime);
   }
 }
 
@@ -83,13 +133,13 @@ void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
 EvaluationRecords *
 MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
                                 dummy::Map *map, double threshold,
-                                ros::ServiceClient *path_client) {
+                                ros::ServiceClient *path_client, RFID_tools *rfid_tools, double *batteryTime) {
 
   // Create the EvaluationRecords
   EvaluationRecords *toRet = new EvaluationRecords();
   // cout << "[mcdmfunction.cpp@evaluateFrontiers] frontiers size: " << frontiers->size() << endl;
-
   if (frontiers->size() > 0) {
+    Pose f;
     // Clean the last evaluation
     // NOTE: probably working
     unordered_map<string, Criterion *>::iterator it;
@@ -107,13 +157,9 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
 
     // Evaluate the frontiers
     list<Pose>::const_iterator it2;
-    int counter = 1;
     for (it2 = frontiers->begin(); it2 != frontiers->end(); it2++) {
-      Pose f = *it2;
-      evaluateFrontier(f, map, path_client);
-      // cout << "[mcdmfunction.cpp@evaluateFrontiers] Evaluating frontiers: "
-      // << counter << endl;
-      counter++;
+      f = *it2;
+      evaluateFrontier(f, map, path_client, rfid_tools, batteryTime);
     }
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();
@@ -127,88 +173,63 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
 
       // cout <<"---------------------NEW FRONTIER -------------------"<<endl;
 
-      double infoGainImportance;
-      bool dobreak = false;
-      Pose f = *i;
-      //    cout << "Frontier coord = (" << f.getX() << "," << f.getY() << ")"
-      //    << endl;
-
-      // order criteria depending on the considered frontier
-      sort(activeCriteria.begin(), activeCriteria.end(), CriterionComparator(f));
-
-      // apply the choquet integral
-      Criterion *lastCrit = NULL;
-      double finalValue = 0.0;
-
-      for (vector<Criterion *>::iterator k = activeCriteria.begin();
-           !dobreak && k != activeCriteria.end(); k++) {
-        // cout << "------------------New criterion observed------------- " <<
-        // endl;
+          //apply the choquet integral
+    Criterion *lastCrit = NULL;
+    double finalValue = 0.0;
+    // cout << "\n==== New frontier ====" << endl;
+    bool no_info_gain = false;
+    
+    // WEIGHTED AVG
+    if (this->use_mcdm == false){
+      for (vector<Criterion *>::iterator k = activeCriteria.begin(); k != activeCriteria.end(); k++) {
         Criterion *c = NULL;
         double weight = 0.0;
-        // Get the list of criterion whose evaluation is >= than the one's
-        // considered
         list<string> names;
-
-        for (vector<Criterion *>::iterator j = k; j != activeCriteria.end();
-             j++) {
-          // CHECK IF THE ITERATOR RETURN THE COUPLE <STRING,CRITERION>
+        names.push_back((*k)->getName());
+        // Get the weight of the single criterion
+        weight = matrix->getWeight(names);
+        finalValue += (*k)->getWeight() * (*k)->getEvaluation(f);
+        if ((*k)->getName().compare("informationGain") == 0){
+          if ((*k)->getEvaluation(f) == 0){
+            no_info_gain = true;
+          }
+        }
+      }
+    }else{
+      //MCDM
+      for (vector<Criterion *>::iterator k = activeCriteria.begin(); k != activeCriteria.end(); k++) {
+        Criterion *c = NULL;
+        double weight = 0.0;
+        list<string> names;
+        for (vector<Criterion *>::iterator j = k; j != activeCriteria.end(); j++) {
           Criterion *next = (*j);
-          names.push_back(next->getName());
+          names.push_back(next->getName()); // The list of criteria whose evaluation is >= than the one's considered
         }
-
-        if (k == activeCriteria.begin()) {
-          weight = 1;
-        } else {
-          weight = matrix->getWeight(names);
-        }
-
+        weight = matrix->getWeight(names);
         if (k == activeCriteria.begin()) {
           c = (*k);
-
-          double eval = c->getEvaluation(f);
-          if (eval <= 0.0001 or isnan(eval))
-            eval = 0;
-          finalValue += eval * weight;
-          //         cout << "[mcdmfunctionc.pp@evaluateFrontiers] nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
-
-          //        if (c->getEvaluation(f) <= 0)
-          //        {
-          //          //cout << "alive" << endl;
-          //          dobreak = true;
-          //          break;
-          //        }
-          //
+          finalValue += c->getEvaluation(f) * weight;
         } else {
           c = (*k);
-
-          double eval = c->getEvaluation(f);
-          if (eval <= 0.0001 or isnan(eval))
-            eval = 0;
-          double eval2 = lastCrit->getEvaluation(f);
-          if (eval2 <= 0.0001 or isnan(eval))
-            eval2 = 0;
-
-          double tmpValue = eval - eval2;
+          double tmpValue = c->getEvaluation(f) - lastCrit->getEvaluation(f);
           finalValue += tmpValue * weight;
-          //          cout << "[mcdmfunctionc.pp@evaluateFrontiers] nameCriterion: " << c->getName() << ", evaluation:" << eval << endl;
-
-          // cout << tmpValue <<"," << weight<<endl;
-          //        if (c->getEvaluation(f) <= 0)
-          //        {
-          //          //cout << "alive" << endl;
-          //          dobreak = true;
-          //          break;
-          //        }
         }
         lastCrit = c;
+
+        if (c->getName().compare("informationGain") == 0){
+          if (c->getEvaluation(f) == 0){
+            no_info_gain = true;
+          }
+        }
       }
 
-      // cout << " [mcdmfunctionc.pp@evaluateFrontiers] Frontier coord = (" << f.getX() << "," << f.getY() << "),  Final value: " << finalValue << endl;
-      if (finalValue > threshold) {
+
+    }
+
+    if (finalValue > threshold and no_info_gain == false) {
         toRet->putEvaluation(f, finalValue);
       }
-      // cout << " [mcdmfunctionc.pp@evaluateFrontiers] Inserted into record" << endl;
+  
     }
 
     activeCriteria.clear();
@@ -259,7 +280,7 @@ string MCDMFunction::getEncodedKey(Pose &p, int value) {
           to_string(p.getOrientation()) + "/" + "1";
   } else if (value == 2) {
     key = to_string(p.getX()) + "/" + to_string(p.getY()) + "/" +
-          to_string(p.getOrientation()) + "/" + "0";
+          to_string(p.getOrientation()) + "/" + "2";
   }
   return key;
 }

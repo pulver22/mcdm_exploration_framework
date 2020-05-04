@@ -21,7 +21,8 @@
 Criterion::Criterion() {}
 
 Criterion::Criterion(string name, double weight, bool highGood)
-    : name(name), weight(weight), highGood(highGood) {}
+    : name(name), weight(weight), maxValue(std::numeric_limits<double>::min()),
+      minValue(std::numeric_limits<double>::max()), highGood(highGood) {}
 
 Criterion::~Criterion() {}
 

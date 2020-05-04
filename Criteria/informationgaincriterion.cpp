@@ -10,7 +10,8 @@ InformationGainCriterion::InformationGainCriterion(double weight)
 InformationGainCriterion::~InformationGainCriterion() {}
 
 double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map,
-                                          ros::ServiceClient *path_client) {
+                                          ros::ServiceClient *path_client,
+                                          RFID_tools *rfid_toolss, double *batteryTime) {
 
   float px = p.getX();
   float py = p.getY();

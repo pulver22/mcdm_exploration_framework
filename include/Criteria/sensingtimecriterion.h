@@ -27,7 +27,7 @@ class SensingTimeCriterion : public Criterion {
 public:
   SensingTimeCriterion(double weight);
   ~SensingTimeCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, RFID_tools *rfid_tools, double *batteryTime);
 
   // only for testing purpose
   // void insertEvaluation(Pose &p, double value);

@@ -14,19 +14,18 @@
  *
  */
 
-#include "Criteria/traveldistancecriterion.h"
+#include "Criteria/batterystatuscriterion.h"
 #include "Criteria/criteriaName.h"
-#include "PathFinding/astar.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "nav_msgs/GetPlan.h"
 #include <iostream>
 
-TravelDistanceCriterion::TravelDistanceCriterion(double weight)
+BatteryStatusCriterion::BatteryStatusCriterion(double weight)
     : Criterion(TRAVEL_DISTANCE, weight, false) {}
 
-TravelDistanceCriterion::~TravelDistanceCriterion() {}
+BatteryStatusCriterion::~BatteryStatusCriterion() {}
 
-double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
+double BatteryStatusCriterion::evaluate(Pose &p, dummy::Map *map,
                                          ros::ServiceClient *path_client,
                                          RFID_tools *rfid_toolss, double *batteryTime) {
   // cout << "travel " << endl;
@@ -37,7 +36,7 @@ double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
   double startX_meter, startY_meter;
   double goalX_meter, goalY_meter;
   // double distance = robotPosition.getDistance(p);
-  //  cout << " [travelDistanceCriterion.cpp@Evaluate] [posX, posY] = [" <<
+  //  cout << " [BatteryStatusCriterion.cpp@Evaluate] [posX, posY] = [" <<
   //  p.getX() << "," << p.getY() << "]" << endl;
   //  string path = astar.pathFind(robotPosition.getX(), robotPosition.getY(),
   //  p.getX(), p.getY(), map);
@@ -79,19 +78,23 @@ double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
     path_len = 50000;
 //    cout << "[ "<< p.getX() << "," << p.getY() <<"] CELL TOO CLOSE TO WALL" << endl;
   }
-  Criterion::insertEvaluation(p, path_len);
+
+  translTime = path_len / TRANSL_SPEED;
+  remainingBattery = *batteryTime - timeRequired;
+
+  Criterion::insertEvaluation(p, remainingBattery);
   return path_len;
 }
 
 /*
-void TravelDistanceCriterion::insertEvaluation(Pose& p, double value)
+void BatteryStatusCriterion::insertEvaluation(Pose& p, double value)
 {
     cout << "alice" <<endl;
     insertEvaluation(p,value);
 }
 */
 
-double TravelDistanceCriterion::getPathLen(
+double BatteryStatusCriterion::getPathLen(
     std::vector<geometry_msgs::PoseStamped> poses) {
   double len = 0;
   geometry_msgs::Point p1, p2;
