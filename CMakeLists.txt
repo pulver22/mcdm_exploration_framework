@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   grid_map_msgs
   grid_map_cv
   cv_bridge
+  move_base_msgs
 
 )
 
