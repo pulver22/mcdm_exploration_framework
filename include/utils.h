@@ -2,8 +2,8 @@
 // Created by pulver on 20/07/19.
 //
 
-#ifndef NAVIGATION_UTILITIES_H
-#define NAVIGATION_UTILITIES_H
+#ifndef UTILITIES_H
+#define UTILITIES_H
 
 #include "map.h"
 #include "pose.h"
@@ -41,16 +41,28 @@ using namespace std;
 using namespace dummy;
 
 
-class NavigationUtilities {
+class Utilities {
 
   public:
-    NavigationUtilities();
-    ~NavigationUtilities();
+    Utilities();
+    ~Utilities();
+    
+    /**
+     * Check if a Pose object is already present within a list
+     * 
+     * @param list: the list of Pose objects
+     * @param p: the Pose object to look for
+     */
     bool contains(std::list<Pose> &list, Pose &p);
 
     bool containsPos(std::list<std::pair<float, float>>* positionEscluded,
                      std::pair<float, float> p);
-
+    /**
+     * Remove a Pose object from a list of Pose objects
+     *
+     *  @param possibleDestinations: list of Pose objects
+     * @param p: the object to removeS
+     */
     void cleanPossibleDestination2(std::list<Pose> *possibleDestinations, Pose &p);
 
     void cleanDestinationFromTabulist(std::list<Pose> *possibleDestinations, std::list<std::pair<float, float> > *posToEsclude);
@@ -60,7 +72,7 @@ class NavigationUtilities {
                               string actualPose,
                               vector<pair<string, list<Pose> >> *graph2,
                               ros::ServiceClient *path_client,
-                              MCDMFunction *function);
+                              MCDMFunction *function, double *batteryTime, GridMap *belief_map);
 
     double calculateScanTime(double scanAngle);
 
@@ -108,10 +120,10 @@ class NavigationUtilities {
     Pose selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
                                       double threshold, ros::ServiceClient *path_client,
                                       std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
-                                      std::string move_base_local_costmap_topic_name);
+                                      std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map);
 
     void saveCoverage(const std::string& name, const std::string& content, bool append);
 };
 
 
-#endif //NAVIGATION_UTILITIES_H
+#endif //UTILITIES_H

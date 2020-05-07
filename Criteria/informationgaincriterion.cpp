@@ -11,7 +11,7 @@ InformationGainCriterion::~InformationGainCriterion() {}
 
 double InformationGainCriterion::evaluate(Pose &p, dummy::Map *map,
                                           ros::ServiceClient *path_client,
-                                          RFID_tools *rfid_toolss, double *batteryTime) {
+                                          double *batteryTime, GridMap *belief_map) {
 
   float px = p.getX();
   float py = p.getY();

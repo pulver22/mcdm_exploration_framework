@@ -45,8 +45,9 @@ include_directories(
 add_library(mcdm_exploration_framework pose.cpp map.cpp newray.cpp mcdmfunction.cpp
 map.cpp evaluationrecords.cpp Criteria/sensingtimecriterion.cpp
 Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp
+Criteria/batterystatuscriterion.cpp Criteria/RFIDCriterion.cpp
 Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cpp
-PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp navigation_utilities.cpp)
+PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp utils.cpp)
 
 #add_executable(mcdm_online_exploration_ros main.cpp )
 #target_link_libraries(mcdm_online_exploration_ros mcdm_exploration_framework ${catkin_LIBRARIES})

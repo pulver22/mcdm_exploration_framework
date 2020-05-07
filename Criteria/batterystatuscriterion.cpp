@@ -27,35 +27,24 @@ BatteryStatusCriterion::~BatteryStatusCriterion() {}
 
 double BatteryStatusCriterion::evaluate(Pose &p, dummy::Map *map,
                                          ros::ServiceClient *path_client,
-                                         RFID_tools *rfid_toolss, double *batteryTime) {
-  // cout << "travel " << endl;
-  Astar astar;
+                                         double *batteryTime, GridMap *belief_map) {
   Pose robotPosition = map->getRobotPosition();
   nav_msgs::GetPlan path;
   double path_len = 0;
   double startX_meter, startY_meter;
   double goalX_meter, goalY_meter;
-  // double distance = robotPosition.getDistance(p);
-  //  cout << " [BatteryStatusCriterion.cpp@Evaluate] [posX, posY] = [" <<
-  //  p.getX() << "," << p.getY() << "]" << endl;
-  //  string path = astar.pathFind(robotPosition.getX(), robotPosition.getY(),
-  //  p.getX(), p.getY(), map);
-  //  double distance = astar.lenghtPath(path);
-  // cout << "alive after calling a*" << endl;
+  
   // Update starting point in the path
   path.request.start.header.frame_id = "map";
   path.request.start.pose.position.x = robotPosition.getX();
   path.request.start.pose.position.y = robotPosition.getY();
   path.request.start.pose.orientation.w = 1;
-  //  map->getPathPlanningPosition(goalX_meter, goalY_meter, p.getX(),
-  //  p.getY());
+  
   path.request.goal.header.frame_id = "map";
   path.request.goal.pose.position.x = p.getX();
   path.request.goal.pose.position.y = p.getY();
   path.request.goal.pose.orientation.w = 1;
-  //  cout << " (x_start, y_start) = (" << robotPosition.getX() << "," <<
-  //  robotPosition.getY() << "), (x_goal, y_goal) = (" << goalX_meter << "," <<
-  //  goalY_meter << ")" << endl;
+  
   bool path_srv_call = path_client->call(path);
   if (path_srv_call) {
     // calculate path length

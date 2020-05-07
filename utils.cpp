@@ -2,13 +2,13 @@
 // Created by pulver on 20/07/19.
 //
 
-#include "include/navigation_utilities.h"
+#include "include/utils.h"
 
-NavigationUtilities::NavigationUtilities() {};
-NavigationUtilities::~NavigationUtilities() {};
+Utilities::Utilities() {};
+Utilities::~Utilities() {};
 
 
-bool NavigationUtilities::contains(std::list<Pose> &list, Pose &p) {
+bool Utilities::contains(std::list<Pose> &list, Pose &p) {
   bool result = false;
 
   std::list<Pose>::iterator findIter = std::find(list.begin(), list.end(), p);
@@ -19,7 +19,7 @@ bool NavigationUtilities::contains(std::list<Pose> &list, Pose &p) {
   return result;
 }
 
-bool NavigationUtilities::containsPos(std::list<std::pair<float, float>> *positionEscluded,
+bool Utilities::containsPos(std::list<std::pair<float, float>> *positionEscluded,
                  std::pair<float, float> p) {
   bool result = false;
   std::pair<float, float> tmp_p = make_pair(float(int(p.first)), float(int(p.second)));
@@ -33,7 +33,7 @@ bool NavigationUtilities::containsPos(std::list<std::pair<float, float>> *positi
   return result;
 }
 
-void NavigationUtilities::cleanPossibleDestination2(std::list<Pose> *possibleDestinations, Pose &p) {
+void Utilities::cleanPossibleDestination2(std::list<Pose> *possibleDestinations, Pose &p) {
 
 //  for (auto it = possibleDestinations->begin(); it != possibleDestinations->end(); it++)
 //  {
@@ -58,7 +58,7 @@ void NavigationUtilities::cleanPossibleDestination2(std::list<Pose> *possibleDes
   // cout << "[navigation_utilies.cpp@cleanPossibleDestination2] cleanedFronties: " << possibleDestinations->size() << endl;
 }
 
-void NavigationUtilities::cleanDestinationFromTabulist(std::list<Pose> *possibleDestinations,
+void Utilities::cleanDestinationFromTabulist(std::list<Pose> *possibleDestinations,
                                                        std::list<std::pair<float, float> > *posToEsclude) {
 
   std::list<Pose> finalDestination;
@@ -79,11 +79,12 @@ void NavigationUtilities::cleanDestinationFromTabulist(std::list<Pose> *possible
   // cout << "Size of possibleDestinations after update: " << possibleDestinations->size() << endl;
 }
 
-void NavigationUtilities::pushInitialPositions(dummy::Map map, float x, float y, float orientation,
+void Utilities::pushInitialPositions(dummy::Map map, float x, float y, float orientation,
                           int range, int FOV, double threshold,
                           string actualPose,
                           vector<pair<string, list<Pose> >> *graph2,
-                          ros::ServiceClient *path_client, MCDMFunction *function) {
+                          ros::ServiceClient *path_client, MCDMFunction *function,
+                          double *batteryTime, GridMap *belief_map) {
 
   map.findCandidatePositions(x, y, orientation, FOV, range);
   vector<pair<float, float> > candidatePosition = map.getCandidatePositions();
@@ -101,26 +102,26 @@ void NavigationUtilities::pushInitialPositions(dummy::Map map, float x, float y,
     frontiers.push_back(p4);
   }
   EvaluationRecords *record =
-      function->evaluateFrontiers(&frontiers, &map, threshold, path_client);
+      function->evaluateFrontiers(&frontiers, &map, threshold, path_client, batteryTime, belief_map);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose> > pair = make_pair(actualPose, nearCandidates);
   graph2->push_back(pair);
 }
 
-double NavigationUtilities::calculateScanTime(double scanAngle) {
+double Utilities::calculateScanTime(double scanAngle) {
   return (-7.2847174296449998e-006 * scanAngle * scanAngle * scanAngle +
           2.2131847908245512e-003 * scanAngle * scanAngle +
           1.5987873410233613e-001 * scanAngle + 10);
 }
 
-Pose NavigationUtilities::createFromInitialPose(Pose pose, float variation, int range, int FOV) {
+Pose Utilities::createFromInitialPose(Pose pose, float variation, int range, int FOV) {
   Pose tmp = Pose(pose.getX(), pose.getY(), pose.getOrientation() + variation,
                   FOV, range);
   return tmp;
 }
 
-void NavigationUtilities::calculateDistance(list<Pose> history, ros::ServiceClient *path_client, double robot_radius) {
+void Utilities::calculateDistance(list<Pose> history, ros::ServiceClient *path_client, double robot_radius) {
   std::list<Pose>::iterator it = history.begin();
   double travelledDistance = 0;
   int numOfTurning = 0;
@@ -155,7 +156,7 @@ void NavigationUtilities::calculateDistance(list<Pose> history, ros::ServiceClie
        << endl; // Valid only if resolution == 1.0 (cell side is 0.5m)
 }
 
-void NavigationUtilities::updatePathMetrics(
+void Utilities::updatePathMetrics(
     int *count, Pose *target, Pose *previous, string actualPose,
     list<Pose> *nearCandidates, vector<pair<string, list<Pose> >> *graph2,
     dummy::Map *map, MCDMFunction *function, list<Pose> *tabuList,
@@ -228,7 +229,7 @@ void NavigationUtilities::updatePathMetrics(
   (*count)++;
 }
 
-list<Pose> NavigationUtilities::cleanHistory(vector<string> *history, EvaluationRecords *record_history) {
+list<Pose> Utilities::cleanHistory(vector<string> *history, EvaluationRecords *record_history) {
   vector<string>::iterator it_history = history->begin();
   list<Pose> tmp_history;
   for (it_history; it_history != prev(history->end(), 1); it_history++) {
@@ -239,7 +240,7 @@ list<Pose> NavigationUtilities::cleanHistory(vector<string> *history, Evaluation
   return tmp_history;
 }
 
-void NavigationUtilities::printResult(long newSensedCells, long totalFreeCells, double precision,
+void Utilities::printResult(long newSensedCells, long totalFreeCells, double precision,
                  long numConfiguration, double travelledDistance,
                  int numOfTurning, double totalAngle, double totalScanTime, double resolution,
                  float w_info_gain, float w_travel_distance, float w_sensing_time, std::string fileURI) {
@@ -274,7 +275,7 @@ void NavigationUtilities::printResult(long newSensedCells, long totalFreeCells, 
        << endl;
 }
 
-Pose NavigationUtilities::getCurrentPose(float resolution, float costresolution, dummy::Map *map,
+Pose Utilities::getCurrentPose(float resolution, float costresolution, dummy::Map *map,
                     double initFov, int initRange) {
   ros::Time _now_stamp_ = ros::Time(0);
 
@@ -345,7 +346,7 @@ Pose NavigationUtilities::getCurrentPose(float resolution, float costresolution,
 
 
 
-bool NavigationUtilities::move(float x, float y, float orientation, float time_travel,
+bool Utilities::move(float x, float y, float orientation, float time_travel,
           list<Pose> *tabuList,
           std::list<std::pair<float, float> > *posToEsclude) {
   move_base_msgs::MoveBaseGoal goal;
@@ -415,7 +416,7 @@ bool NavigationUtilities::move(float x, float y, float orientation, float time_t
 
 
 
-double NavigationUtilities::getPathLen(std::vector<geometry_msgs::PoseStamped> poses, double robot_radius) {
+double Utilities::getPathLen(std::vector<geometry_msgs::PoseStamped> poses, double robot_radius) {
   double len = 0;
   geometry_msgs::Point p1, p2;
   int npoints = poses.size();
@@ -434,7 +435,7 @@ double NavigationUtilities::getPathLen(std::vector<geometry_msgs::PoseStamped> p
 
   return len;
 }
-double NavigationUtilities::getAngleBetPoses(geometry_msgs::PoseStamped ps1, geometry_msgs::PoseStamped ps2){
+double Utilities::getAngleBetPoses(geometry_msgs::PoseStamped ps1, geometry_msgs::PoseStamped ps2){
 
   // ....................
   // find quaternion to go from q1 to q2
@@ -457,7 +458,7 @@ double NavigationUtilities::getAngleBetPoses(geometry_msgs::PoseStamped ps1, geo
 
 }
 
-bool NavigationUtilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
+bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            nav_msgs::GetPlan *path,
                            ros::ServiceClient *path_client,
                            list<Pose> *tabuList,
@@ -508,7 +509,7 @@ bool NavigationUtilities::showMarkerandNavigate(Pose target, ros::Publisher *mar
 }
 
 
-bool NavigationUtilities::freeInLocalCostmap(Pose target, std::string move_base_local_costmap_topic_name){
+bool Utilities::freeInLocalCostmap(Pose target, std::string move_base_local_costmap_topic_name){
   string map_frame= "map";
   bool ans =false;
   int val=0;
@@ -570,9 +571,9 @@ bool NavigationUtilities::freeInLocalCostmap(Pose target, std::string move_base_
 }
 
 
-Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
+Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
                                   double threshold, ros::ServiceClient *path_client, std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
-                                                       std::string move_base_local_costmap_topic_name)
+                                  std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map)
 {
   bool isFreeFromObstacle = false;
   while (isFreeFromObstacle == false) {
@@ -590,7 +591,7 @@ Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *
     cleanPossibleDestination2(nearCandidates, target);
     cout << "nearCandidate after: " << nearCandidates->size() << endl;
     // Get the list of new candidate position with  associated evaluation
-    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client);
+    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client, batteryTime, belief_map);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
 //    cout << "     record size: " << record->size() << endl;
@@ -601,7 +602,7 @@ Pose NavigationUtilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *
   return target;
 }
 
-void NavigationUtilities::saveCoverage(const std::string& name, const std::string& content, bool append ) {
+void Utilities::saveCoverage(const std::string& name, const std::string& content, bool append ) {
   std::ofstream outfile;
   std::ifstream pFile(name);
   if (outfile.fail()){

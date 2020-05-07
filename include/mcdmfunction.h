@@ -13,15 +13,19 @@ using namespace dummy;
 class MCDMFunction {
 
 public:
-  MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3);
+  MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3, bool use_mcdm);
+  MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3, float w_criterion_4, bool use_mcdm);
+  MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3, float w_criterion_4, float w_criterion_5, bool use_mcdm);
   ~MCDMFunction();
   void evaluateFrontier(Pose &p, dummy::Map *map,
-                        ros::ServiceClient *path_client, RFID_tools *rfid_tools,
-                        double *batteryTime);
+                        ros::ServiceClient *path_client,
+                        double *batteryTime,
+                        GridMap *belief_map);
   EvaluationRecords *evaluateFrontiers(const std::list<Pose> *frontiers,
                                        dummy::Map *map, double threshold,
                                        ros::ServiceClient *path_client,
-                                       RFID_tools *rfid_tools, double *batteryTime);
+                                       double *batteryTime,
+                                       GridMap *belief_map);
   pair<Pose, double> selectNewPose(EvaluationRecords *evaluationRecords);
   string getEncodedKey(Pose &p, int value);
 
@@ -30,6 +34,7 @@ protected:
   unordered_map<string, Criterion *> criteria;
   vector<Criterion *> activeCriteria;
   WeightMatrix *matrix;
+  bool use_mcdm = false;
   // mutex myMutex;
 };
 #endif // MCDMFUNCTION_H

@@ -3,7 +3,7 @@
 #include "map.h"
 #include "mcdmfunction.h"
 #include "newray.h"
-#include "navigation_utilities.cpp"
+#include "utils.h"
 #include "radio_models/propagationModel.cpp"
 #include <algorithm>
 #include <iostream>
@@ -36,6 +36,7 @@
 // #include "record_ros/record.h"
 // #include "record_ros/String_cmd.h"
 // mfc ...
+#include "rfid_node/GetRFIDMap.h"
 
 using namespace std;
 using namespace dummy;
@@ -50,6 +51,7 @@ void printROSParams();
 void loadROSParams();
 void createROSComms();
 void tag_coverage_callback(const std_msgs::Float32 msg);
+void belief_map_callback(const grid_map_msgs::GridMap msg);
 void sensing();
 
 
@@ -71,9 +73,11 @@ bool btMode = false;
 double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
 float tag_coverage_percentage = 0.0;
+GridMap belief_map;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
+std::string belief_map_srv_name;
 std::string make_plan_srv_name;
 std::string move_base_goal_topic_name;
 std::string move_base_srv_name;
@@ -85,20 +89,23 @@ std::string move_base_costmap_updates_topic_name;
 std::string  marker_pub_topic_name;
 std::string rosbag_srv_name;
 double robot_radius;
-NavigationUtilities nav_utils;
+Utilities utils;
 std::string stats_topic_name;
 
 
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_;
 ros::ServiceClient path_client;
+ros::ServiceClient belief_map_client;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;
+grid_map_msgs::GridMap srv_belief_map;
 ros::Publisher moveBasePub;
 ros::Subscriber costmap_sub;
 ros::Subscriber costmap_update_sub;
 ros::Subscriber tag_coverage_sub;
+ros::Subscriber belief_map_sub;
 ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
@@ -151,6 +158,9 @@ int main(int argc, char **argv) {
   std::stringstream stats_buffer;
   double coverage;
 
+  // Create srv request for the RFID belief map
+  rfid_node::GetRFIDMap belief_map_srv;
+
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
   stats_buffer.str("coveragePercent, numConfiguration, backTracking");
   stats_msg.data=stats_buffer.str();
@@ -195,6 +205,7 @@ int main(int argc, char **argv) {
       double w_sensing_time = atof(argv[8]);
       std::string out_log = (argv[9]);
       std::string coverage_log = (argv[10]);
+      bool use_mcdm = bool(atoi(argv[11]));
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -228,19 +239,19 @@ int main(int argc, char **argv) {
 
       // Get the initial pose in map frame
       Pose start_pose =
-          nav_utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+          utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
       Pose target = start_pose;
       Pose previous = target;
-      Pose invertedInitial = nav_utils.createFromInitialPose(start_pose, M_PI, initRange, initFov);
-      Pose eastInitial = nav_utils.createFromInitialPose(start_pose, M_PI / 2, initRange, initFov);
-      Pose westInitial = nav_utils.createFromInitialPose(start_pose, 3 * M_PI / 2, initRange, initFov);
+      Pose invertedInitial = utils.createFromInitialPose(start_pose, M_PI, initRange, initFov);
+      Pose eastInitial = utils.createFromInitialPose(start_pose, M_PI / 2, initRange, initFov);
+      Pose westInitial = utils.createFromInitialPose(start_pose, 3 * M_PI / 2, initRange, initFov);
       std::pair<float, float> targetPos;
       long numConfiguration = 1;
       vector<pair<string, list<Pose> >> graph2;
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
-      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time);
+      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time, use_mcdm);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -265,17 +276,33 @@ int main(int argc, char **argv) {
       double totalScanTime = 0;
       int encodedKeyValue = 0;
 
+      double batteryTime = MAX_BATTERY;
+      double batteryPercentage = 100;
+      
       // RFID
       double absTagX = 0;  // std::stod(argv[12]); // m.
       double absTagY = 0;  // std::stod(argv[11]); // m.
       double freq = 0;     // std::stod(argv[13]); // Hertzs
       double txtPower = 0; // std::stod(argv[14]); // dBs
       double rxPower = 0;
-      std::pair<int, int> relTagCoord;
+      // std::pair<int, int> relTagCoord;
       long i, j;
       long cell_i, cell_j;
       double targetX_meter, targetY_meter;
       bool success = false;
+      
+      // std::vector<std::pair<double,double>> tags_coord;
+      // tags_coord.push_back(std::make_pair(absTagX, absTagY));
+      // RFIDGridmap myGrid1(argv[5], resolution, resolution, false);
+      // std::vector<RFIDGridmap> RFID_maps_list;
+
+      // RFID_tools rfid_tools;
+      // // rfid_tools.rm = &rm;
+      // rfid_tools.tags_coord = tags_coord;
+      // rfid_tools.freq = freq;
+      // rfid_tools.txtPower = txtPower;
+      // rfid_tools.sensitivity = SENSITIVITY;
+      // rfid_tools.RFID_maps_list = &RFID_maps_list;
 
       auto startMCDM = ros::Time::now().toSec();
       string content;
@@ -299,7 +326,7 @@ int main(int argc, char **argv) {
           //          }
           // At every iteration, the current pose of the robot is taken from the
           // TF-tree
-          target = nav_utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+          target = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
           cout << "\n============================================" << endl;
           cout << "New iteration, position: " << target.getX() << "," << target.getY() <<
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
@@ -317,7 +344,7 @@ int main(int argc, char **argv) {
                     + "," + to_string(tag_coverage_percentage)  
                     + "," + to_string(travelledDistance) + "\n" ;
           cout << tag_coverage_percentage << endl;
-          nav_utils.saveCoverage(coverage_log, content, true );
+          utils.saveCoverage(coverage_log, content, true );
           cout << "  ==> Saving the coverage log ..." << endl;
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
@@ -359,7 +386,7 @@ int main(int argc, char **argv) {
           double scanAngle =
               target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanning time
-          totalScanTime += nav_utils.calculateScanTime(scanAngle * 180 / M_PI);
+          totalScanTime += utils.calculateScanTime(scanAngle * 180 / M_PI);
           // Calculare the relative RFID tag position to the robot position
           //            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY,
           //            target.getX(), target.getY());
@@ -393,6 +420,13 @@ int main(int argc, char **argv) {
           vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
 
             map.emptyCandidatePositions();
+
+          // Get an updated RFID belief map
+          if (belief_map_client.call(belief_map_srv)){
+            belief_map = belief_map_srv.response.rfid_maps
+          }else{
+            ROS_ERROR("Failed to get the RFID belief map");
+          }
 
           if (scan) {
             // NOTE: perform gas sensing------------
@@ -448,8 +482,8 @@ int main(int argc, char **argv) {
             actualPose = function.getEncodedKey(target, 0);
             // Add to the graph the initial positions and the candidates from
             // there (calculated inside the function)
-            nav_utils.pushInitialPositions(map, x, y, orientation, range, FOV, threshold,
-                                 actualPose, &graph2, &path_client, &function);
+            utils.pushInitialPositions(map, x, y, orientation, range, FOV, threshold,
+                                 actualPose, &graph2, &path_client, &function, &batteryTime, &belief_map);
           }
 
           // If there are no new candidate positions from the current pose of
@@ -491,14 +525,14 @@ int main(int argc, char **argv) {
                    << travelledDistance << endl;
               cout << "------------------ HISTORY -----------------" << endl;
               // Retrieve the cell visited only the first time
-              list<Pose> tmp_history = nav_utils.cleanHistory(&history, &record);
-              nav_utils.calculateDistance(tmp_history, &path_client, robot_radius);
+              list<Pose> tmp_history = utils.cleanHistory(&history, &record);
+              utils.calculateDistance(tmp_history, &path_client, robot_radius);
 
               cout << "------------------ TABULIST -----------------" << endl;
               // Calculate the path connecting the cells in the tabulist, namely
               // the cells that are visited one time and couldn't be visite
               // again
-              nav_utils.calculateDistance(tabuList, &path_client, robot_radius);
+              utils.calculateDistance(tabuList, &path_client, robot_radius);
 
               // Normalise the travel distance in meter
               // NOTE: assuming that the robot is moving at 0.5m/s and the
@@ -506,7 +540,7 @@ int main(int argc, char **argv) {
               if (resolution == 1.0) {
                 travelledDistance = travelledDistance / 2;
               }
-              nav_utils.printResult(newSensedCells, totalFreeCells, precision,
+              utils.printResult(newSensedCells, totalFreeCells, precision,
                           numConfiguration, travelledDistance, numOfTurning,
                           totalAngle, totalScanTime, resolution,
                           w_info_gain, w_travel_distance, w_sensing_time, out_log);
@@ -572,11 +606,11 @@ int main(int argc, char **argv) {
             // Evaluate the frontiers and return a list of <frontier,
             // evaluation> pairs
             // cout << "Number of frontiers identified: " << frontiers.size() << endl;
-            nav_utils.cleanPossibleDestination2(&frontiers, target);
-            nav_utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
+            utils.cleanPossibleDestination2(&frontiers, target);
+            utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             // Print the frontiers with the respective evaluation
             // cout << "Number of frontiers identified: " << frontiers.size() << endl;
-            EvaluationRecords *record = function.evaluateFrontiers(&frontiers, &map, threshold, &path_client);
+            EvaluationRecords *record = function.evaluateFrontiers(&frontiers, &map, threshold, &path_client, &batteryTime, &belief_map);
             nearCandidates = record->getFrontiers();
             // NOTE: This may not be needed because  we are in an unexplored area
             
@@ -591,23 +625,23 @@ int main(int argc, char **argv) {
               target = result.first;
 
               cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
-              target = nav_utils.selectFreePoseInLocalCostmap(target, &nearCandidates, &map, &function, threshold,
-                  &path_client, &posToEsclude, record, move_base_local_costmap_topic_name);
+              target = utils.selectFreePoseInLocalCostmap(target, &nearCandidates, &map, &function, threshold,
+                  &path_client, &posToEsclude, record, move_base_local_costmap_topic_name, &batteryTime, &belief_map);
               targetPos = std::make_pair(int(target.getX()), int(target.getY()));
 
               // If the selected destination does not appear among the cells
               // already visited
-              if ((!nav_utils.containsPos(&posToEsclude, targetPos))) {
+              if ((!utils.containsPos(&posToEsclude, targetPos))) {
                 //                                cout << "2" << endl;
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 backTracking = false;
 
-                success = nav_utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
+                success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
                                       &tabuList, &posToEsclude, min_robot_speed, robot_radius);
                 if (success == true){
 //                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
-                  nav_utils.updatePathMetrics(
+                  utils.updatePathMetrics(
                       &count, &target, &previous, actualPose, &nearCandidates,
                       &graph2, &map, &function, &tabuList, &posToEsclude,
                       &history, encodedKeyValue, &numConfiguration,
@@ -635,13 +669,13 @@ int main(int argc, char **argv) {
                   // Remove the current position from possible candidates
                   nearCandidates = graph2.at(graph2.size() - 1).second;
                   cout << "[main] candidateposition before: " << nearCandidates.size() << endl;
-                  nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-                  nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                  utils.cleanPossibleDestination2(&nearCandidates, target);
+                  utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                   cout << "[main] candidateposition after: " << nearCandidates.size() << endl;
                   // Get the list of new candidate position with associated
                   // evaluation
                   record = function.evaluateFrontiers(&nearCandidates, &map,
-                                                      threshold, &path_client);
+                                                      threshold, &path_client, &batteryTime, &belief_map);
                   // If there are candidate positions
 //                  cout << "PoseToEsclude:" << endl;
 //                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
@@ -659,7 +693,7 @@ int main(int argc, char **argv) {
                       targetPos = make_pair(int(target.getX()), int(target.getY()));
                       cout << "   TargetPos: " << targetPos.first << ", " << targetPos.second << endl;
                       //                      if (!contains(tabuList, target)) {
-                      if (!nav_utils.containsPos(&posToEsclude, targetPos)) {
+                      if (!utils.containsPos(&posToEsclude, targetPos)) {
                         // If the new selected position is not in the Tabulist
 
                         encodedKeyValue = 1;
@@ -669,11 +703,11 @@ int main(int argc, char **argv) {
                         break; // the while loop
                       } else {
                         // Remove the current position from possible candidates
-                        nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-                        nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                        utils.cleanPossibleDestination2(&nearCandidates, target);
+                        utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                         // Get the list of new candidate position with
                         // associated evaluation
-                        record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
+                        record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client, &batteryTime, &belief_map);
                       }
                     }
                     // If there are no more candidate position from the last
@@ -689,23 +723,23 @@ int main(int argc, char **argv) {
                       // Select the new record from two position back in the graph
                       nearCandidates = graph2.at(graph2.size() - 1).second;
                       cout << "nearCandidates before: " <<nearCandidates.size() << endl;
-                      nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-                      nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                      utils.cleanPossibleDestination2(&nearCandidates, target);
+                      utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                       cout << "nearCandidates after: " <<nearCandidates.size() << endl;
                       record = function.evaluateFrontiers(&nearCandidates, &map,
-                                                          threshold, &path_client);
+                                                          threshold, &path_client, &batteryTime, &belief_map);
                       cout << "record: " << record->size() << endl;
                     }
                   }
                   cout << "[BT1-2]Target: " << target.getX() << ", " << target.getY() << endl;
                   backTracking = true;
-                  previous = nav_utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
-                  success = nav_utils.showMarkerandNavigate(target, &marker_pub, &path,
+                  previous = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+                  success = utils.showMarkerandNavigate(target, &marker_pub, &path,
                                         &path_client, &tabuList, &posToEsclude, min_robot_speed, robot_radius);
                   if (success == true)
                   {
 //                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
-                    nav_utils.updatePathMetrics(
+                    utils.updatePathMetrics(
                         &count, &target, &previous, actualPose, &nearCandidates,
                         &graph2, &map, &function, &tabuList, &posToEsclude,
                         &history, encodedKeyValue, &numConfiguration,
@@ -731,8 +765,8 @@ int main(int argc, char **argv) {
                   string targetString = graph2.at(graph2.size() - 1).first;
                   nearCandidates = graph2.at(graph2.size() - 1).second;
                   cout << "nearCandidates before: " << nearCandidates.size() << endl;
-                  nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-                  nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                  utils.cleanPossibleDestination2(&nearCandidates, target);
+                  utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                   cout << "nearCandidates after: " << nearCandidates.size() << endl;
                   target = record->getPoseFromEncoding(targetString);
                   // Save it history as cell visited more than once
@@ -756,8 +790,8 @@ int main(int argc, char **argv) {
               // Select as new target the last one in the graph structure
               string targetString = graph2.at(graph2.size() - 1).first;
               nearCandidates = graph2.at(graph2.size() - 1).second;
-              nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-              nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+              utils.cleanPossibleDestination2(&nearCandidates, target);
+              utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
               // Remove it from the graph
               graph2.pop_back();
               target = record->getPoseFromEncoding(targetString);
@@ -786,8 +820,8 @@ int main(int argc, char **argv) {
                 // Select the last position in the graph
                 string targetString = graph2.at(graph2.size() - 1).first;
                 nearCandidates = graph2.at(graph2.size() - 1).second;
-                nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-                nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                utils.cleanPossibleDestination2(&nearCandidates, target);
+                utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // and remove it from the graph
                 graph2.pop_back();
                 target = record->getPoseFromEncoding(targetString);
@@ -840,7 +874,7 @@ int main(int argc, char **argv) {
           // Update the overall scanned angle
           totalAngle += scanAngle;
           // ...and the overall scan time
-          totalScanTime += nav_utils.calculateScanTime(scanAngle * 180 / M_PI);
+          totalScanTime += utils.calculateScanTime(scanAngle * 180 / M_PI);
           // Calculate the relative coordinate to the robot of the RFID tag
           //            relTagCoord = map.getRelativeTagCoord(absTagX, absTagY,
           //            target.getX(), target.getY());
@@ -857,12 +891,12 @@ int main(int argc, char **argv) {
           //            target.getOrientation(), -0.5, 7.0);
           // Remove the current pose from the list of possible candidate cells
           cout << "NearCandidates before cleaning: " << nearCandidates.size() << endl;
-          nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-          nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+          utils.cleanPossibleDestination2(&nearCandidates, target);
+          utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
           cout << "NearCandidates after cleaning: " << nearCandidates.size() << endl;
 //          cout << "Cleaned" << endl;
           // Get the list of the candidate cells with their evaluation
-          EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
+          EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client, &batteryTime, &belief_map);
           cout << "Record obtained, size is " << record->size() << endl;
 
           // If there are candidate cells
@@ -874,19 +908,19 @@ int main(int argc, char **argv) {
 
             // If this cells has not been visited before
             //            if ( ! contains ( tabuList,target ) )
-            if ((!nav_utils.containsPos(&posToEsclude, targetPos))) {
+            if ((!utils.containsPos(&posToEsclude, targetPos))) {
               cout << "Selected target has not been visited YET! Going there now...." << endl;
 
               // Add it to the list of visited cells as first-view
               encodedKeyValue = 1;
               backTracking = true;
               // Update the current pose
-              previous = nav_utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
-              success = nav_utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
+              previous = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+              success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
                                     &tabuList, &posToEsclude, min_robot_speed, robot_radius);
               if (success == true){
 //                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
-                nav_utils.updatePathMetrics(
+                utils.updatePathMetrics(
                     &count, &target, &previous, actualPose, &nearCandidates,
                     &graph2, &map, &function, &tabuList, &posToEsclude,
                     &history, encodedKeyValue,  &numConfiguration,
@@ -912,10 +946,10 @@ int main(int argc, char **argv) {
                      << endl;
 
                 // Remove the destination from the candidate list
-                nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-                nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                utils.cleanPossibleDestination2(&nearCandidates, target);
+                utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // Get the candidates with their evaluation
-                EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client);
+                EvaluationRecords *record = function.evaluateFrontiers(&nearCandidates, &map, threshold, &path_client, &batteryTime, &belief_map);
                 // Select the new destination
                 std::pair<Pose, double> result = function.selectNewPose(record);
                 target = result.first;
@@ -923,7 +957,7 @@ int main(int argc, char **argv) {
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 backTracking = true;
-                nav_utils.updatePathMetrics(
+                utils.updatePathMetrics(
                     &count, &target, &previous, actualPose, &nearCandidates,
                     &graph2, &map, &function, &tabuList, &posToEsclude,
                     &history, encodedKeyValue,  &numConfiguration,
@@ -936,8 +970,8 @@ int main(int argc, char **argv) {
                 // Select as target the last element in the graph
                 string targetString = graph2.at(graph2.size() - 1).first;
                 nearCandidates = graph2.at(graph2.size() - 1).second;
-                nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-                nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                utils.cleanPossibleDestination2(&nearCandidates, target);
+                utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                 // And remove from the graph
                 graph2.pop_back();
                 target = record->getPoseFromEncoding(targetString);
@@ -964,14 +998,14 @@ int main(int argc, char **argv) {
                 {
                   string targetString = graph2.at(graph2.size() - 1).first;
                   nearCandidates = graph2.at(graph2.size() - 1).second;
-                  nav_utils.cleanPossibleDestination2(&nearCandidates, target);
-                  nav_utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
+                  utils.cleanPossibleDestination2(&nearCandidates, target);
+                  utils.cleanDestinationFromTabulist(&nearCandidates, &posToEsclude);
                   target = record->getPoseFromEncoding(targetString);
                   // and the remove it form the graph
                   graph2.pop_back();
                   std::pair <float, float> tmp_position (target.getX(), target.getY());
                   // Leave backtracking if the selected cell does not appeat in the forbidden position list
-//                  btMode = ! nav_utils.containsPos(&posToEsclude, tmp_position);
+//                  btMode = ! utils.containsPos(&posToEsclude, tmp_position);
                   btMode = true;
                   cout << "   [BT-MODE3] There are no candidate frontiers in the "
                           "record. Go back to previous positions in the graph"
@@ -1021,11 +1055,11 @@ int main(int argc, char **argv) {
 
       cout << "------------------ HISTORY -----------------" << endl;
       // Calculate which cells have been visited only once
-      list<Pose> tmp_history = nav_utils.cleanHistory(&history, &record);
-      nav_utils.calculateDistance(tmp_history, &path_client, robot_radius);
+      list<Pose> tmp_history = utils.cleanHistory(&history, &record);
+      utils.calculateDistance(tmp_history, &path_client, robot_radius);
 
       cout << "------------------ TABULIST -----------------" << endl;
-      nav_utils.calculateDistance(tabuList, &path_client, robot_radius);
+      utils.calculateDistance(tabuList, &path_client, robot_radius);
 
       // Trasform distance in meters
       if (resolution ==
@@ -1034,7 +1068,7 @@ int main(int argc, char **argv) {
         travelledDistance = travelledDistance / 2;
       }
 
-      nav_utils.printResult(newSensedCells, totalFreeCells, precision, numConfiguration,
+      utils.printResult(newSensedCells, totalFreeCells, precision, numConfiguration,
                   travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution,
                   w_info_gain, w_travel_distance, w_sensing_time, out_log);
       // Find the tag
@@ -1116,6 +1150,7 @@ void loadROSParams(){
 
   // LOAD ROS PARAMETERS ....................................
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
+  private_node_handle.param("belief_map_srv_name", static_map_srv_name, std::string("belief_map"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("move_base_goal_topic_name", move_base_goal_topic_name, std::string("move_base_simple/goal"));
@@ -1136,6 +1171,7 @@ void printROSParams(){
   printf("[pure_navigation@printROSParams] Using the following ros params:\n");
   printf("   - robot_radius [%3.3f]\n",  robot_radius);
   printf("   - static_map_srv_name [%s]\n", static_map_srv_name.c_str());
+  printf("   - belief_map_srv_name [%s]\n", belief_map_srv_name.c_str());
   printf("   - make_plan_srv_name [%s]\n", make_plan_srv_name.c_str());
   printf("   - move_base_goal_topic_name [%s]\n", move_base_goal_topic_name.c_str());
   printf("   - move_base_srv_name [%s]\n", move_base_srv_name.c_str());
@@ -1158,7 +1194,8 @@ void createROSComms(){
 
   // create service clients
   map_service_client_ = nh.serviceClient<nav_msgs::GetMap>(static_map_srv_name);
-  path_client =   nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
+  path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
+  belief_map_client = nh.serviceClient<rfid_node::GetRFIDMap>(belief_map_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
 
   // create publishers
@@ -1190,6 +1227,7 @@ void createROSComms(){
     }
   }
   tag_coverage_sub = nh.subscribe<std_msgs::Float32>("tag_coverage", 10, tag_coverage_callback);
+  // belief_map_sub = nh.subscribe<grid_map_msgs::GridMap>("belief_map", 10, belief_map_callback);
 }
 
 
@@ -1197,6 +1235,11 @@ void tag_coverage_callback(const std_msgs::Float32 msg){
   cout << "   [CALLBACK] : " << msg.data << endl;
   tag_coverage_percentage = msg.data;
   // cout << "   [CALLBACK] : " << tag_coverage_callback << endl;
+}
+
+void belief_map_callback(const grid_map_msgs::GridMap msg){
+  GridMapRosConverter converter;
+  converter.fromMessage(msg, belief_map);
 }
 
 

@@ -26,12 +26,11 @@ class BatteryStatusCriterion : public Criterion {
   public:
   BatteryStatusCriterion(double weight);
   ~BatteryStatusCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, RFID_tools *rfid_tools, double *batteryTime);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map);
   double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
   // only for testing purpose
   // void insertEvaluation(Pose &p, double value);
   protected:
-	Astar astar;
 	double distance = 0.0;
   double numOfTurning = 0.0;
   double translTime = 0.0;

@@ -6,6 +6,8 @@
 #include "Criteria/mcdmweightreader.h"
 #include "Criteria/sensingtimecriterion.h"
 #include "Criteria/traveldistancecriterion.h"
+#include "Criteria/batterystatuscriterion.h"
+// #include "Criteria/RFIDCriterion.h"
 #include "explorationconstants.h"
 #include "math.h"
 #include "newray.h"
@@ -22,11 +24,11 @@ using namespace dummy;
 /* create a list of criteria with name and <encoded_name,weight> pair after
  * reading that from a file
  */
-MCDMFunction::MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3) //:
+MCDMFunction::MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3, bool use_mcdm)
 // criteria(new unordered_map<string, Criterion* >())
 // activeCriteria(new vector<Criterion >() )
 {
-
+  this->use_mcdm = use_mcdm;
   // Initialization ad-hoc: create a weightmatrix for 3 criteria with predefined
   // weight
   MCDMWeightReader reader;
@@ -108,8 +110,8 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
     toRet = new InformationGainCriterion(weight);
   } else if (name == (TRAVEL_DISTANCE)) {
     toRet = new TravelDistanceCriterion(weight);
-  } else if (name == (RFID_READING)) {
-    toRet = new RFIDCriterion(weight);
+  // } else if (name == (RFID_READING)) {
+  //   toRet = new RFIDCriterion(weight);
   }else if (name == (BATTERY_STATUS)) {
     toRet = new BatteryStatusCriterion(weight);
   }
@@ -120,12 +122,13 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
 // criteria and put it in the evaluation record (through
 // the evaluate method provided by Criterion class)
 void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
-                                      ros::ServiceClient *path_client, RFID_tools *rfid_tools, double *batteryTime) {
+                                      ros::ServiceClient *path_client, double *batteryTime, 
+                                      GridMap *belief_map) {
 
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
     //    cout << "Criterion: " << i << " : " << c->getName() <<  endl;
-    c->evaluate(p, map, path_client, rfid_tools, batteryTime);
+    c->evaluate(p, map, path_client, batteryTime, belief_map);
   }
 }
 
@@ -133,7 +136,8 @@ void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
 EvaluationRecords *
 MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
                                 dummy::Map *map, double threshold,
-                                ros::ServiceClient *path_client, RFID_tools *rfid_tools, double *batteryTime) {
+                                ros::ServiceClient *path_client, double *batteryTime,
+                                GridMap *belief_map) {
 
   // Create the EvaluationRecords
   EvaluationRecords *toRet = new EvaluationRecords();
@@ -159,7 +163,7 @@ MCDMFunction::evaluateFrontiers(const std::list<Pose> *frontiers,
     list<Pose>::const_iterator it2;
     for (it2 = frontiers->begin(); it2 != frontiers->end(); it2++) {
       f = *it2;
-      evaluateFrontier(f, map, path_client, rfid_tools, batteryTime);
+      evaluateFrontier(f, map, path_client, batteryTime, belief_map);
     }
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();

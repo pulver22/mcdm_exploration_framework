@@ -29,9 +29,9 @@ SensingTimeCriterion::SensingTimeCriterion(double weight)
 
 SensingTimeCriterion::~SensingTimeCriterion() {}
 
-double SensingTimeCriterion::SensingTimeCriterion::evaluate(
+double SensingTimeCriterion::evaluate(
     Pose &p, dummy::Map *map, ros::ServiceClient *,
-    RFID_tools *rfid_toolss, double *batteryTime) {
+    double *batteryTime, GridMap *belief_map) {
   NewRay ray;
   double sensingTime;
   double angle = 0;

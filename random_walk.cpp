@@ -3,7 +3,7 @@
 #include "map.h"
 #include "mcdmfunction.h"
 #include "newray.h"
-#include "navigation_utilities.cpp"
+#include "utils.h"
 #include "radio_models/propagationModel.cpp"
 #include <algorithm>
 #include <iostream>
@@ -68,6 +68,10 @@ double timeOfScanning = 0;
 bool btMode = false;
 double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
+bool use_mcdm = true;
+
+double batteryTime = MAX_BATTERY;
+double batteryPercentage = 100;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
@@ -82,7 +86,7 @@ std::string move_base_costmap_updates_topic_name;
 std::string  marker_pub_topic_name;
 std::string rosbag_srv_name;
 double robot_radius;
-NavigationUtilities nav_utils;
+Utilities utils;
 
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_;
@@ -209,19 +213,19 @@ int main(int argc, char **argv) {
 
       // Get the initial pose in map frame
       Pose start_pose =
-          nav_utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+          utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
       Pose target = start_pose;
       Pose previous = target;
-      Pose invertedInitial = nav_utils.createFromInitialPose(start_pose, M_PI, initRange, initFov);
-      Pose eastInitial = nav_utils.createFromInitialPose(start_pose, M_PI / 2, initRange, initFov);
-      Pose westInitial = nav_utils.createFromInitialPose(start_pose, 3 * M_PI / 2, initRange, initFov);
+      Pose invertedInitial = utils.createFromInitialPose(start_pose, M_PI, initRange, initFov);
+      Pose eastInitial = utils.createFromInitialPose(start_pose, M_PI / 2, initRange, initFov);
+      Pose westInitial = utils.createFromInitialPose(start_pose, 3 * M_PI / 2, initRange, initFov);
       std::pair<float, float> targetPos;
       long numConfiguration = 1;
       vector<pair<string, list<Pose> >> graph2;
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
-      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time);
+      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time, use_mcdm);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -276,7 +280,7 @@ int main(int argc, char **argv) {
 
       do {
 //
-          target = nav_utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+          target = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
           cout << "\n============================================" << endl;
           cout << "New iteration, position: " << target.getX() << "," << target.getY() <<
             "[ "<< newSensedCells << " sensed] - [" << totalFreeCells << " total]" <<
@@ -293,7 +297,7 @@ int main(int argc, char **argv) {
                     + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) 
                     + "," + to_string(tag_coverage_percentage) 
                     + "," + to_string(travelledDistance) + "\n" ;
-          nav_utils.saveCoverage(coverage_log, content, true );
+          utils.saveCoverage(coverage_log, content, true );
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
@@ -326,7 +330,7 @@ int main(int argc, char **argv) {
           // Calculate the scanning angle
           double scanAngle = target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanning time
-          totalScanTime += nav_utils.calculateScanTime(scanAngle * 180 / M_PI);
+          totalScanTime += utils.calculateScanTime(scanAngle * 180 / M_PI);
                     map.getPathPlanningIndex(x, y, cell_i, cell_j);
           map.updatePathPlanningGrid(x, y, range);
           gridPub.publish(map.toMessageGrid());
@@ -341,10 +345,10 @@ int main(int argc, char **argv) {
           orientation = orientation * M_PI / 180.0;
           target.updateFromGridMapPosition(next_random_position, orientation, range, FOV);
           cout << "Target: " << target.getX() << ", " << target.getY() << endl;
-          success = nav_utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
+          success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
                                                     &tabuList, &posToEsclude, min_robot_speed, robot_radius);
           if (success == true){
-            nav_utils.updatePathMetrics(
+            utils.updatePathMetrics(
                 &count, &target, &previous, actualPose, &nearCandidates,
                 &graph2, &map, &function, &tabuList, &posToEsclude,
                 &history, encodedKeyValue, &numConfiguration,
@@ -367,11 +371,11 @@ int main(int argc, char **argv) {
 
       cout << "------------------ HISTORY -----------------" << endl;
       // Calculate which cells have been visited only once
-      list<Pose> tmp_history = nav_utils.cleanHistory(&history, &record);
-      nav_utils.calculateDistance(tmp_history, &path_client, robot_radius);
+      list<Pose> tmp_history = utils.cleanHistory(&history, &record);
+      utils.calculateDistance(tmp_history, &path_client, robot_radius);
 
       cout << "------------------ TABULIST -----------------" << endl;
-      nav_utils.calculateDistance(tabuList, &path_client, robot_radius);
+      utils.calculateDistance(tabuList, &path_client, robot_radius);
 
       // Trasform distance in meters
       if (resolution ==
@@ -380,7 +384,7 @@ int main(int argc, char **argv) {
         travelledDistance = travelledDistance / 2;
       }
 
-      nav_utils.printResult(newSensedCells, totalFreeCells, precision,
+      utils.printResult(newSensedCells, totalFreeCells, precision,
                             numConfiguration, travelledDistance, numOfTurning,
                             totalAngle, totalScanTime, resolution,
                             w_info_gain, w_travel_distance, w_sensing_time, out_log);

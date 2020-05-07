@@ -10,7 +10,7 @@ class InformationGainCriterion : public Criterion {
 public:
   InformationGainCriterion(double weight);
   virtual ~InformationGainCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, RFID_tools *rfid_tools, double *batteryTime);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map);
 
 private:
   void normalize(long minSensedX, int number);

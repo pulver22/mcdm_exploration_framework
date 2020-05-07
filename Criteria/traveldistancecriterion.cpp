@@ -28,7 +28,8 @@ TravelDistanceCriterion::~TravelDistanceCriterion() {}
 
 double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
                                          ros::ServiceClient *path_client,
-                                         RFID_tools *rfid_toolss, double *batteryTime) {
+                                         double *batteryTime,
+                                         GridMap *belief_map) {
   // cout << "travel " << endl;
   Astar astar;
   Pose robotPosition = map->getRobotPosition();
