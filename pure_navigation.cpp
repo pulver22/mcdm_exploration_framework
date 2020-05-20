@@ -36,7 +36,7 @@
 // #include "record_ros/record.h"
 // #include "record_ros/String_cmd.h"
 // mfc ...
-#include "rfid_node/GetRFIDMap.h"
+#include "rfid_grid_map/GetBeliefMaps.h"
 
 using namespace std;
 using namespace dummy;
@@ -74,6 +74,9 @@ double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
 float tag_coverage_percentage = 0.0;
 GridMap belief_map;
+grid_map_msgs::GridMap belief_map_msg;
+GridMapRosConverter converter;
+
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
@@ -159,7 +162,7 @@ int main(int argc, char **argv) {
   double coverage;
 
   // Create srv request for the RFID belief map
-  rfid_node::GetRFIDMap belief_map_srv;
+  rfid_grid_map::GetBeliefMaps belief_map_srv;
 
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
   stats_buffer.str("coveragePercent, numConfiguration, backTracking");
@@ -423,7 +426,8 @@ int main(int argc, char **argv) {
 
           // Get an updated RFID belief map
           if (belief_map_client.call(belief_map_srv)){
-            belief_map = belief_map_srv.response.rfid_maps
+            belief_map_msg = belief_map_srv.response.rfid_maps;
+            converter.fromMessage(belief_map_msg, belief_map);
           }else{
             ROS_ERROR("Failed to get the RFID belief map");
           }
@@ -1150,7 +1154,7 @@ void loadROSParams(){
 
   // LOAD ROS PARAMETERS ....................................
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
-  private_node_handle.param("belief_map_srv_name", static_map_srv_name, std::string("belief_map"));
+  private_node_handle.param("belief_map_srv_name", belief_map_srv_name, std::string("grid_map"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("move_base_goal_topic_name", move_base_goal_topic_name, std::string("move_base_simple/goal"));
@@ -1195,7 +1199,7 @@ void createROSComms(){
   // create service clients
   map_service_client_ = nh.serviceClient<nav_msgs::GetMap>(static_map_srv_name);
   path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
-  belief_map_client = nh.serviceClient<rfid_node::GetRFIDMap>(belief_map_srv_name);
+  belief_map_client = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
 
   // create publishers
@@ -1227,7 +1231,7 @@ void createROSComms(){
     }
   }
   tag_coverage_sub = nh.subscribe<std_msgs::Float32>("tag_coverage", 10, tag_coverage_callback);
-  // belief_map_sub = nh.subscribe<grid_map_msgs::GridMap>("belief_map", 10, belief_map_callback);
+  // belief_map_sub = nh.subscribe<grid_map_msgs::GridMap>("rfid_belief_maps", 10, belief_map_callback);
 }
 
 
@@ -1238,7 +1242,6 @@ void tag_coverage_callback(const std_msgs::Float32 msg){
 }
 
 void belief_map_callback(const grid_map_msgs::GridMap msg){
-  GridMapRosConverter converter;
   converter.fromMessage(msg, belief_map);
 }
 
