@@ -206,9 +206,11 @@ int main(int argc, char **argv) {
       double w_info_gain = atof(argv[6]);
       double w_travel_distance = atof(argv[7]);
       double w_sensing_time = atof(argv[8]);
-      std::string out_log = (argv[9]);
-      std::string coverage_log = (argv[10]);
-      bool use_mcdm = bool(atoi(argv[11]));
+      double w_battery_status = atof(argv[9]);
+      double w_rfid_gain = atof(argv[10]);
+      std::string out_log = (argv[11]);
+      std::string coverage_log = (argv[12]);
+      bool use_mcdm = bool(atoi(argv[13]));
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -254,7 +256,7 @@ int main(int argc, char **argv) {
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
-      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time, use_mcdm);
+      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time, w_battery_status, w_rfid_gain, use_mcdm);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -424,13 +426,17 @@ int main(int argc, char **argv) {
 
             map.emptyCandidatePositions();
 
-          // Get an updated RFID belief map
-          if (belief_map_client.call(belief_map_srv)){
+          // if we also navigate for finding a tag
+          if (w_rfid_gain > 0){
+            // Get an updated RFID belief map
+            if (belief_map_client.call(belief_map_srv)){
             belief_map_msg = belief_map_srv.response.rfid_maps;
             converter.fromMessage(belief_map_msg, belief_map);
-          }else{
-            ROS_ERROR("Failed to get the RFID belief map");
+            }else{
+              ROS_ERROR("Failed to get the RFID belief map");
+            }
           }
+          
 
           if (scan) {
             // NOTE: perform gas sensing------------

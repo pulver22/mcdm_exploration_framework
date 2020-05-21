@@ -7,7 +7,7 @@
 #include "Criteria/sensingtimecriterion.h"
 #include "Criteria/traveldistancecriterion.h"
 #include "Criteria/batterystatuscriterion.h"
-// #include "Criteria/RFIDCriterion.h"
+#include "Criteria/RFIDCriterion.h"
 #include "explorationconstants.h"
 #include "math.h"
 #include "newray.h"
@@ -110,8 +110,8 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
     toRet = new InformationGainCriterion(weight);
   } else if (name == (TRAVEL_DISTANCE)) {
     toRet = new TravelDistanceCriterion(weight);
-  // } else if (name == (RFID_READING)) {
-  //   toRet = new RFIDCriterion(weight);
+  } else if (name == (RFID_READING)) {
+    toRet = new RFIDCriterion(weight);
   }else if (name == (BATTERY_STATUS)) {
     toRet = new BatteryStatusCriterion(weight);
   }

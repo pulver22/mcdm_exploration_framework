@@ -7,9 +7,11 @@
 <launch>
   <!-- PARAMS .............................................................. -->
 
-  <arg name="param_1"  	          default="0.2"/>
+  <arg name="param_1"  	          default="0.1"/>
   <arg name="param_2"  	          default="0.6"/>
-  <arg name="param_3"  	          default="0.2"/>
+  <arg name="param_3"  	          default="0.1"/>
+  <arg name="param_4"  	          default="0.1"/>
+  <arg name="param_5"  	          default="0.1"/>
   <arg name="fov"                 default="180"/>
   <arg name="radius"              default="3"/>
   <arg name="coverage_percentage" default="0.99"/>
@@ -25,6 +27,8 @@
                                            $(arg param_1) 
                                            $(arg param_2) 
                                            $(arg param_3) 
+                                           $(arg param_4) 
+                                           $(arg param_5) 
                                            $(arg dest_folder)mcdm_result.csv 
                                            $(arg dest_folder)coverage_mcdm.csv"/>
 
