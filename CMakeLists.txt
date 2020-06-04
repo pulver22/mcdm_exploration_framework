@@ -4,8 +4,6 @@ project(mcdm_exploration_framework)
 find_package(catkin REQUIRED COMPONENTS
   # mfc: we will record using stats_pub
   #record_ros
-  ptu_control
-  amtec
   actionlib
   nav_msgs
   geometry_msgs
