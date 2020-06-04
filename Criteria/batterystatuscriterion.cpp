@@ -21,7 +21,7 @@
 #include <iostream>
 
 BatteryStatusCriterion::BatteryStatusCriterion(double weight)
-    : Criterion(TRAVEL_DISTANCE, weight, false) {}
+    : Criterion(BATTERY_STATUS, weight, true) {}
 
 BatteryStatusCriterion::~BatteryStatusCriterion() {}
 
@@ -65,23 +65,15 @@ double BatteryStatusCriterion::evaluate(Pose &p, dummy::Map *map,
   if (collision == true)
   {
     path_len = 50000;
-//    cout << "[ "<< p.getX() << "," << p.getY() <<"] CELL TOO CLOSE TO WALL" << endl;
   }
 
   translTime = path_len / TRANSL_SPEED;
-  remainingBattery = *batteryTime - timeRequired;
+  remainingBattery = *batteryTime - translTime;
+  remainingBattery = max(remainingBattery, 0.0);
 
   Criterion::insertEvaluation(p, remainingBattery);
   return path_len;
 }
-
-/*
-void BatteryStatusCriterion::insertEvaluation(Pose& p, double value)
-{
-    cout << "alice" <<endl;
-    insertEvaluation(p,value);
-}
-*/
 
 double BatteryStatusCriterion::getPathLen(
     std::vector<geometry_msgs::PoseStamped> poses) {

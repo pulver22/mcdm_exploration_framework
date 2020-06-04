@@ -15,10 +15,11 @@
   <arg name="fov"                 default="180"/>
   <arg name="radius"              default="3"/>
   <arg name="coverage_percentage" default="0.99"/>
-  <arg name="frontier_threshold"  default="0.08"/>
+  <arg name="frontier_threshold"  default="0.001"/>
   <arg name="map_resolution"      default="0.2"/>
   <arg name="dest_folder"  	      default="/home/pulver/Desktop/MCDM/mcdm/"/>
   <arg name="scenario_name"  	    default="INB"/>
+  <arg name="use_mcdm"            default="1"/>
   <arg name="pure_args"  	        default="$(arg fov) 
                                            $(arg radius) 
                                            $(arg coverage_percentage) 
@@ -30,7 +31,8 @@
                                            $(arg param_4) 
                                            $(arg param_5) 
                                            $(arg dest_folder)mcdm_result.csv 
-                                           $(arg dest_folder)coverage_mcdm.csv"/>
+                                           $(arg dest_folder)coverage_mcdm.csv
+                                           $(arg use_mcdm)" />
 
   <arg name="bag_descriptor" default="$(arg scenario_name)_$(arg param_1)_$(arg param_2)_$(arg param_3)_date_"/>
   <!-- I highly recomend you that the bag descriptor has correct pure nav params -->
@@ -56,7 +58,8 @@
       <rosparam command="load" file="$(find mcdm_exploration_framework)/config/visualization2.yaml" />
   </node>
 
-  <!-- base bringup-->
+  <!-- base bringup -->
+  <!-- GDB: launch-prefix=gdb -ex run -/-args -->
   <node pkg="mcdm_exploration_framework" type="pure_navigation" name="ric" output="screen"  args="$(arg pure_args)">
     <param name="move_base_costmap_topic_name" value="/map"/>
     <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>

@@ -55,7 +55,7 @@ private:
 protected:
   double RFIDInfoGain = 0.0;
   double tmp_belief = 0.0;
-  float _free_space_val = 255;  // or 1.0
+  float _free_space_val = 1.0;  // or 1.0
 };
 
 #endif // RFIDCRITERION_H

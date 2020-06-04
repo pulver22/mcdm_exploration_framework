@@ -20,13 +20,9 @@ RFIDCriterion::RFIDCriterion(double weight)
 RFIDCriterion::~RFIDCriterion() {}
 
 double RFIDCriterion::evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map) {
-  
-  
-  // 3) Calculate entropy around the cell
+    
+  // Calculate entropy around the cell
   this->RFIDInfoGain = evaluateEntropyOverBelief(p, belief_map);
-
-  // 4) Calculate the KL divergence between prior and posterior distributions
-  // this->RFIDInfoGain = evaluateKLDivergence(p, map, rfid_tools);
 
   Criterion::insertEvaluation(p, this->RFIDInfoGain);
   return this->RFIDInfoGain;
@@ -36,12 +32,20 @@ double RFIDCriterion::evaluateEntropyOverBelief(Pose &p, GridMap *belief_map) {
   float RFIDInfoGain = 0.0;
   double entropy_cell = 0.0;
   int buffer_size = 2;
-
-  for (int tag_id = 0; tag_id < 10; tag_id++) {
+  std::vector<string> layers_name = belief_map->getLayers();
+  // The layers_name vector contains "ref_map, X, Y" which are for not for finding the tags.
+  // So we can remove their name to avoid checking this layers.
+  layers_name.erase(layers_name.begin(), layers_name.begin()+3);
+  // If there are no belief maps built (no signal received up to now),
+  // the entropy is maximum
+  if (layers_name.size() == 0){
+    RFIDInfoGain = 1.0;  // default: max entropy
+  }
+  for (auto it = layers_name.begin(); it != layers_name.end(); it++){
+    int tag_id = std::stoi( *it );  // convert string to int
     entropy_cell = getTotalEntropyEllipse(p, p.getRange(), -1.0, tag_id, belief_map);
     RFIDInfoGain += entropy_cell;
   }
-
   return RFIDInfoGain;
 }
 
@@ -56,7 +60,6 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target, double maxX, double mi
   // a = (maxX + minX)/2
   // c  = maxX/2 + minX
   // b  = sqrt(a^2-c^2)
-
   // mirror y axis!!!!
   double antennaX = target.getX();
   double antennaY = target.getY();
@@ -67,7 +70,6 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target, double maxX, double mi
   double b = sqrt((a*a)-(c*c));
   double xc = antennaX + (c*cos(antennaHeading));
   double yc = antennaY + (c*sin(antennaHeading));
-
   Position center(xc, yc); // meters
   Length length(2*a, 2*b);
   grid_map::EllipseIterator el_iterator(*belief_map, center, length, antennaHeading);
@@ -80,7 +82,6 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target, grid_map::EllipseItera
   double total_entropy;
   Position point;
   double likelihood, neg_likelihood, log2_likelihood, log2_neg_likelihood = 0.0;
-
   std::string tagLayerName = getTagLayerName(tag_i);
 
   total_entropy = 0;

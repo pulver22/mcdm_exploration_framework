@@ -541,7 +541,7 @@ int main(int argc, char **argv) {
                 backTracking = false;
 
                 success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
-                                      &tabuList, &posToEsclude, min_robot_speed, robot_radius);
+                                      &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime);
                 if (success == true){
 //                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                   utils.updatePathMetrics(
@@ -634,7 +634,7 @@ int main(int argc, char **argv) {
                   backTracking = true;
                   previous = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
                   success = utils.showMarkerandNavigate(target, &marker_pub, &path,
-                                        &path_client, &tabuList, &posToEsclude, min_robot_speed, robot_radius);
+                                        &path_client, &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime);
                   if (success == true)
                   {
 //                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
@@ -794,7 +794,7 @@ int main(int argc, char **argv) {
               // Update the current pose
               previous = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
               success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
-                                                        &tabuList, &posToEsclude, min_robot_speed, robot_radius);
+                                                        &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime);
               if (success == true){
 //                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                 utils.updatePathMetrics(

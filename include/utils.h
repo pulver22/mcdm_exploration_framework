@@ -102,7 +102,7 @@ class Utilities {
                                ros::ServiceClient *path_client,
                                list<Pose> *tabuList,
                                std::list<std::pair<float, float> > *posToEsclude,
-                               double min_robot_speed, double robot_radius);
+                               double min_robot_speed, double robot_radius, double *batteryTime);
 
     bool freeInLocalCostmap(Pose target, std::string move_base_local_costmap_topic_name);
 

@@ -346,7 +346,7 @@ int main(int argc, char **argv) {
           target.updateFromGridMapPosition(next_random_position, orientation, range, FOV);
           cout << "Target: " << target.getX() << ", " << target.getY() << endl;
           success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
-                                                    &tabuList, &posToEsclude, min_robot_speed, robot_radius);
+                                                    &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime);
           if (success == true){
             utils.updatePathMetrics(
                 &count, &target, &previous, actualPose, &nearCandidates,

@@ -53,10 +53,10 @@ void Criterion::clean() {
 }
 
 void Criterion::normalize() {
-  // if(highGood)
-  normalizeHighGood();
-  // else
-  //    normalizeLowGood();
+  if(highGood)
+    normalizeHighGood();
+  else
+     normalizeLowGood();
 }
 
 void Criterion::normalizeHighGood() {
@@ -90,7 +90,6 @@ double Criterion::getEvaluation(Pose &p) const {
   string pose = record->getEncodedKey(p);
   double value = evaluation.at(pose);
   delete record;
-  //    cout << "Value: " << value << endl;
   return value;
 }
 
@@ -107,18 +106,6 @@ string Criterion::getEncodedKey(Pose &p) {
   string key = to_string(p.getX()) + "/" + to_string(p.getY()) + "/" +
                to_string(p.getOrientation()) + "/" + to_string(p.getRange()) +
                "/" + to_string(p.getFOV());
-
-  /*
-  string key =  to_string(p.getX());
-  key.append( "/");
-  key.append( to_string( p.getY()));
-  key.append( "/");
-  key.append( to_string(p.getOrientation())) ;
-  key.append( "/");
-  key.append(to_string(p.getRange()));
-  key.append( "/");
-  key.append(to_string(p.getFOV()));
-  */
 
   return key;
 }

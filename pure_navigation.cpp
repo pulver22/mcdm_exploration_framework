@@ -272,7 +272,6 @@ int main(int argc, char **argv) {
       // ( final value expressed in second)
       unsigned int microseconds = 5 * 1000 * 1000;
       // cout << "total free cells in the main: " << totalFreeCells << endl;
-      list<Pose> unexploredFrontiers;
       list<Pose> tabuList;
       std::list<std::pair<float, float> > posToEsclude;
       list<Pose> nearCandidates;
@@ -420,48 +419,28 @@ int main(int argc, char **argv) {
           planningPub.publish(map.toMessagePathPlanning());
           map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
           map.plotGridColor("/tmp/nav_lastLoop.png");
-          map.findCandidatePositions(x, y, orientation, FOV, range);
-          map.findFrontierPosition();
-          vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
-
-            map.emptyCandidatePositions();
 
           // if we also navigate for finding a tag
           if (w_rfid_gain > 0){
             // Get an updated RFID belief map
+            cout << "Updating the belief..." << endl;
             if (belief_map_client.call(belief_map_srv)){
             belief_map_msg = belief_map_srv.response.rfid_maps;
             converter.fromMessage(belief_map_msg, belief_map);
             }else{
-              ROS_ERROR("Failed to get the RFID belief map");
+              printf("ATTENTION! Failed to get the RFID belief map");
             }
           }
-          
 
-          if (scan) {
-            // NOTE: perform gas sensing------------
-            //              offsetY_base_rmld = 0.904;
-            //              tilt_angle = (atan(sensing_range /
-            //              offsetY_base_rmld) * (180 / M_PI)) - 90;
-            //              //tilt_angle = -10;
-            //              num_pan_sweeps = 1;
-            //              num_tilt_sweeps = 1;
-            //              sample_delay = 0.1;
-            //              //cout << "angolo finale:" << endl;
-            //              max_pan_angle =
-            //              getPtuAngle(target.getScanAngles().second,
-            //              target.getOrientation());
-            //              //cout << "angolo iniziale:" << endl;
-            //              min_pan_angle =
-            //              getPtuAngle(target.getScanAngles().first,
-            //              target.getOrientation());
-            //
-            //              boost::thread mythread(scanning);
-            //              mythread.join();
-            //              min_pan_angle = 0;F
-            //              max_pan_angle = 0;
-            //-------------------------------------
-          }
+
+          map.findCandidatePositions(x, y, orientation, FOV, range);
+          map.findFrontierPosition();
+          vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
+
+          map.emptyCandidatePositions();
+
+          cout << "Candidate positions: " << candidatePosition.size() << endl;
+          
           // If the exploration just started
           if (count == 0) {
             // Calculate other three pose given the starting one
@@ -611,17 +590,18 @@ int main(int argc, char **argv) {
               frontiers.push_back(p7);
               // frontiers.push_back(p8);
             }
-            unexploredFrontiers = frontiers;
 
             // Evaluate the frontiers and return a list of <frontier,
             // evaluation> pairs
             // cout << "Number of frontiers identified: " << frontiers.size() << endl;
             utils.cleanPossibleDestination2(&frontiers, target);
             utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
+            cout <<"CleanedFrontiers: " << frontiers.size() << endl;
             // Print the frontiers with the respective evaluation
             // cout << "Number of frontiers identified: " << frontiers.size() << endl;
             EvaluationRecords *record = function.evaluateFrontiers(&frontiers, &map, threshold, &path_client, &batteryTime, &belief_map);
             nearCandidates = record->getFrontiers();
+            cout << "Record: " << nearCandidates.size() << endl;
             // NOTE: This may not be needed because  we are in an unexplored area
             
             unordered_map<string, double> evaluation = record->getEvaluations();
@@ -648,7 +628,8 @@ int main(int argc, char **argv) {
                 backTracking = false;
 
                 success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
-                                      &tabuList, &posToEsclude, min_robot_speed, robot_radius);
+                                      &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime);
+                cout << "Current batteryTime : " << batteryTime << "( " << 100*batteryTime/MAX_BATTERY << ")" << endl;                      
                 if (success == true){
 //                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                   utils.updatePathMetrics(
@@ -745,7 +726,7 @@ int main(int argc, char **argv) {
                   backTracking = true;
                   previous = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
                   success = utils.showMarkerandNavigate(target, &marker_pub, &path,
-                                        &path_client, &tabuList, &posToEsclude, min_robot_speed, robot_radius);
+                                        &path_client, &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime);
                   if (success == true)
                   {
 //                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
@@ -927,7 +908,7 @@ int main(int argc, char **argv) {
               // Update the current pose
               previous = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
               success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
-                                    &tabuList, &posToEsclude, min_robot_speed, robot_radius);
+                                    &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime);
               if (success == true){
 //                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                 utils.updatePathMetrics(
@@ -1160,7 +1141,7 @@ void loadROSParams(){
 
   // LOAD ROS PARAMETERS ....................................
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
-  private_node_handle.param("belief_map_srv_name", belief_map_srv_name, std::string("grid_map"));
+  private_node_handle.param("belief_map_srv_name", belief_map_srv_name, std::string("/rfid_grid_map_node/get_rfid_belief"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("move_base_goal_topic_name", move_base_goal_topic_name, std::string("move_base_simple/goal"));

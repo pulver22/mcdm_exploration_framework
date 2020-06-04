@@ -463,7 +463,7 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            ros::ServiceClient *path_client,
                            list<Pose> *tabuList,
                            std::list<std::pair<float, float> > *posToEsclude,
-                           double min_robot_speed, double robot_radius) {
+                           double min_robot_speed, double robot_radius, double *batteryTime) {
   //---------------------------PRINT GOAL POSITION
   geometry_msgs::PointStamped p;
   p.header.frame_id = "map";
@@ -500,6 +500,9 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
   }
 
   float time_travel = 2 * path_len / min_robot_speed;
+  time_travel = std::min(time_travel, (float)120.0);
+  // double tt = time_travel;
+  *batteryTime -= time_travel;
 //      cout << "[navigation_utilties.cpp@showMarkerandNavigate] Target is at " <<
 //      path_len << " m from the robot" << endl;
 
