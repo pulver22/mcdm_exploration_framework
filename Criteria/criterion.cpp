@@ -34,7 +34,9 @@ void Criterion::insertEvaluation(Pose &p, double value) {
   EvaluationRecords *record = new EvaluationRecords();
   string pose = record->getEncodedKey(p);
   evaluation.emplace(pose, value);
-
+  if( isnan(value)){
+    value = 0;
+  }
   if (value >= maxValue)
     maxValue = value;
   if (value <= minValue)
@@ -90,6 +92,10 @@ double Criterion::getEvaluation(Pose &p) const {
   string pose = record->getEncodedKey(p);
   double value = evaluation.at(pose);
   delete record;
+  if (isnan(value)){
+    value = 0.0;
+    // cout << "Name: " << this->name << ", Value: " << value << endl;
+  }
   return value;
 }
 

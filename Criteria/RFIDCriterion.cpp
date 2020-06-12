@@ -23,7 +23,9 @@ double RFIDCriterion::evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *pat
     
   // Calculate entropy around the cell
   this->RFIDInfoGain = evaluateEntropyOverBelief(p, belief_map);
-
+  if (isnan(this->RFIDInfoGain)){
+      this->RFIDInfoGain = 0.0;
+  }
   Criterion::insertEvaluation(p, this->RFIDInfoGain);
   return this->RFIDInfoGain;
 }

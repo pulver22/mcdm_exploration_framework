@@ -627,3 +627,54 @@ void Utilities::saveCoverage(const std::string& name, const std::string& content
   }
   outfile << content;
 }
+
+
+std::vector<std::pair<int, std::pair<int, int>>> Utilities::findTagFromBeliefMap(GridMap* belief_map) {
+  
+  std::vector<std::pair<int, std::pair<int,int>>> tag_positions;
+  
+  // First, remove the useless layers 
+  std::vector<string> layers_name = belief_map->getLayers();
+  // The layers_name vector contains "ref_map, X, Y" which are for not for finding the tags.
+  // So we can remove their name to avoid checking this layers.
+  layers_name.erase(layers_name.begin(), layers_name.begin()+3);
+  for (auto it = layers_name.begin(); it != layers_name.end(); it++){
+    std::pair<int, int> tag(0, 0);
+    double likelihood = 0;
+    // Access the belief map of every tag
+    GridMap::Matrix &grid = (*belief_map)[*it];
+    // Iterate over a submap and sum the likelihood in all the cells
+    for (GridMapIterator iterator(*belief_map); !iterator.isPastEnd(); ++iterator) {
+      const grid_map::Index index(*iterator);
+      // For every cell, analyse the surrounding area
+      double tmp_likelihood = grid(index(0), index(1));
+      int buffer_size = 3;
+      if (index(0) > buffer_size and index(0) <= belief_map->getLength().x() - buffer_size) {
+        if (index(1) > buffer_size and index(1) <= belief_map->getLength().y() - buffer_size) {
+          // std::cout << "I: " << index(0) << "," << index(1) << endl;
+          grid_map::Index submapStartIndex(index(0) - buffer_size, index(1) - buffer_size);
+          grid_map::Index submapBufferSize(buffer_size, buffer_size);
+          for (grid_map::SubmapIterator sub_iterator(*belief_map, submapStartIndex, submapBufferSize); !sub_iterator.isPastEnd(); ++sub_iterator) {
+            grid_map::Index sub_index(*sub_iterator);
+            // std::cout << "I: " << sub_index(0) << "," << sub_index(1) << endl;
+            tmp_likelihood += grid(sub_index(0), sub_index(1));
+          }
+        }
+      }
+
+    
+    if (tmp_likelihood > likelihood) {
+      likelihood = tmp_likelihood;
+      Position tag_p;
+      belief_map->getPosition(index, tag_p);
+      tag.first = tag_p.x();
+      tag.second = tag_p.y();
+    }
+  }
+  std::pair<int, std::pair<int, int>> single_tag(likelihood, tag);
+  tag_positions.push_back(single_tag);
+  }
+  
+
+  return tag_positions;
+}

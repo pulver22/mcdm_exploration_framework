@@ -59,7 +59,8 @@ void showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            nav_msgs::GetPlan *path,
                            ros::ServiceClient *path_client,
                            list<Pose> *tabuList,
-                           std::list<std::pair<float, float> > *posToEsclude);
+                           std::list<std::pair<float, float> > *posToEsclude,
+                           double *batteryTime);
 // void stateCallback(const std_msgs::Int16::ConstPtr& sta);
 void scanning();
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
@@ -462,7 +463,8 @@ int main(int argc, char **argv) {
               graph2.push_back(pair);
 
               showMarkerandNavigate(target, &marker_pub, &path, &path_client,
-                                    &tabuList, &posToEsclude);
+                                    &tabuList, &posToEsclude, &batteryTime);
+              cout << "CurrentBattery: " << batteryTime << endl;
 
               // //---------------------------PRINT GOAL POSITION
               // geometry_msgs::PointStamped p;
@@ -1022,7 +1024,8 @@ void showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            nav_msgs::GetPlan *path,
                            ros::ServiceClient *path_client,
                            list<Pose> *tabuList,
-                           std::list<std::pair<float, float> > *posToEsclude) {
+                           std::list<std::pair<float, float> > *posToEsclude,
+                           double *batteryTime) {
   //---------------------------PRINT GOAL POSITION
   geometry_msgs::PointStamped p;
   p.header.frame_id = "map";
@@ -1070,6 +1073,8 @@ void showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
   float time_travel = 2 * path_len / min_robot_speed;
   //    cout << "[pure_navigation.cpp@showMarkerandNavigate] Target is at " <<
   //    path_len << " m from the robot" << endl;
+  time_travel = std::min(time_travel, (float)120.0);
+  batteryTime -= time_travel;
 
   move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) / 100,
        time_travel, tabuList,
@@ -1108,8 +1113,6 @@ void move(float x, float y, float orientation, float time_travel,
   //  ") with orientation: " << _orientation << "(" << _orientation * 180 / M_PI
   //  << ")"<< endl;
   ac.sendGoal(goal);
-
-  time_travel = std::min(time_travel, (float)120.0);
   //  cout << "     [pure_navigation.cpp@move] Waiting for " << time_travel << "
   //  seconds" << endl;
   ac.waitForResult(ros::Duration(time_travel));

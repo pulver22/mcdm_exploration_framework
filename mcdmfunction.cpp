@@ -190,7 +190,6 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(
       // apply the choquet integral
       Criterion *lastCrit = NULL;
       double finalValue = 0.0;
-      // cout << "\n==== New frontier ====" << endl;
       bool no_info_gain = false;
 
       // WEIGHTED AVG
@@ -235,7 +234,6 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(
             finalValue += tmpValue * weight;
           }
           lastCrit = c;
-
           if (c->getName().compare("informationGain") == 0) {
             if (c->getEvaluation(f) == 0) {
               no_info_gain = true;
@@ -243,7 +241,6 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(
           }
         }
       }
-
       if (finalValue > threshold and no_info_gain == false) {
         toRet->putEvaluation(f, finalValue);
       }

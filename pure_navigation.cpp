@@ -523,12 +523,6 @@ int main(int argc, char **argv) {
               // again
               utils.calculateDistance(tabuList, &path_client, robot_radius);
 
-              // Normalise the travel distance in meter
-              // NOTE: assuming that the robot is moving at 0.5m/s and the
-              // resolution of the map is 0.5m per cell)
-              if (resolution == 1.0) {
-                travelledDistance = travelledDistance / 2;
-              }
               utils.printResult(newSensedCells, totalFreeCells, precision,
                           numConfiguration, travelledDistance, numOfTurning,
                           totalAngle, totalScanTime, resolution,
@@ -537,8 +531,6 @@ int main(int argc, char **argv) {
               double totalTimeMCDM = endMCDM - startMCDM;
               cout << "Total time for MCDM algorithm : " << totalTimeMCDM
                    << "s, " << totalTimeMCDM / 60 << " m " << endl;
-              cout << "Total time in empirical way : "
-                   << travelledDistance / 0.25 + timeOfScanning / 1000 << endl;
 
               // mfc: we will record using stats_pub
               // Stop recording the bag
@@ -1052,23 +1044,16 @@ int main(int argc, char **argv) {
       cout << "------------------ TABULIST -----------------" << endl;
       utils.calculateDistance(tabuList, &path_client, robot_radius);
 
-      // Trasform distance in meters
-      if (resolution ==
-          1.0) // Corridor map has a resolution of 0.5 meter per cell
-      {
-        travelledDistance = travelledDistance / 2;
-      }
-
       utils.printResult(newSensedCells, totalFreeCells, precision, numConfiguration,
                   travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution,
                   w_info_gain, w_travel_distance, w_sensing_time, out_log);
       // Find the tag
-      //        std::pair<int,int> tag = map.findTag();
-      //        cout << "RFID pose: [" << tag.second << "," << tag.first << "]"
-      //        << endl;
-      //        tag = map.findTagfromGridMap(myGrid);
-      //        cout << "[Grid]RFID pose: [" << tag.second << "," << tag.first
-      //        << "]" << endl;
+      std::vector<std::pair<int, std::pair<int, int>>> tag_positions = utils.findTagFromBeliefMap(&belief_map);
+      cout << "Tags positions (for all the found ones):" << endl;
+      for (int i=0; i < tag_positions.size(); i++){
+        std::pair<int, std::pair<int, int>> tag = tag_positions.at(i);
+        cout << "   Tag[" << to_string(i) << "] = (" << tag.second.first << "," << tag.second.second << ")" << endl;
+      }
       cout
           << "-----------------------------------------------------------------"
           << endl;

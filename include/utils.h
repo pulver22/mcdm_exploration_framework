@@ -39,6 +39,7 @@
 
 using namespace std;
 using namespace dummy;
+using namespace grid_map;
 
 
 class Utilities {
@@ -123,6 +124,14 @@ class Utilities {
                                       std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map);
 
     void saveCoverage(const std::string& name, const std::string& content, bool append);
+
+    /**
+     * Get the "guessed" position of the tags in the belief map
+     * 
+     * @param belief_map: the probabilistic map built by sensor measurements
+     * @return a vector of <likelikehood, tag_position(X,Y)> of all the tags in the environment
+     */
+    std::vector<std::pair<int, std::pair<int, int>>> findTagFromBeliefMap(GridMap* belief_map);
 };
 
 
