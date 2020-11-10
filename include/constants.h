@@ -12,6 +12,8 @@
 #define TRANSL_SPEED 0.5
 #define ROT_SPEED 0.1
 
+const int MAX_TABULIST_COUNT = 300;
+
 struct RFID_tools {
   // RadarModel *rm;
   std::vector<std::pair<double,double>> tags_coord;

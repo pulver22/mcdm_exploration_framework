@@ -18,6 +18,8 @@ find_package(catkin REQUIRED COMPONENTS
   move_base_msgs
   rfid_node
   rfid_grid_map
+  strands_navigation_msgs
+  topological_navigation
 
 )
 
@@ -58,11 +60,11 @@ target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRAR
 #add_executable(mcdm_slim mcdm_slim.cpp)
 #target_link_libraries(mcdm_slim mcdm_exploration_framework ${catkin_LIBRARIES})
 
-add_executable(random_walk random_walk.cpp)
-target_link_libraries(random_walk mcdm_exploration_framework ${catkin_LIBRARIES})
+# add_executable(random_walk random_walk.cpp)
+# target_link_libraries(random_walk mcdm_exploration_framework ${catkin_LIBRARIES})
 
-add_executable(random_frontier random_frontier.cpp)
-target_link_libraries(random_frontier mcdm_exploration_framework ${catkin_LIBRARIES})
+# add_executable(random_frontier random_frontier.cpp)
+# target_link_libraries(random_frontier mcdm_exploration_framework ${catkin_LIBRARIES})
 ## Declare a C++ executable
 add_executable(
    path_len_node

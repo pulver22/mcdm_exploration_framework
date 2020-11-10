@@ -32,6 +32,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <ros/console.h>
+#include "strands_navigation_msgs/TopologicalMap.h"
 
 // mfc: we will record using stats_pub
 //#include "record_ros/record.h"
@@ -68,17 +69,45 @@ class Utilities {
 
     void cleanDestinationFromTabulist(std::list<Pose> *possibleDestinations, std::list<std::pair<float, float> > *posToEsclude);
 
+    /**
+     * Calculate the frontiers from the starting position and add it to the graph structure
+     * 
+     * @param map: a copy of the map
+     * @param x: the x-coordinate of the robot expressed in cells
+     * @param y: the y-coordinate of the robot expressed in cells
+     * @param orientation: the orientation of the robot expressed in degrees
+     * @param range: the range of the robot's sensor expressed in cells
+     * @param threshold: the threshold value to discard unuseful frontiers
+     * @param actualPose: encoding of the current robot pose
+     * @param graph2: the structure where to save current pose and its candidate positions
+     * @param function: the MCDM function object
+     */
     void pushInitialPositions(dummy::Map map, float x, float y, float orientation,
                               int range, int FOV, double threshold,
                               string actualPose,
                               vector<pair<string, list<Pose> >> *graph2,
                               ros::ServiceClient *path_client,
                               MCDMFunction *function, double *batteryTime, GridMap *belief_map);
-
+    /**
+     * Calculate the time required for performing a scan with the TDLAS sensor
+     * 
+     * @param scanAngle: the angle to scan
+     */
     double calculateScanTime(double scanAngle);
 
     void calculateDistance(list<Pose> history, ros::ServiceClient *path_client, double robot_radius);
 
+    
+    /**
+     * Create a new Pose object starting from another one
+     * 
+     * @param x: the x-coordinate of the robot expressed in cell
+     * @param y: the y-coordinate of the robot expressed in cell
+     * @param orientation: the orientation of the robot expressed in degrees
+     * @param range: the range of the robot's sensor expressed in cells
+     * @param variation: an additional angle to sum to the orientation
+     * @param FOV: the scanning angle of the sensor
+     */
     Pose createFromInitialPose(Pose pose, float variation, int range, int FOV);
 
     void updatePathMetrics(int *count, Pose *target, Pose *previous, string actualPose,
@@ -103,7 +132,8 @@ class Utilities {
                                ros::ServiceClient *path_client,
                                list<Pose> *tabuList,
                                std::list<std::pair<float, float> > *posToEsclude,
-                               double min_robot_speed, double robot_radius, double *batteryTime);
+                               double min_robot_speed, double robot_radius, double *batteryTime,
+                               unordered_map<string, string> *mappingWaypoints );
 
     bool freeInLocalCostmap(Pose target, std::string move_base_local_costmap_topic_name);
 
@@ -111,6 +141,9 @@ class Utilities {
     bool move(float x, float y, float orientation, float time_travel,
               list<Pose> *tabuList,
               std::list<std::pair<float, float> > *posToEsclude);
+
+    bool moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
+              std::list<std::pair<float, float> > *posToEsclude, unordered_map<string,string> *mappingWaypoints );
 
 
     Pose getCurrentPose(float resolution, float costresolution, dummy::Map *map,
@@ -132,6 +165,7 @@ class Utilities {
      * @return a vector of <likelikehood, tag_position(X,Y)> of all the tags in the environment
      */
     std::vector<std::pair<int, std::pair<int, int>>> findTagFromBeliefMap(GridMap* belief_map);
+    void convertStrandTopoMapToListPose(strands_navigation_msgs::TopologicalMap *topoMap, list<Pose> *frontiers, int range, double FoV, unordered_map<string, string> *mappingWaypoints);
 };
 
 

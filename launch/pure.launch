@@ -7,10 +7,10 @@
 <launch>
   <!-- PARAMS .............................................................. -->
 
-  <arg name="param_1"  	          default="0.1"/>
+  <arg name="param_1"  	          default="0.2"/>
   <arg name="param_2"  	          default="0.6"/>
   <arg name="param_3"  	          default="0.1"/>
-  <arg name="param_4"  	          default="0.1"/>
+  <arg name="param_4"  	          default="0.0"/>
   <arg name="param_5"  	          default="0.1"/>
   <arg name="fov"                 default="180"/>
   <arg name="radius"              default="3"/>

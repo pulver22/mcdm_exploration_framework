@@ -3,6 +3,8 @@
 //
 
 #include "include/utils.h"
+#include "topological_navigation/GotoNodeActionGoal.h"
+#include "topological_navigation/GotoNodeAction.h"
 
 Utilities::Utilities() {};
 Utilities::~Utilities() {};
@@ -355,7 +357,7 @@ bool Utilities::move(float x, float y, float orientation, float time_travel,
 
   MoveBaseClient ac("move_base", true);
   while (!ac.waitForServer(ros::Duration(5.0))) {
-    cout << "[navigation_utilties@createROSComms]... waiting ..." << endl;
+    cout << "[navigation_utilities@createROSComms]... waiting ..." << endl;
   }
   // we'll send a goal to the robot to move 1 meter forward
   goal.target_pose.header.frame_id = "map";
@@ -463,7 +465,8 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            ros::ServiceClient *path_client,
                            list<Pose> *tabuList,
                            std::list<std::pair<float, float> > *posToEsclude,
-                           double min_robot_speed, double robot_radius, double *batteryTime) {
+                           double min_robot_speed, double robot_radius, double *batteryTime,
+                           unordered_map<string, string> *mappingWaypoints ) {
   //---------------------------PRINT GOAL POSITION
   geometry_msgs::PointStamped p;
   p.header.frame_id = "map";
@@ -506,9 +509,11 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
 //      cout << "[navigation_utilties.cpp@showMarkerandNavigate] Target is at " <<
 //      path_len << " m from the robot" << endl;
 
-  return move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) / 100,
-              time_travel, tabuList,
-              posToEsclude); // full resolution
+  // return move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) / 100,
+  //             time_travel, tabuList,
+  //             posToEsclude); // full resolution
+
+  return moveTopological(target, time_travel, tabuList, posToEsclude, mappingWaypoints);
 }
 
 
@@ -677,4 +682,89 @@ std::vector<std::pair<int, std::pair<int, int>>> Utilities::findTagFromBeliefMap
   
 
   return tag_positions;
+}
+
+void Utilities::convertStrandTopoMapToListPose(strands_navigation_msgs::TopologicalMap *topoMap, list<Pose> *frontiers, int range, double FoV, unordered_map<string, string> *mappingWaypoints ){
+  tf::Quaternion quat;
+  tfScalar angle;
+  Pose tmpPose;
+  EvaluationRecords record;
+  string encoding;
+  // Iterate on all the nodes of the topological map and create a list of Pose elements
+  for (auto nodes_it = topoMap->nodes.begin(); nodes_it != topoMap->nodes.end(); nodes_it++){
+    quat = tf::Quaternion(
+      nodes_it->pose.orientation.x, nodes_it->pose.orientation.y,
+      nodes_it->pose.orientation.z, nodes_it->pose.orientation.w);
+    angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
+    tmpPose = Pose(nodes_it->pose.position.x, 
+                        nodes_it->pose.position.y, 
+                        angle, 
+                        range, 
+                        FoV);
+    frontiers->push_back(tmpPose);
+    encoding = record.getEncodedKey(tmpPose);
+    mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
+  }
+  // cout <<"[TOPOMAP]: " << frontiers->size() << " nodes" << endl;
+}
+
+
+bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
+              std::list<std::pair<float, float> > *posToEsclude, unordered_map<string,string> *mappingWaypoints ){
+
+  topological_navigation::GotoNodeActionGoal topoGoal;
+  EvaluationRecords record;
+  string encoding = record.getEncodedKey(target);
+  bool success = false;
+
+  actionlib::SimpleActionClient<topological_navigation::GotoNodeAction> topoAC("topological_navigation", true);
+  while (!topoAC.waitForServer(ros::Duration(5.0))) {
+    cout << "[navigation_utilities@createROSComms]... waiting ..." << endl;
+  }
+
+  topoGoal.header.frame_id = "map";
+  topoGoal.header.stamp = ros::Time::now();
+  
+  auto search = mappingWaypoints->find(encoding);
+  string waypointName;
+  if (search != mappingWaypoints->end()) {
+    waypointName = search->second;
+    std::cout << "Found :" << search->second << '\n';
+  } else {
+    std::cout << "Not found\n";
+  }
+ topoGoal.goal.target = waypointName;
+ topoGoal.goal.no_orientation = false;
+
+  
+  topoAC.sendGoal(topoGoal.goal);
+
+  actionlib::SimpleClientGoalState curr_state = actionlib::SimpleClientGoalState::PENDING;
+  float total_wait_time = 0.0;
+  while (!curr_state.isDone()){
+    time_travel = std::min(time_travel, (float) 5.0);
+    total_wait_time +=  time_travel;
+    cout << "     [navigation_utilties.cpp@move] Waiting for " << total_wait_time << "/60.0 seconds to reach goal" << endl;
+    topoAC.waitForResult(ros::Duration(time_travel));
+    curr_state = topoAC.getState();
+    cout << "     Result: " << curr_state.getText() << endl;
+
+
+    if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
+      cout << "[navigation_utilties.cpp@move] Goal position reached!" << endl;
+      success = true;
+    } else if (curr_state.isDone()) {
+      cout << "[navigation_utilties.cpp@move] The base failed to move" << endl; //, adding this "
+              // "pose to the Tabulist and posToEsclude" << endl;
+      success = false;
+      // std::pair<int, int> pairToRemove;
+      // pairToRemove = make_pair(int(x), int(y));
+      // posToEsclude->push_back(pairToRemove);
+    } else if (total_wait_time > 60.0) {
+      cout << "[navigation_utilties.cpp@move] Is taking too long" << endl;
+      success = false;
+      curr_state = actionlib::SimpleClientGoalState::ABORTED;
+    }
+  }
+  return success;
 }
