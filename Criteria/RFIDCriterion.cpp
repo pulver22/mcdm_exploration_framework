@@ -19,7 +19,7 @@ RFIDCriterion::RFIDCriterion(double weight)
 
 RFIDCriterion::~RFIDCriterion() {}
 
-double RFIDCriterion::evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map) {
+double RFIDCriterion::evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints) {
     
   // Calculate entropy around the cell
   this->RFIDInfoGain = evaluateEntropyOverBelief(p, belief_map);

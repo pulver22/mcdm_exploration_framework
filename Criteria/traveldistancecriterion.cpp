@@ -20,6 +20,8 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "nav_msgs/GetPlan.h"
 #include <iostream>
+#include "strands_navigation_msgs/GetRouteTo.h"
+#include "evaluationrecords.h"
 
 TravelDistanceCriterion::TravelDistanceCriterion(double weight)
     : Criterion(TRAVEL_DISTANCE, weight, false) {}
@@ -29,56 +31,70 @@ TravelDistanceCriterion::~TravelDistanceCriterion() {}
 double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
                                          ros::ServiceClient *path_client,
                                          double *batteryTime,
-                                         GridMap *belief_map) {
+                                         GridMap *belief_map,
+                                         unordered_map<string,string> *mappingWaypoints) {
   // cout << "travel " << endl;
   Astar astar;
   Pose robotPosition = map->getRobotPosition();
-  nav_msgs::GetPlan path;
   double path_len = 0;
   double startX_meter, startY_meter;
   double goalX_meter, goalY_meter;
-  // double distance = robotPosition.getDistance(p);
-  //  cout << " [travelDistanceCriterion.cpp@Evaluate] [posX, posY] = [" <<
-  //  p.getX() << "," << p.getY() << "]" << endl;
-  //  string path = astar.pathFind(robotPosition.getX(), robotPosition.getY(),
-  //  p.getX(), p.getY(), map);
-  //  double distance = astar.lenghtPath(path);
-  // cout << "alive after calling a*" << endl;
-  // Update starting point in the path
-  path.request.start.header.frame_id = "map";
-  path.request.start.pose.position.x = robotPosition.getX();
-  path.request.start.pose.position.y = robotPosition.getY();
-  path.request.start.pose.orientation.w = 1;
-  //  map->getPathPlanningPosition(goalX_meter, goalY_meter, p.getX(),
-  //  p.getY());
-  path.request.goal.header.frame_id = "map";
-  path.request.goal.pose.position.x = p.getX();
-  path.request.goal.pose.position.y = p.getY();
-  path.request.goal.pose.orientation.w = 1;
-  //  cout << " (x_start, y_start) = (" << robotPosition.getX() << "," <<
-  //  robotPosition.getY() << "), (x_goal, y_goal) = (" << goalX_meter << "," <<
-  //  goalY_meter << ")" << endl;
-  bool path_srv_call = path_client->call(path);
-  if (path_srv_call) {
-    // calculate path length
-    path_len = getPathLen(path.response.plan.poses);
-    if (isnan(path_len) or path_len < 0.001) {
-      path_len = 0;
-    } else if (path_len < 1e3) {
-      //      ROS_INFO("Path len is [%3.3f m.]",path_len);
-    } else {
-      //      ROS_INFO("Path len is infinite");
-      path_len = 1000;
-    }
+  
+
+  // Metric map
+    // // Update starting point in the path
+    // nav_msgs::GetPlan path;
+    // path.request.start.header.frame_id = "map";
+    // path.request.start.pose.position.x = robotPosition.getX();
+    // path.request.start.pose.position.y = robotPosition.getY();
+    // path.request.start.pose.orientation.w = 1;
+    // path.request.goal.header.frame_id = "map";
+    // path.request.goal.pose.position.x = p.getX();
+    // path.request.goal.pose.position.y = p.getY();
+    // path.request.goal.pose.orientation.w = 1;
+    // bool path_srv_call = path_client->call(path);
+    // if (path_srv_call) {
+    //   // calculate path length
+    //   path_len = getPathLen(path.response.plan.poses);
+    //   if (isnan(path_len) or path_len < 0.001) {
+    //     path_len = 0;
+    //   } else if (path_len < 1e3) {
+    //     //      ROS_INFO("Path len is [%3.3f m.]",path_len);
+    //   } else {
+    //     //      ROS_INFO("Path len is infinite");
+    //     path_len = 1000;
+    //   }
+    // } else {
+    //   ROS_INFO("Path_finding Service call failed! ");
+    //   path_len = 1000;
+    // }
+    // bool collision = map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
+    // if (collision == true)
+    // {
+    //   path_len = 50000;
+    // }
+  
+  // Topological map
+  strands_navigation_msgs::GetRouteTo path;
+  string waypointName;
+  EvaluationRecords record;
+  bool found = false;
+  string encoding = record.getEncodedKey(p);
+  auto search = mappingWaypoints->find(encoding);
+  if (search != mappingWaypoints->end()) {
+    waypointName = search->second;
+    found = true;
   } else {
-    ROS_INFO("Path_finding Service call failed! ");
-    path_len = 1000;
+    found = false;
   }
-  bool collision = map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
-  if (collision == true)
-  {
-    path_len = 50000;
-//    cout << "[ "<< p.getX() << "," << p.getY() <<"] CELL TOO CLOSE TO WALL" << endl;
+  if (found == true){
+    path.request.goal = waypointName; 
+    bool path_srv_call  = path_client->call(path);
+    if(path_srv_call){
+      path_len = path.response.route.source.size();
+    }
+  }else{
+    path_len = 1000;
   }
   Criterion::insertEvaluation(p, path_len);
   return path_len;

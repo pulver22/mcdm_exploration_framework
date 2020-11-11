@@ -27,7 +27,7 @@ BatteryStatusCriterion::~BatteryStatusCriterion() {}
 
 double BatteryStatusCriterion::evaluate(Pose &p, dummy::Map *map,
                                          ros::ServiceClient *path_client,
-                                         double *batteryTime, GridMap *belief_map) {
+                                         double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints) {
   Pose robotPosition = map->getRobotPosition();
   nav_msgs::GetPlan path;
   double path_len = 0;

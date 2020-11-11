@@ -20,12 +20,12 @@ public:
   void evaluateFrontier(Pose &p, dummy::Map *map,
                         ros::ServiceClient *path_client,
                         double *batteryTime,
-                        GridMap *belief_map);
+                        GridMap *belief_map, unordered_map<string,string> *mappingWaypoints);
   EvaluationRecords *evaluateFrontiers(const std::list<Pose> *frontiers,
                                        dummy::Map *map, double threshold,
                                        ros::ServiceClient *path_client,
                                        double *batteryTime,
-                                       GridMap *belief_map);
+                                       GridMap *belief_map, unordered_map<string,string> *mappingWaypoints);
   pair<Pose, double> selectNewPose(EvaluationRecords *evaluationRecords);
   string getEncodedKey(Pose &p, int value);
 

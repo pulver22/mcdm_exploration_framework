@@ -25,13 +25,13 @@ bool Utilities::containsPos(std::list<std::pair<float, float>> *positionEscluded
                  std::pair<float, float> p) {
   bool result = false;
   std::pair<float, float> tmp_p = make_pair(float(int(p.first)), float(int(p.second)));
-  cout << "   [navigation_utilties.py@containsPos] tmp_p: " << tmp_p.first << "," << tmp_p.second << endl;
+  // cout << "   [navigation_utilties.py@containsPos] tmp_p: " << tmp_p.first << "," << tmp_p.second << endl;
 
   auto findIter = std::find(positionEscluded->begin(), positionEscluded->end(), tmp_p);
   if (findIter != positionEscluded->end()) {
     result = true;
   }
-  cout << "Is it already visited and excluded: " << result << endl;
+  // cout << "Is it already visited and excluded: " << result << endl;
   return result;
 }
 
@@ -86,7 +86,7 @@ void Utilities::pushInitialPositions(dummy::Map map, float x, float y, float ori
                           string actualPose,
                           vector<pair<string, list<Pose> >> *graph2,
                           ros::ServiceClient *path_client, MCDMFunction *function,
-                          double *batteryTime, GridMap *belief_map) {
+                          double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints) {
 
   map.findCandidatePositions(x, y, orientation, FOV, range);
   vector<pair<float, float> > candidatePosition = map.getCandidatePositions();
@@ -104,7 +104,7 @@ void Utilities::pushInitialPositions(dummy::Map map, float x, float y, float ori
     frontiers.push_back(p4);
   }
   EvaluationRecords *record =
-      function->evaluateFrontiers(&frontiers, &map, threshold, path_client, batteryTime, belief_map);
+      function->evaluateFrontiers(&frontiers, &map, threshold, path_client, batteryTime, belief_map, mappingWaypoints);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose> > pair = make_pair(actualPose, nearCandidates);
@@ -498,7 +498,7 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
       path_len = 1000;
     }
   } else {
-    cout << "[navigation_utilties.cpp@showMarkerandNavigate] Service call failed! " << endl;
+    // cout << "[navigation_utilties.cpp@showMarkerandNavigate] Service call failed! " << endl;
     path_len = 1000;
   }
 
@@ -581,25 +581,25 @@ bool Utilities::freeInLocalCostmap(Pose target, std::string move_base_local_cost
 
 Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
                                   double threshold, ros::ServiceClient *path_client, std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
-                                  std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map)
+                                  std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints)
 {
   bool isFreeFromObstacle = false;
   while (isFreeFromObstacle == false) {
 //    cout << "===> Checking against localmap!" << endl;
     // check that the current target is free from obstacles in the local map
     isFreeFromObstacle = freeInLocalCostmap(target, move_base_local_costmap_topic_name);
-    cout << "   isFree: " << isFreeFromObstacle << endl;
+    // cout << "   isFree: " << isFreeFromObstacle << endl;
     if (isFreeFromObstacle == true) break;// if it's free, the while will be break immediately
     // Otherwise you have to select a new target and continue in the while
     // 1) Add this cell to the list of cell not reachebale
     std::pair<int, int> pairToRemove = make_pair(target.getX(), target.getY());
     posToEsclude->push_back(pairToRemove);
     // remove the current target from the list of candidate position
-    cout << "nearCandidate before: " << nearCandidates->size() << endl;
+    // cout << "nearCandidate before: " << nearCandidates->size() << endl;
     cleanPossibleDestination2(nearCandidates, target);
-    cout << "nearCandidate after: " << nearCandidates->size() << endl;
+    // cout << "nearCandidate after: " << nearCandidates->size() << endl;
     // Get the list of new candidate position with  associated evaluation
-    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client, batteryTime, belief_map);
+    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client, batteryTime, belief_map, mappingWaypoints);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
 //    cout << "     record size: " << record->size() << endl;
@@ -695,15 +695,29 @@ void Utilities::convertStrandTopoMapToListPose(strands_navigation_msgs::Topologi
     quat = tf::Quaternion(
       nodes_it->pose.orientation.x, nodes_it->pose.orientation.y,
       nodes_it->pose.orientation.z, nodes_it->pose.orientation.w);
-    angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
-    tmpPose = Pose(nodes_it->pose.position.x, 
-                        nodes_it->pose.position.y, 
-                        angle, 
-                        range, 
-                        FoV);
-    frontiers->push_back(tmpPose);
-    encoding = record.getEncodedKey(tmpPose);
-    mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
+    
+    // NOTE: create eight pose for every node
+    for (int i=0; i<8; i++){
+      tmpPose = Pose(nodes_it->pose.position.x, 
+                  nodes_it->pose.position.y,
+                  roundf(i* M_PI / 4 * 100) / 100, 
+                  range, 
+                  FoV);  
+      frontiers->push_back(tmpPose);
+      encoding = record.getEncodedKey(tmpPose);
+      mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
+    }
+    
+    // NOTE: one note per node, like in the topological map
+    // angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
+    // tmpPose = Pose(nodes_it->pose.position.x, 
+    //                 nodes_it->pose.position.y, 
+    //                 angle, 
+    //                 range, 
+    //                 FoV);
+    // frontiers->push_back(tmpPose);
+    // encoding = record.getEncodedKey(tmpPose);
+    // mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
   }
   // cout <<"[TOPOMAP]: " << frontiers->size() << " nodes" << endl;
 }
@@ -729,14 +743,13 @@ bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabu
   string waypointName;
   if (search != mappingWaypoints->end()) {
     waypointName = search->second;
-    std::cout << "Found :" << search->second << '\n';
+    // std::cout << "Found :" << search->second << '\n';
   } else {
     std::cout << "Not found\n";
   }
- topoGoal.goal.target = waypointName;
- topoGoal.goal.no_orientation = false;
+  topoGoal.goal.target = waypointName;
+  topoGoal.goal.no_orientation = false;
 
-  
   topoAC.sendGoal(topoGoal.goal);
 
   actionlib::SimpleClientGoalState curr_state = actionlib::SimpleClientGoalState::PENDING;
@@ -747,7 +760,7 @@ bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabu
     cout << "     [navigation_utilties.cpp@move] Waiting for " << total_wait_time << "/60.0 seconds to reach goal" << endl;
     topoAC.waitForResult(ros::Duration(time_travel));
     curr_state = topoAC.getState();
-    cout << "     Result: " << curr_state.getText() << endl;
+    // cout << "     Result: " << curr_state.getText() << endl;
 
 
     if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
@@ -760,7 +773,7 @@ bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabu
       // std::pair<int, int> pairToRemove;
       // pairToRemove = make_pair(int(x), int(y));
       // posToEsclude->push_back(pairToRemove);
-    } else if (total_wait_time > 60.0) {
+    } else if (total_wait_time > 90.0) {
       cout << "[navigation_utilties.cpp@move] Is taking too long" << endl;
       success = false;
       curr_state = actionlib::SimpleClientGoalState::ABORTED;

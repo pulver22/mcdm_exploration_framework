@@ -36,7 +36,7 @@ class Criterion
 	~Criterion();
 
 	//Other methods
-	virtual double evaluate( Pose &p, dummy::Map *map, ros::ServiceClient* path_client, double *batteryTime, GridMap *belief_map) {};
+	virtual double evaluate( Pose &p, dummy::Map *map, ros::ServiceClient* path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints) {};
 	double getEvaluation(Pose &p) const;
 	void insertEvaluation(Pose &p, double value);
 	void clean();

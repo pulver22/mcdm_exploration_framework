@@ -87,7 +87,8 @@ class Utilities {
                               string actualPose,
                               vector<pair<string, list<Pose> >> *graph2,
                               ros::ServiceClient *path_client,
-                              MCDMFunction *function, double *batteryTime, GridMap *belief_map);
+                              MCDMFunction *function, double *batteryTime, GridMap *belief_map,
+                              unordered_map<string,string> *mappingWaypoints);
     /**
      * Calculate the time required for performing a scan with the TDLAS sensor
      * 
@@ -154,7 +155,8 @@ class Utilities {
     Pose selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
                                       double threshold, ros::ServiceClient *path_client,
                                       std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
-                                      std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map);
+                                      std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map,
+                                      unordered_map<string,string> *mappingWaypoints);
 
     void saveCoverage(const std::string& name, const std::string& content, bool append);
 

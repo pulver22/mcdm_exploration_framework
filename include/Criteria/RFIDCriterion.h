@@ -13,7 +13,7 @@ class RFIDCriterion : public Criterion {
 public:
   RFIDCriterion(double weight);
   virtual ~RFIDCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints);
 
 private:
   void normalize(long minSensedX, int number);

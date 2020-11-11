@@ -38,6 +38,7 @@
 // mfc ...
 #include "rfid_grid_map/GetBeliefMaps.h"
 #include "strands_navigation_msgs/TopologicalMap.h"
+#include "strands_navigation_msgs/GetRouteTo.h"
 
 using namespace std;
 using namespace dummy;
@@ -87,6 +88,7 @@ GridMapRosConverter converter;
 std::string static_map_srv_name;
 std::string belief_map_srv_name;
 std::string make_plan_srv_name;
+std::string make_topo_plan_srv_name;
 std::string move_base_goal_topic_name;
 std::string move_base_srv_name;
 std::string nav_grid_debug_topic_name;
@@ -105,6 +107,7 @@ std::string topological_map_topic_name;
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_;
 ros::ServiceClient path_client;
+ros::ServiceClient topo_path_client;
 ros::ServiceClient belief_map_client;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
@@ -490,7 +493,7 @@ int main(int argc, char **argv) {
             // Add to the graph the initial positions and the candidates from
             // there (calculated inside the function)
             utils.pushInitialPositions(map, x, y, orientation, range, FOV, threshold,
-                                 actualPose, &graph2, &path_client, &function, &batteryTime, &belief_map);
+                                 actualPose, &graph2, &topo_path_client, &function, &batteryTime, &belief_map, &mappingWaypoints);
           }
 
           // If there are no new candidate positions from the current pose of
@@ -533,13 +536,13 @@ int main(int argc, char **argv) {
               cout << "------------------ HISTORY -----------------" << endl;
               // Retrieve the cell visited only the first time
               list<Pose> tmp_history = utils.cleanHistory(&history, &record);
-              utils.calculateDistance(tmp_history, &path_client, robot_radius);
+              utils.calculateDistance(tmp_history, &topo_path_client, robot_radius);
 
               cout << "------------------ TABULIST -----------------" << endl;
               // Calculate the path connecting the cells in the tabulist, namely
               // the cells that are visited one time and couldn't be visite
               // again
-              utils.calculateDistance(tabuList, &path_client, robot_radius);
+              utils.calculateDistance(tabuList, &topo_path_client, robot_radius);
 
               utils.printResult(newSensedCells, totalFreeCells, precision,
                           numConfiguration, travelledDistance, numOfTurning,
@@ -610,9 +613,10 @@ int main(int argc, char **argv) {
             // cout <<"CleanedFrontiers: " << frontiers.size() << endl;
             // Print the frontiers with the respective evaluation
             // cout << "Number of frontiers identified: " << frontiers.size() << endl;
-            EvaluationRecords *record = function.evaluateFrontiers(&frontiers, &map, threshold, &path_client, &batteryTime, &belief_map);
+            EvaluationRecords *record = function.evaluateFrontiers(&topoMap, &map,
+                                                      threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints);
             topoMap = record->getFrontiers();
-            cout << "Record: " << topoMap.size() << endl;
+            // cout << "Record: " << topoMap.size() << endl;
             // NOTE: This may not be needed because  we are in an unexplored area
             
             unordered_map<string, double> evaluation = record->getEvaluations();
@@ -627,7 +631,7 @@ int main(int argc, char **argv) {
 
               cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
               target = utils.selectFreePoseInLocalCostmap(target, &topoMap, &map, &function, threshold,
-                  &path_client, &posToEsclude, record, move_base_local_costmap_topic_name, &batteryTime, &belief_map);
+                  &topo_path_client, &posToEsclude, record, move_base_local_costmap_topic_name, &batteryTime, &belief_map, &mappingWaypoints);
               targetPos = std::make_pair(int(target.getX()), int(target.getY()));
 
               // If the selected destination does not appear among the cells
@@ -648,7 +652,7 @@ int main(int argc, char **argv) {
                       &graph2, &map, &function, &tabuList, &posToEsclude,
                       &history, encodedKeyValue, &numConfiguration,
                       &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
-                      &path_client, backTracking, robot_radius);
+                      &topo_path_client, backTracking, robot_radius);
 //                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                 }
 
@@ -677,7 +681,7 @@ int main(int argc, char **argv) {
                   // Get the list of new candidate position with associated
                   // evaluation
                   record = function.evaluateFrontiers(&topoMap, &map,
-                                                      threshold, &path_client, &batteryTime, &belief_map);
+                                                      threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints);
                   // If there are candidate positions
 //                  cout << "PoseToEsclude:" << endl;
 //                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
@@ -709,7 +713,8 @@ int main(int argc, char **argv) {
                         utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
                         // Get the list of new candidate position with
                         // associated evaluation
-                        record = function.evaluateFrontiers(&topoMap, &map, threshold, &path_client, &batteryTime, &belief_map);
+                        record = function.evaluateFrontiers(&topoMap, &map,
+                                                      threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints);
                       }
                     }
                     // If there are no more candidate position from the last
@@ -729,7 +734,7 @@ int main(int argc, char **argv) {
                       utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
                       cout << "topoMap after: " <<topoMap.size() << endl;
                       record = function.evaluateFrontiers(&topoMap, &map,
-                                                          threshold, &path_client, &batteryTime, &belief_map);
+                                                      threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints);
                       cout << "record: " << record->size() << endl;
                     }
                   }
@@ -746,7 +751,7 @@ int main(int argc, char **argv) {
                         &graph2, &map, &function, &tabuList, &posToEsclude,
                         &history, encodedKeyValue, &numConfiguration,
                         &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
-                        &path_client, backTracking, robot_radius);
+                        &topo_path_client, backTracking, robot_radius);
 //                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
                   }
                   scan = true;
@@ -898,7 +903,8 @@ int main(int argc, char **argv) {
           cout << "topoMap after cleaning: " << topoMap.size() << endl;
 //          cout << "Cleaned" << endl;
           // Get the list of the candidate cells with their evaluation
-          EvaluationRecords *record = function.evaluateFrontiers(&topoMap, &map, threshold, &path_client, &batteryTime, &belief_map);
+          EvaluationRecords *record = function.evaluateFrontiers(&topoMap, &map,
+                                                      threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints);
           cout << "Record obtained, size is " << record->size() << endl;
 
           // If there are candidate cells
@@ -927,7 +933,7 @@ int main(int argc, char **argv) {
                     &graph2, &map, &function, &tabuList, &posToEsclude,
                     &history, encodedKeyValue,  &numConfiguration,
                     &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
-                    &path_client, backTracking, robot_radius);
+                    &topo_path_client, backTracking, robot_radius);
 //                cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
               }
               // Leave the backtracking branch
@@ -951,7 +957,8 @@ int main(int argc, char **argv) {
                 utils.cleanPossibleDestination2(&topoMap, target);
                 utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
                 // Get the candidates with their evaluation
-                EvaluationRecords *record = function.evaluateFrontiers(&topoMap, &map, threshold, &path_client, &batteryTime, &belief_map);
+                EvaluationRecords *record = function.evaluateFrontiers(&topoMap, &map,
+                                                      threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints);
                 // Select the new destination
                 std::pair<Pose, double> result = function.selectNewPose(record);
                 target = result.first;
@@ -964,7 +971,7 @@ int main(int argc, char **argv) {
                     &graph2, &map, &function, &tabuList, &posToEsclude,
                     &history, encodedKeyValue,  &numConfiguration,
                     &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
-                    &path_client, backTracking, robot_radius);
+                    &topo_path_client, backTracking, robot_radius);
               }
               // ...otherwise, if there are no more candidates
               else {
@@ -1058,10 +1065,10 @@ int main(int argc, char **argv) {
       cout << "------------------ HISTORY -----------------" << endl;
       // Calculate which cells have been visited only once
       list<Pose> tmp_history = utils.cleanHistory(&history, &record);
-      utils.calculateDistance(tmp_history, &path_client, robot_radius);
+      utils.calculateDistance(tmp_history, &topo_path_client, robot_radius);
 
       cout << "------------------ TABULIST -----------------" << endl;
-      utils.calculateDistance(tabuList, &path_client, robot_radius);
+      utils.calculateDistance(tabuList, &topo_path_client, robot_radius);
 
       utils.printResult(newSensedCells, totalFreeCells, precision, numConfiguration,
                   travelledDistance, numOfTurning, totalAngle, totalScanTime, resolution,
@@ -1156,6 +1163,7 @@ void loadROSParams(){
   private_node_handle.param("belief_map_srv_name", belief_map_srv_name, std::string("/rfid_grid_map_node/get_rfid_belief"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
+  private_node_handle.param("make_topo_plan_srv_name", make_topo_plan_srv_name, std::string("/get_simple_policy/get_route_to"));
   private_node_handle.param("move_base_goal_topic_name", move_base_goal_topic_name, std::string("move_base_simple/goal"));
   private_node_handle.param("move_base_srv_name", move_base_srv_name, std::string("move_base"));
   private_node_handle.param("nav_grid_debug_topic_name", nav_grid_debug_topic_name, std::string("nav_grid_debug"));
@@ -1177,6 +1185,7 @@ void printROSParams(){
   printf("   - static_map_srv_name [%s]\n", static_map_srv_name.c_str());
   printf("   - belief_map_srv_name [%s]\n", belief_map_srv_name.c_str());
   printf("   - make_plan_srv_name [%s]\n", make_plan_srv_name.c_str());
+  printf("   - make_topo_plan_srv_name [%s]\n", make_topo_plan_srv_name.c_str());
   printf("   - move_base_goal_topic_name [%s]\n", move_base_goal_topic_name.c_str());
   printf("   - move_base_srv_name [%s]\n", move_base_srv_name.c_str());
   printf("   - nav_grid_debug_topic_name [%s]\n", nav_grid_debug_topic_name.c_str());
@@ -1200,6 +1209,7 @@ void createROSComms(){
   // create service clients
   map_service_client_ = nh.serviceClient<nav_msgs::GetMap>(static_map_srv_name);
   path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
+  topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
   belief_map_client = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
 
