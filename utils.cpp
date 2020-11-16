@@ -86,7 +86,8 @@ void Utilities::pushInitialPositions(dummy::Map map, float x, float y, float ori
                           string actualPose,
                           vector<pair<string, list<Pose> >> *graph2,
                           ros::ServiceClient *path_client, MCDMFunction *function,
-                          double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints) {
+                          double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
+                          vector<topological_localization::DistributionStamped> *belief_topomaps) {
 
   map.findCandidatePositions(x, y, orientation, FOV, range);
   vector<pair<float, float> > candidatePosition = map.getCandidatePositions();
@@ -104,7 +105,7 @@ void Utilities::pushInitialPositions(dummy::Map map, float x, float y, float ori
     frontiers.push_back(p4);
   }
   EvaluationRecords *record =
-      function->evaluateFrontiers(&frontiers, &map, threshold, path_client, batteryTime, belief_map, mappingWaypoints);
+      function->evaluateFrontiers(&frontiers, &map, threshold, path_client, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose> > pair = make_pair(actualPose, nearCandidates);
@@ -466,7 +467,7 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            list<Pose> *tabuList,
                            std::list<std::pair<float, float> > *posToEsclude,
                            double min_robot_speed, double robot_radius, double *batteryTime,
-                           unordered_map<string, string> *mappingWaypoints ) {
+                           unordered_map<string, string> *mappingWaypoints) {
   //---------------------------PRINT GOAL POSITION
   geometry_msgs::PointStamped p;
   p.header.frame_id = "map";
@@ -581,7 +582,8 @@ bool Utilities::freeInLocalCostmap(Pose target, std::string move_base_local_cost
 
 Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
                                   double threshold, ros::ServiceClient *path_client, std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
-                                  std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints)
+                                  std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
+                                  vector<topological_localization::DistributionStamped> *belief_topomaps)
 {
   bool isFreeFromObstacle = false;
   while (isFreeFromObstacle == false) {
@@ -599,7 +601,7 @@ Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandid
     cleanPossibleDestination2(nearCandidates, target);
     // cout << "nearCandidate after: " << nearCandidates->size() << endl;
     // Get the list of new candidate position with  associated evaluation
-    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client, batteryTime, belief_map, mappingWaypoints);
+    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
 //    cout << "     record size: " << record->size() << endl;
@@ -684,7 +686,7 @@ std::vector<std::pair<int, std::pair<int, int>>> Utilities::findTagFromBeliefMap
   return tag_positions;
 }
 
-void Utilities::convertStrandTopoMapToListPose(strands_navigation_msgs::TopologicalMap *topoMap, list<Pose> *frontiers, int range, double FoV, unordered_map<string, string> *mappingWaypoints ){
+void Utilities::convertStrandTopoMapToListPose(strands_navigation_msgs::TopologicalMap *topoMap, list<Pose> *frontiers, int range, double FoV, unordered_map<string, string> *mappingWaypoints){
   tf::Quaternion quat;
   tfScalar angle;
   Pose tmpPose;
@@ -697,34 +699,34 @@ void Utilities::convertStrandTopoMapToListPose(strands_navigation_msgs::Topologi
       nodes_it->pose.orientation.z, nodes_it->pose.orientation.w);
     
     // NOTE: create eight pose for every node
-    for (int i=0; i<8; i++){
-      tmpPose = Pose(nodes_it->pose.position.x, 
-                  nodes_it->pose.position.y,
-                  roundf(i* M_PI / 4 * 100) / 100, 
-                  range, 
-                  FoV);  
-      frontiers->push_back(tmpPose);
-      encoding = record.getEncodedKey(tmpPose);
-      mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
-    }
+    // for (int i=0; i<8; i++){
+    //   tmpPose = Pose(nodes_it->pose.position.x, 
+    //               nodes_it->pose.position.y,
+    //               roundf(i* M_PI / 4 * 100) / 100, 
+    //               range, 
+    //               FoV);  
+    //   frontiers->push_back(tmpPose);
+    //   encoding = record.getEncodedKey(tmpPose);
+    //   mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
+    // }
     
     // NOTE: one note per node, like in the topological map
-    // angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
-    // tmpPose = Pose(nodes_it->pose.position.x, 
-    //                 nodes_it->pose.position.y, 
-    //                 angle, 
-    //                 range, 
-    //                 FoV);
-    // frontiers->push_back(tmpPose);
-    // encoding = record.getEncodedKey(tmpPose);
-    // mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
+    angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
+    tmpPose = Pose(nodes_it->pose.position.x, 
+                    nodes_it->pose.position.y, 
+                    angle, 
+                    range, 
+                    FoV);
+    frontiers->push_back(tmpPose);
+    encoding = record.getEncodedKey(tmpPose);
+    mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
   }
   // cout <<"[TOPOMAP]: " << frontiers->size() << " nodes" << endl;
 }
 
 
 bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
-              std::list<std::pair<float, float> > *posToEsclude, unordered_map<string,string> *mappingWaypoints ){
+              std::list<std::pair<float, float> > *posToEsclude, unordered_map<string,string> *mappingWaypoints){
 
   topological_navigation::GotoNodeActionGoal topoGoal;
   EvaluationRecords record;
@@ -779,5 +781,42 @@ bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabu
       curr_state = actionlib::SimpleClientGoalState::ABORTED;
     }
   }
-  return success;
+return success;
+}
+
+topological_localization::DistributionStamped
+Utilities::convertGridBeliefMapToTopoMap(
+    GridMap *belief_map, list<Pose> *topoMap,
+    unordered_map<string, string> *mappingWaypoints, string tag_id) {
+  // TODO: Look for all the nodes in TopoMap and create a grid_map iterator on
+  // belief_map centered on the node
+  // Retrieve node waypoint name from the mapping and return waypoint and summed
+  // belief inside the message
+  EvaluationRecords record;
+  string encoding, waypointName;
+  double radius = 2.0;
+  double probability;
+  topological_localization::DistributionStamped topo_belief;
+  grid_map::Matrix& data = (*belief_map)[tag_id];
+  for (auto it = topoMap->begin(); it != topoMap->end(); it ++){
+    probability = 0.0;
+    encoding = record.getEncodedKey(*it);
+    auto search = mappingWaypoints->find(encoding);
+    if (search != mappingWaypoints->end()) {
+      waypointName = search->second;
+    } else {
+      std::cout << "[convertGridBeliefMapToTopoMap@utils.cpp] Encoding not found\n";
+    }
+
+    Position center(it->getX(), it->getY());
+    
+    for (grid_map::CircleIterator iterator(*belief_map, center, radius); !iterator.isPastEnd(); ++iterator){
+      const grid_map::Index index(*iterator);
+      probability += data((index(0), index(1)));
+    }
+    // Add the information to the returned object
+    topo_belief.nodes.push_back(waypointName);
+    topo_belief.values.push_back(probability);
+  }
+  return topo_belief;
 }

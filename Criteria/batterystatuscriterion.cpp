@@ -25,26 +25,28 @@ BatteryStatusCriterion::BatteryStatusCriterion(double weight)
 
 BatteryStatusCriterion::~BatteryStatusCriterion() {}
 
-double BatteryStatusCriterion::evaluate(Pose &p, dummy::Map *map,
-                                         ros::ServiceClient *path_client,
-                                         double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints) {
+double BatteryStatusCriterion::evaluate(
+    Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+    double *batteryTime, GridMap *belief_map,
+    unordered_map<string, string> *mappingWaypoints,
+    vector<topological_localization::DistributionStamped> *belief_topomaps) {
   Pose robotPosition = map->getRobotPosition();
   nav_msgs::GetPlan path;
   double path_len = 0;
   double startX_meter, startY_meter;
   double goalX_meter, goalY_meter;
-  
+
   // Update starting point in the path
   path.request.start.header.frame_id = "map";
   path.request.start.pose.position.x = robotPosition.getX();
   path.request.start.pose.position.y = robotPosition.getY();
   path.request.start.pose.orientation.w = 1;
-  
+
   path.request.goal.header.frame_id = "map";
   path.request.goal.pose.position.x = p.getX();
   path.request.goal.pose.position.y = p.getY();
   path.request.goal.pose.orientation.w = 1;
-  
+
   bool path_srv_call = path_client->call(path);
   if (path_srv_call) {
     // calculate path length
@@ -61,9 +63,9 @@ double BatteryStatusCriterion::evaluate(Pose &p, dummy::Map *map,
     ROS_INFO("Path_finding Service call failed! ");
     path_len = 1000;
   }
-  bool collision = map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
-  if (collision == true)
-  {
+  bool collision =
+      map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
+  if (collision == true) {
     path_len = 50000;
   }
 

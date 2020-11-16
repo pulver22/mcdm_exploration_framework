@@ -27,7 +27,7 @@ class SensingTimeCriterion : public Criterion {
 public:
   SensingTimeCriterion(double weight);
   ~SensingTimeCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<topological_localization::DistributionStamped> *belief_topomaps);
 
   // only for testing purpose
   // void insertEvaluation(Pose &p, double value);

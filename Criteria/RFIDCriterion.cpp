@@ -8,6 +8,7 @@
 #include "newray.h"
 #include "utils.h"
 #include <math.h>
+#include <algorithm>    // std::find
 
 using namespace dummy;
 using namespace grid_map;
@@ -19,13 +20,20 @@ RFIDCriterion::RFIDCriterion(double weight)
 
 RFIDCriterion::~RFIDCriterion() {}
 
-double RFIDCriterion::evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints) {
-    
+double RFIDCriterion::evaluate(
+    Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+    double *batteryTime, GridMap *belief_map,
+    unordered_map<string, string> *mappingWaypoints,
+    vector<topological_localization::DistributionStamped> *belief_topomaps) {
+
+  this->RFIDInfoGain =
+      evaluateEntropyTopologicalMap(p, mappingWaypoints, belief_topomaps);
+  cout << "[evaluate@RFIDCriterion.cpp] value: " << this->RFIDInfoGain << endl;
   // Calculate entropy around the cell
-  this->RFIDInfoGain = evaluateEntropyOverBelief(p, belief_map);
-  if (isnan(this->RFIDInfoGain)){
-      this->RFIDInfoGain = 0.0;
-  }
+  // this->RFIDInfoGain = evaluateEntropyOverBelief(p, belief_map);
+  // if (isnan(this->RFIDInfoGain)) {
+  //   this->RFIDInfoGain = 0.0;
+  // }
   Criterion::insertEvaluation(p, this->RFIDInfoGain);
   return this->RFIDInfoGain;
 }
@@ -35,26 +43,30 @@ double RFIDCriterion::evaluateEntropyOverBelief(Pose &p, GridMap *belief_map) {
   double entropy_cell = 0.0;
   int buffer_size = 2;
   std::vector<string> layers_name = belief_map->getLayers();
-  // The layers_name vector contains "ref_map, X, Y" which are for not for finding the tags.
-  // So we can remove their name to avoid checking this layers.
-  layers_name.erase(layers_name.begin(), layers_name.begin()+3);
+  // The layers_name vector contains "ref_map, X, Y" which are for not for
+  // finding the tags. So we can remove their name to avoid checking this
+  // layers.
+  layers_name.erase(layers_name.begin(), layers_name.begin() + 3);
   // If there are no belief maps built (no signal received up to now),
   // the entropy is maximum
-  if (layers_name.size() == 0){
-    RFIDInfoGain = 1.0;  // default: max entropy
+  if (layers_name.size() == 0) {
+    RFIDInfoGain = 1.0; // default: max entropy
   }
-  for (auto it = layers_name.begin(); it != layers_name.end(); it++){
-    int tag_id = std::stoi( *it );  // convert string to int
-    entropy_cell = getTotalEntropyEllipse(p, p.getRange(), -1.0, tag_id, belief_map);
+  for (auto it = layers_name.begin(); it != layers_name.end(); it++) {
+    int tag_id = std::stoi(*it); // convert string to int
+    entropy_cell =
+        getTotalEntropyEllipse(p, p.getRange(), -1.0, tag_id, belief_map);
     RFIDInfoGain += entropy_cell;
   }
   return RFIDInfoGain;
 }
 
-
-double RFIDCriterion::getTotalEntropyEllipse(Pose target, double maxX, double minX, int tag_i, GridMap *belief_map){
-                                     //1.-  Get elipsoid iterator.
-  // Antenna is at one of the focus of the ellipse with center at antennaX, antennaY, tilted antennaHeading .
+double RFIDCriterion::getTotalEntropyEllipse(Pose target, double maxX,
+                                             double minX, int tag_i,
+                                             GridMap *belief_map) {
+  // 1.-  Get elipsoid iterator.
+  // Antenna is at one of the focus of the ellipse with center at antennaX,
+  // antennaY, tilted antennaHeading .
   // http://www.softschools.com/math/calculus/finding_the_foci_of_an_ellipse/
   // if a is mayor axis and b is minor axis
   // a-c= minX
@@ -65,21 +77,23 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target, double maxX, double mi
   // mirror y axis!!!!
   double antennaX = target.getX();
   double antennaY = target.getY();
-  double antennaHeading = target.getOrientation() * 3.14/180;
+  double antennaHeading = target.getOrientation() * 3.14 / 180;
 
-  double a =  (abs(maxX) + abs(minX))/2.0;
-  double c =  (abs(maxX) - abs(minX))/2;
-  double b = sqrt((a*a)-(c*c));
-  double xc = antennaX + (c*cos(antennaHeading));
-  double yc = antennaY + (c*sin(antennaHeading));
+  double a = (abs(maxX) + abs(minX)) / 2.0;
+  double c = (abs(maxX) - abs(minX)) / 2;
+  double b = sqrt((a * a) - (c * c));
+  double xc = antennaX + (c * cos(antennaHeading));
+  double yc = antennaY + (c * sin(antennaHeading));
   Position center(xc, yc); // meters
-  Length length(2*a, 2*b);
-  grid_map::EllipseIterator el_iterator(*belief_map, center, length, antennaHeading);
+  Length length(2 * a, 2 * b);
+  grid_map::EllipseIterator el_iterator(*belief_map, center, length,
+                                        antennaHeading);
   return getTotalEntropyEllipse(target, el_iterator, tag_i, belief_map);
 }
 
-double RFIDCriterion::getTotalEntropyEllipse(Pose target, grid_map::EllipseIterator iterator,
-                                   int tag_i, GridMap *belief_map) {
+double RFIDCriterion::getTotalEntropyEllipse(Pose target,
+                                             grid_map::EllipseIterator iterator,
+                                             int tag_i, GridMap *belief_map) {
 
   double total_entropy;
   Position point;
@@ -119,4 +133,37 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target, grid_map::EllipseItera
 
 std::string RFIDCriterion::getTagLayerName(int tag_num) {
   return std::to_string(tag_num);
+}
+
+double RFIDCriterion::evaluateEntropyTopologicalMap(
+    Pose p, unordered_map<string, string> *mappingWaypoints,
+    vector<topological_localization::DistributionStamped> *belief_topomaps) {
+  float RFIDInfoGain = 0.0;
+  EvaluationRecords record;
+  string encoding = record.getEncodedKey(p);
+  auto search = mappingWaypoints->find(encoding);
+  string waypointName;
+  if (search != mappingWaypoints->end()) {
+    waypointName = search->second;
+    // std::cout << "Found :" << search->second << '\n';
+  } else {
+    std::cout << "Not found\n";
+  }
+
+  vector<string> nodes_list = belief_topomaps->at(0).nodes;
+  // search = std::find(nodes_list, nodes_list.size(), waypointName);
+  int index=0;
+  for (auto it=nodes_list.begin(); it!=nodes_list.end();it++){
+    if (*it == waypointName) break;
+    else index++;
+  }
+
+  // search = std::find(belief_topomaps->at(0).nodes, 
+  //                     sizeof(belief_topomaps->at(0).nodes)/sizeof(belief_topomaps->at(0).nodes[0]), 
+  //                     waypointName);
+  for(int map_id=0; map_id<belief_topomaps->size(); map_id++){
+    RFIDInfoGain += belief_topomaps->at(map_id).values[index];
+  }
+
+  return RFIDInfoGain;
 }

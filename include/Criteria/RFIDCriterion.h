@@ -13,7 +13,7 @@ class RFIDCriterion : public Criterion {
 public:
   RFIDCriterion(double weight);
   virtual ~RFIDCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<topological_localization::DistributionStamped> *belief_topomaps);
 
 private:
   void normalize(long minSensedX, int number);
@@ -51,6 +51,8 @@ private:
                                 int tag_i, GridMap *belief_map);
 
   std::string getTagLayerName(int tag_num);
+
+  double evaluateEntropyTopologicalMap(Pose p,unordered_map<string,string> *mappingWaypoints, vector<topological_localization::DistributionStamped> *belief_topomaps);
 
 protected:
   double RFIDInfoGain = 0.0;

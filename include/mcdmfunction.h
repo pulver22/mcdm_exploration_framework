@@ -4,6 +4,7 @@
 #include "Criteria/weightmatrix.h"
 #include "evaluationrecords.h"
 #include <utility>
+#include "topological_localization/DistributionStamped.h"
 
 /**
  * This class implements the MCDM evaluation function
@@ -20,12 +21,14 @@ public:
   void evaluateFrontier(Pose &p, dummy::Map *map,
                         ros::ServiceClient *path_client,
                         double *batteryTime,
-                        GridMap *belief_map, unordered_map<string,string> *mappingWaypoints);
+                        GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
+                        vector<topological_localization::DistributionStamped> *belief_topomaps);
   EvaluationRecords *evaluateFrontiers(const std::list<Pose> *frontiers,
                                        dummy::Map *map, double threshold,
                                        ros::ServiceClient *path_client,
                                        double *batteryTime,
-                                       GridMap *belief_map, unordered_map<string,string> *mappingWaypoints);
+                                       GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
+                                       vector<topological_localization::DistributionStamped> *belief_topomaps);
   pair<Pose, double> selectNewPose(EvaluationRecords *evaluationRecords);
   string getEncodedKey(Pose &p, int value);
 

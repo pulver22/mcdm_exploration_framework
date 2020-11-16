@@ -30,8 +30,9 @@ SensingTimeCriterion::SensingTimeCriterion(double weight)
 SensingTimeCriterion::~SensingTimeCriterion() {}
 
 double SensingTimeCriterion::evaluate(
-    Pose &p, dummy::Map *map, ros::ServiceClient *,
-    double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints) {
+    Pose &p, dummy::Map *map, ros::ServiceClient *, double *batteryTime,
+    GridMap *belief_map, unordered_map<string, string> *mappingWaypoints,
+    vector<topological_localization::DistributionStamped> *belief_topomaps) {
   NewRay ray;
   double sensingTime;
   double angle = 0;

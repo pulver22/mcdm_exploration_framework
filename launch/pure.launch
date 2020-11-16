@@ -11,7 +11,7 @@
   <arg name="param_2"  	          default="0.6"/>
   <arg name="param_3"  	          default="0.1"/>
   <arg name="param_4"  	          default="0.1"/>
-  <arg name="param_5"  	          default="0.0"/>
+  <arg name="param_5"  	          default="0.1"/>
   <arg name="fov"                 default="180"/>
   <arg name="radius"              default="5"/>
   <arg name="coverage_percentage" default="0.95"/>
@@ -63,6 +63,7 @@
   <node pkg="mcdm_exploration_framework" type="pure_navigation" name="ric" output="screen"  args="$(arg pure_args)">
     <param name="move_base_costmap_topic_name" value="/map"/>
     <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>
+    <param name="belief_map_srv_name" value="/thorvald/rfid_grid_map_node/get_rfid_belief"/>
   </node>
 
   <!-- start recording the experiment -->

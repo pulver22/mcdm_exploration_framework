@@ -33,7 +33,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <ros/console.h>
 #include "strands_navigation_msgs/TopologicalMap.h"
-
+#include "topological_localization/DistributionStamped.h"
 // mfc: we will record using stats_pub
 //#include "record_ros/record.h"
 //#include "record_ros/String_cmd.h"
@@ -88,7 +88,8 @@ class Utilities {
                               vector<pair<string, list<Pose> >> *graph2,
                               ros::ServiceClient *path_client,
                               MCDMFunction *function, double *batteryTime, GridMap *belief_map,
-                              unordered_map<string,string> *mappingWaypoints);
+                              unordered_map<string,string> *mappingWaypoints,
+                              vector<topological_localization::DistributionStamped> *belief_topomaps);
     /**
      * Calculate the time required for performing a scan with the TDLAS sensor
      * 
@@ -134,7 +135,7 @@ class Utilities {
                                list<Pose> *tabuList,
                                std::list<std::pair<float, float> > *posToEsclude,
                                double min_robot_speed, double robot_radius, double *batteryTime,
-                               unordered_map<string, string> *mappingWaypoints );
+                               unordered_map<string, string> *mappingWaypoints);
 
     bool freeInLocalCostmap(Pose target, std::string move_base_local_costmap_topic_name);
 
@@ -144,7 +145,7 @@ class Utilities {
               std::list<std::pair<float, float> > *posToEsclude);
 
     bool moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
-              std::list<std::pair<float, float> > *posToEsclude, unordered_map<string,string> *mappingWaypoints );
+              std::list<std::pair<float, float> > *posToEsclude, unordered_map<string,string> *mappingWaypoints);
 
 
     Pose getCurrentPose(float resolution, float costresolution, dummy::Map *map,
@@ -156,7 +157,8 @@ class Utilities {
                                       double threshold, ros::ServiceClient *path_client,
                                       std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
                                       std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map,
-                                      unordered_map<string,string> *mappingWaypoints);
+                                      unordered_map<string,string> *mappingWaypoints,
+                                      vector<topological_localization::DistributionStamped> *belief_topomaps);
 
     void saveCoverage(const std::string& name, const std::string& content, bool append);
 
@@ -168,6 +170,8 @@ class Utilities {
      */
     std::vector<std::pair<int, std::pair<int, int>>> findTagFromBeliefMap(GridMap* belief_map);
     void convertStrandTopoMapToListPose(strands_navigation_msgs::TopologicalMap *topoMap, list<Pose> *frontiers, int range, double FoV, unordered_map<string, string> *mappingWaypoints);
+
+    topological_localization::DistributionStamped convertGridBeliefMapToTopoMap(GridMap* belief_map, list<Pose> *topoMap, unordered_map<string, string> *mappingWaypoints, string tag_id);
 };
 
 
