@@ -87,7 +87,7 @@ void Utilities::pushInitialPositions(dummy::Map map, float x, float y, float ori
                           vector<pair<string, list<Pose> >> *graph2,
                           ros::ServiceClient *path_client, MCDMFunction *function,
                           double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
-                          vector<topological_localization::DistributionStamped> *belief_topomaps) {
+                          vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
 
   map.findCandidatePositions(x, y, orientation, FOV, range);
   vector<pair<float, float> > candidatePosition = map.getCandidatePositions();
@@ -537,7 +537,7 @@ bool Utilities::freeInLocalCostmap(Pose target, std::string move_base_local_cost
 
   nav_msgs::OccupancyGridConstPtr local_costmap = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(move_base_local_costmap_topic_name, ros::Duration(1.0));
   if (!local_costmap) {
-    printf("oops \n");
+    ROS_ERROR("Local occupancy grid not valid! \n");
   }
 //      printf("Local costmap frame is: %s \n",local_costmap->header.frame_id.c_str());
 
@@ -583,7 +583,7 @@ bool Utilities::freeInLocalCostmap(Pose target, std::string move_base_local_cost
 Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
                                   double threshold, ros::ServiceClient *path_client, std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
                                   std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
-                                  vector<topological_localization::DistributionStamped> *belief_topomaps)
+                                  vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps)
 {
   bool isFreeFromObstacle = false;
   while (isFreeFromObstacle == false) {
@@ -784,7 +784,7 @@ bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabu
 return success;
 }
 
-topological_localization::DistributionStamped
+bayesian_topological_localisation::DistributionStamped
 Utilities::convertGridBeliefMapToTopoMap(
     GridMap *belief_map, list<Pose> *topoMap,
     unordered_map<string, string> *mappingWaypoints, string tag_id) {
@@ -794,10 +794,17 @@ Utilities::convertGridBeliefMapToTopoMap(
   // belief inside the message
   EvaluationRecords record;
   string encoding, waypointName;
-  double radius = 2.0;
+  double radius = 4.0;
   double probability;
-  topological_localization::DistributionStamped topo_belief;
+  bayesian_topological_localisation::DistributionStamped topo_belief;
+  std::vector<string> layers_name = belief_map->getLayers();
+  // cout << "[convertGridBeliefMapToTopoMap@utils.cpp] layers: " <<  endl;
+  // for (auto it=layers_name.begin(); it!=layers_name.end(); ++it){
+  //   cout << "   " << *it << endl;
+  // }
   grid_map::Matrix& data = (*belief_map)[tag_id];
+  // cout << "[convertGridBeliefMapToTopoMap@utils.cpp] tag_id: " << tag_id << ", sum: " << data.sum() << endl;
+  // cout << data << endl;
   for (auto it = topoMap->begin(); it != topoMap->end(); it ++){
     probability = 0.0;
     encoding = record.getEncodedKey(*it);
@@ -814,9 +821,11 @@ Utilities::convertGridBeliefMapToTopoMap(
       const grid_map::Index index(*iterator);
       probability += data((index(0), index(1)));
     }
+    // cout << " [" << waypointName <<"], probability: " << probability << endl;
     // Add the information to the returned object
     topo_belief.nodes.push_back(waypointName);
     topo_belief.values.push_back(probability);
   }
+  // exit(0);
   return topo_belief;
 }

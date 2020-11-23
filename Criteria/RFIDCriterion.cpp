@@ -24,11 +24,11 @@ double RFIDCriterion::evaluate(
     Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
     double *batteryTime, GridMap *belief_map,
     unordered_map<string, string> *mappingWaypoints,
-    vector<topological_localization::DistributionStamped> *belief_topomaps) {
+    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
 
   this->RFIDInfoGain =
       evaluateEntropyTopologicalMap(p, mappingWaypoints, belief_topomaps);
-  cout << "[evaluate@RFIDCriterion.cpp] value: " << this->RFIDInfoGain << endl;
+  // cout << "[evaluate@RFIDCriterion.cpp] value: " << this->RFIDInfoGain << endl;
   // Calculate entropy around the cell
   // this->RFIDInfoGain = evaluateEntropyOverBelief(p, belief_map);
   // if (isnan(this->RFIDInfoGain)) {
@@ -137,33 +137,32 @@ std::string RFIDCriterion::getTagLayerName(int tag_num) {
 
 double RFIDCriterion::evaluateEntropyTopologicalMap(
     Pose p, unordered_map<string, string> *mappingWaypoints,
-    vector<topological_localization::DistributionStamped> *belief_topomaps) {
+    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
   float RFIDInfoGain = 0.0;
   EvaluationRecords record;
   string encoding = record.getEncodedKey(p);
   auto search = mappingWaypoints->find(encoding);
   string waypointName;
+  // Look for waypoint name associated to the pose in exam
   if (search != mappingWaypoints->end()) {
     waypointName = search->second;
-    // std::cout << "Found :" << search->second << '\n';
   } else {
     std::cout << "Not found\n";
   }
-
-  vector<string> nodes_list = belief_topomaps->at(0).nodes;
-  // search = std::find(nodes_list, nodes_list.size(), waypointName);
-  int index=0;
-  for (auto it=nodes_list.begin(); it!=nodes_list.end();it++){
-    if (*it == waypointName) break;
-    else index++;
+  
+  if (belief_topomaps->size() != 0){
+    // For every belief map, look for the waypoint and exam and access its value
+    for(int map_id=0; map_id<belief_topomaps->size(); map_id++){
+      vector<string> nodes_list = belief_topomaps->at(map_id).nodes;
+      int index=0;
+      for (auto it=nodes_list.begin(); it!=nodes_list.end();it++){
+        if (*it == waypointName) break;
+        else index++;
+      }
+      RFIDInfoGain += belief_topomaps->at(map_id).values[index];
+    }
   }
-
-  // search = std::find(belief_topomaps->at(0).nodes, 
-  //                     sizeof(belief_topomaps->at(0).nodes)/sizeof(belief_topomaps->at(0).nodes[0]), 
-  //                     waypointName);
-  for(int map_id=0; map_id<belief_topomaps->size(); map_id++){
-    RFIDInfoGain += belief_topomaps->at(map_id).values[index];
-  }
-
+  
+  // exit(0);
   return RFIDInfoGain;
 }

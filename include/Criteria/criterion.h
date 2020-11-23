@@ -23,7 +23,7 @@
 #include "map.h"
 // #include "RadarModel.hpp"
 #include "constants.h"
-#include "topological_localization/DistributionStamped.h"
+#include "bayesian_topological_localisation/DistributionStamped.h"
 
 //using namespace import_map;
 using namespace std;
@@ -37,7 +37,7 @@ class Criterion
 	~Criterion();
 
 	//Other methods
-	virtual double evaluate( Pose &p, dummy::Map *map, ros::ServiceClient* path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<topological_localization::DistributionStamped> *belief_topomaps) {};
+	virtual double evaluate( Pose &p, dummy::Map *map, ros::ServiceClient* path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {};
 	double getEvaluation(Pose &p) const;
 	void insertEvaluation(Pose &p, double value);
 	void clean();

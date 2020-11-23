@@ -39,8 +39,9 @@
 #include "rfid_grid_map/GetBeliefMaps.h"
 #include "strands_navigation_msgs/TopologicalMap.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
-#include "topological_localization/LocalizeAgent.h"
-#include "topological_localization/DistributionStamped.h"
+#include "bayesian_topological_localisation/LocaliseAgent.h"
+#include "bayesian_topological_localisation/DistributionStamped.h"
+#include "bayesian_topological_localisation/UpdateLikelihoodObservation.h"
 
 using namespace std;
 using namespace dummy;
@@ -51,7 +52,7 @@ bool move(float x, float y, float orientation, float time_travel,
           std::list<std::pair<float, float> > *posToEsclude);
 void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
-void belief_topomap_callbak(const topological_localization::DistributionStampedConstPtr &msg);
+void belief_topomap_callback(const bayesian_topological_localisation::DistributionStampedConstPtr &msg);
 void topological_map_callback(const strands_navigation_msgs::TopologicalMapConstPtr &msg);
 void printROSParams();
 void loadROSParams();
@@ -83,9 +84,10 @@ double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
 float tag_coverage_percentage = 0.0;
 GridMap belief_map;
-vector<topological_localization::DistributionStamped> belief_topomaps;
+vector<bayesian_topological_localisation::DistributionStamped> belief_topomaps;
 grid_map_msgs::GridMap belief_map_msg;
 GridMapRosConverter converter;
+int belief_counter = 0;
 
 
 //  ROS PARAMETERS ....................................
@@ -107,6 +109,7 @@ Utilities utils;
 std::string stats_topic_name;
 std::string topological_map_topic_name;
 std::string localization_srv_name;
+std::string pf_srv_name;
 std::string pf_topic_name;
 
 
@@ -116,6 +119,8 @@ ros::ServiceClient path_client;
 ros::ServiceClient topo_path_client;
 ros::ServiceClient belief_map_client;
 ros::ServiceClient localization_client;
+ros::ServiceClient pf_client;
+vector<ros::ServiceClient> pf_likelihoodClient_list;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;
@@ -132,7 +137,8 @@ ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
 ros::Publisher pf_pub;
-vector<ros::Publisher> pf_pub_list;
+vector<ros::Publisher> pf_topoMap_pub_list;
+vector<string> tag_discovered;
 
 // mfc: we will record using stats_pub
 // record_ros::String_cmd srv_rosbag;
@@ -157,12 +163,12 @@ int main(int argc, char **argv) {
              atof(argv[5]));
   }
 
-  //   sets console output to debug mode...
-  //  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
-  //  ros::console::levels::Debug) )
-  //  {
-  //   ros::console::notifyLoggerLevelsChanged();
-  //  }
+    // sets console output to debug mode...
+   if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
+   ros::console::levels::Debug) )
+   {
+    ros::console::notifyLoggerLevelsChanged();
+   }
   // mfc ...........................
   ros::init(argc, argv, "mcdm_exploration_framework_node");
 
@@ -184,7 +190,8 @@ int main(int argc, char **argv) {
 
   // Create srv request for the RFID belief map
   rfid_grid_map::GetBeliefMaps belief_map_srv;
-  topological_localization::LocalizeAgent localization_srv;
+  bayesian_topological_localisation::LocaliseAgent localization_srv;
+  bayesian_topological_localisation::UpdateLikelihoodObservation prediction_srv;
 
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
   stats_buffer.str("coveragePercent, numConfiguration, backTracking");
@@ -261,7 +268,6 @@ int main(int argc, char **argv) {
       //        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
       //        cout << "RFIDgrid created correctly" << endl;
       int gridToPathGridScale = map.getGridToPathGridScale();
-      cout << "gridToPathGridScale: " << gridToPathGridScale << endl;
       ROS_DEBUG("[pure_navigation.cpp@main] grid To Path Grid Scale obtained");
 
       /*NOTE: Transform between map and image, to be enabled if not present in
@@ -380,7 +386,7 @@ int main(int argc, char **argv) {
                     + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) 
                     + "," + to_string(tag_coverage_percentage)  
                     + "," + to_string(travelledDistance) + "\n" ;
-          cout << tag_coverage_percentage << endl;
+          // cout << tag_coverage_percentage << endl;
           utils.saveCoverage(coverage_log, content, true );
           cout << "  ==> Saving the coverage log ..." << endl;
 
@@ -409,16 +415,19 @@ int main(int argc, char **argv) {
           target.setScanAngles(
               map.getSensingTime(x, y, orientation, FOV, range));
           // Perform a scanning operation
-          //          map.getGridIndex(x, y, cell_i, cell_j);
-          //          newSensedCells = sensedCells + ray.performSensingOperation
-          //          ( &map, x, y, orientation, FOV, range,
-          //          target.getScanAngles().first,
-          //          target.getScanAngles().second );
-          newSensedCells =
-              sensedCells +
-              map.performSensingOperation(x, y, orientation, FOV, range,
+          double X_max = range;
+          double X_min = 1;
+          double focal_length = (X_max - X_min) / 2.0; // (X_max - X_min)/2
+          double major_axis = focal_length + X_min;           // (focal_length + X_min)
+          double minor_axis = sqrt(pow(major_axis, 2) - pow(focal_length, 2));
+          newSensedCells = sensedCells + map.performSensingOperationEllipse(x, y, orientation, FOV, range,
                                           target.getScanAngles().first,
-                                          target.getScanAngles().second);
+                                          target.getScanAngles().second, minor_axis, major_axis);
+          // newSensedCells =
+          //     sensedCells +
+          //     map.performSensingOperation(x, y, orientation, FOV, range,
+          //                                 target.getScanAngles().first,
+          //                                 target.getScanAngles().second);
           // Calculate the scanning angle
           double scanAngle =
               target.getScanAngles().second - target.getScanAngles().first;
@@ -456,7 +465,7 @@ int main(int argc, char **argv) {
           // if we also navigate for finding a tag
           if (w_rfid_gain > 0){
             // Get an updated RFID belief map
-            cout << "Updating the belief..." << endl;
+            ROS_INFO("Updating the belief...");
             if (belief_map_client.call(belief_map_srv)){
               belief_map_msg = belief_map_srv.response.rfid_maps;
               converter.fromMessage(belief_map_msg, belief_map);
@@ -468,36 +477,53 @@ int main(int argc, char **argv) {
               if (layers_name.size() != 0){
                 // We now instantiate the Particle Filter for each tag discovered  
                 for (auto it = layers_name.begin(); it != layers_name.end(); it++){
-                  localization_srv.request.name = "tag_" + *it;
-                  localization_srv.request.n_particles = 500;
-                  if (localization_client.call(localization_srv)) {
-                    cout << "[ParticleFilter] Initialization successful for tag " << *it << endl;
-                    // TODO: convert belief_map into topological map and send it to Particle Filter
-                    topological_localization::DistributionStamped
-                        tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
-                            &belief_map, &topoMap, &mappingWaypoints, *it);
-                    tmp_belief_topo.header.stamp = ros::Time::now();
-                    // topo_belief.header.frame_id = "map";
-                    pf_topic_name = "tag_" + *it + "/prob_dist_obs";
-                    cout << "   I am publishing on: " << pf_topic_name << endl;
-                    pf_pub = nh.advertise<topological_localization::DistributionStamped>(pf_topic_name, 1000);
-                    // pf_pub_list.push_back(pf_pub);
-                    pf_pub.publish(tmp_belief_topo);
+                  // If the laters name contains more than 2 character, 
+                  // skip it because it can be some ebug layer (e.g., obst_losses)
+                  if (it->size() > 2) continue;
+                  // Look if this tag has already been found before
+                  std::vector<string>::iterator tag_it = std::find(tag_discovered.begin(), tag_discovered.end(), *it);
+                  // If it's the first time, record the particle filter and create a subscriber
+                  if (tag_it == tag_discovered.end()){
+                    tag_discovered.push_back(*it);
+                    localization_srv.request.name = "tag_" + *it;
+                    localization_srv.request.n_particles = 500;
+                    if (localization_client.call(localization_srv)) {
+                      ROS_DEBUG("[ParticleFilter] Initialization successful for tag %s", *it);
+                      pf_topic_name = "/tag_" + *it + "/likelihood_obs";
+                      pf_pub = nh.advertise<bayesian_topological_localisation::DistributionStamped>(pf_topic_name, 1000);
+                      pf_topoMap_pub_list.push_back(pf_pub);
+                      
+                      ROS_DEBUG("Creating client...");
+                      pf_srv_name = "/tag_" + *it + "/update_likelihood_obs";
+                      pf_client = nh.serviceClient<bayesian_topological_localisation::UpdateLikelihoodObservation>(pf_srv_name);
+                      pf_likelihoodClient_list.push_back(pf_client);
+                      
+                    }else ROS_ERROR("[ParticleFilter] Error while initializing for tag %s",*it );
+                  }
+                      
+                  // simply publish to the PF the sensor reading
+                  bayesian_topological_localisation::DistributionStamped
+                      tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
+                          &belief_map, &topoMap, &mappingWaypoints, *it);
+                  tmp_belief_topo.header.stamp = ros::Time::now();
 
-                    // TODO: create a subscriber for tracking each tag in the topological map
-                    string tmp = "tag_" + *it + "/prob_dist_topoloc";
-                    pf_sub = nh.subscribe<topological_localization::DistributionStamped>(
-                      tmp, 100, belief_topomap_callbak);
-                    pf_topoMap_sub_list.push_back(pf_sub);
-                  } else cout << "[ParticleFilter] Error while initializing for tag " << *it << endl;
+                  int index = std::stoi(*it);
+                  prediction_srv.request.likelihood = tmp_belief_topo;
+                  if (pf_likelihoodClient_list.at(index-1).call(prediction_srv)){
+                    ROS_DEBUG("Prediction srv called successfully");
+                    ROS_DEBUG("[PF - Tag %d ] Prediction: %s", index, prediction_srv.response.current_node.c_str());
+                    if (belief_topomaps.size() < index){
+                      belief_topomaps.push_back(prediction_srv.response.current_prob_dist);
+                    }else belief_topomaps.at(index - 1 ) = prediction_srv.response.current_prob_dist;
+                  }else ROS_ERROR("PF node did not reply!");
                 }
-              }
-              // exit(0);
+              } 
             }else{
               printf("ATTENTION! Failed to get the RFID belief map");
             }
           }
 
+          // exit(0);
 
           map.findCandidatePositions(x, y, orientation, FOV, range);
           map.findFrontierPosition();
@@ -657,11 +683,12 @@ int main(int argc, char **argv) {
             // utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             // cout <<"CleanedFrontiers: " << frontiers.size() << endl;
             // Print the frontiers with the respective evaluation
-            cout << "Number of frontiers identified: " << frontiers.size() << endl;
+            // cout << "Number of frontiers identified: " << frontiers.size() << endl;
+            // cout << "Belief: " << belief_topomaps.size() << endl;
             EvaluationRecords *record = function.evaluateFrontiers(&topoMap, &map,
                                                       threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints, &belief_topomaps);
             topoMap = record->getFrontiers();
-            cout << "Record: " << topoMap.size() << endl;
+            // cout << "Record: " << topoMap.size() << endl;
             // NOTE: This may not be needed because  we are in an unexplored area
             
             unordered_map<string, double> evaluation = record->getEvaluations();
@@ -674,7 +701,7 @@ int main(int argc, char **argv) {
               std::pair<Pose, double> result = function.selectNewPose(record);
               target = result.first;
 
-              cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
+              // cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
               target = utils.selectFreePoseInLocalCostmap(target, &topoMap, &map, &function, threshold,
                   &topo_path_client, &posToEsclude, record, move_base_local_costmap_topic_name, &batteryTime, &belief_map, &mappingWaypoints, &belief_topomaps);
               targetPos = std::make_pair(int(target.getX()), int(target.getY()));
@@ -1176,16 +1203,21 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg) {
   }
 }
 
-void belief_topomap_callbak(const topological_localization::DistributionStampedConstPtr &msg){
-  string tag = msg->header.frame_id;
-  int len = sizeof(tag)/sizeof(tag[0]);
-  // std::string::size_type pos = tag.find(tag.end());
-  int index = std::stoi(tag.substr(4, len));  // let's drop "tag_" substring
-  cout << "index: " << index;
+void belief_topomap_callback(const bayesian_topological_localisation::DistributionStampedConstPtr &msg){
+  belief_counter = belief_counter + 1;
+  cout << "ATTENZIONE" << endl;
+  // string tag = msg->header.frame_id;
+  // cout << "[belief_topomap_callback@pure_navigation.cpp]tag: " << tag << endl;
+  // int len = sizeof(tag)/sizeof(tag[0]);
+  // // std::string::size_type pos = tag.find(tag.end());
+  // int index = std::stoi(tag.substr(3, len));  // let's drop "tag_" substring
+  // cout << "[belief_topomap_callback@pure_navigation.cpp]index: " << index << endl;
   // If there are not maps, push it back to avoid overflow, otherwise access the right index
-  if (belief_topomaps.size() < index){
-    belief_topomaps.push_back(*msg);
-  }else belief_topomaps.at(index) = *msg;
+  // if (index != 0){
+  //   if (belief_topomaps.size() < index){
+  //     belief_topomaps.push_back(*msg);
+  //   }else belief_topomaps.at(index-1) = *msg;
+  // }
 }
 
 void topological_map_callback(const strands_navigation_msgs::TopologicalMapConstPtr &msg){
@@ -1232,8 +1264,9 @@ void loadROSParams(){
   private_node_handle.param("rosbag_srv_name", rosbag_srv_name, std::string("/record/cmd"));
   private_node_handle.param("stats_topic_name", stats_topic_name, std::string("/mcdm_stats"));
   private_node_handle.param("topological_map_topic_name", topological_map_topic_name, std::string("/topological_map"));
-  private_node_handle.param("localization_srv_name", localization_srv_name, std::string("/topological_localization/localize_agent"));
+  private_node_handle.param("localization_srv_name", localization_srv_name, std::string("/bayesian_topological_localisation/localise_agent"));
   private_node_handle.param("pf_topic_name", pf_topic_name, std::string("/prob_dist_obs"));
+  private_node_handle.param("pf_srv_name", pf_srv_name, std::string("/update_likelihood_obs"));
 
 }
 
@@ -1271,7 +1304,8 @@ ros::NodeHandle createROSComms(){
   path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
   topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
   belief_map_client = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name);
-  localization_client = nh.serviceClient<topological_localization::LocalizeAgent>(localization_srv_name);
+  localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
+  // pf_client = nh.serviceClient<bayesian_topological_localisation::UpdateLikelihoodObservation>(pf_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
 
   // create publishers
@@ -1305,12 +1339,12 @@ ros::NodeHandle createROSComms(){
   tag_coverage_sub = nh.subscribe<std_msgs::Float32>("tag_coverage", 10, tag_coverage_callback);
   topo_map_sub = nh.subscribe<strands_navigation_msgs::TopologicalMap>("/topological_map", 10, topological_map_callback);
   // belief_map_sub = nh.subscribe<grid_map_msgs::GridMap>("rfid_belief_maps", 10, belief_map_callback);
+  // pf_sub = nh.subscribe<bayesian_topological_localisation::DistributionStamped>("/tag_1/current_prob_dist", 1, belief_topomap_callback, ros::TransportHints().tcpNoDelay());  
   return nh;
 }
 
 
 void tag_coverage_callback(const std_msgs::Float32 msg){
-  cout << "   [CALLBACK] : " << msg.data << endl;
   tag_coverage_percentage = msg.data;
   // cout << "   [CALLBACK] : " << tag_coverage_callback << endl;
 }

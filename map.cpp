@@ -1908,6 +1908,90 @@ int Map::performSensingOperation(double pos_X_m, double pos_Y_m,
   return modifiedCells;
 }
 
+
+int Map::performSensingOperationEllipse(double pos_X_m, double pos_Y_m,
+                              double heading_rad, double FOV_rad,
+                              double range_m, double minAngle_rad,
+                              double maxAngle_rad, long a_pcell, long b_pcell){
+
+int modifiedCells = 0;
+  ROS_DEBUG("[map.cpp@performSensingOperation]");
+
+  grid_map::Index candidateIndex, rayIndex;
+  grid_map::Position candidatePos, rayPos;
+  double rel_y, rel_x, rel_a;
+  bool hit;
+
+  if (a_pcell < b_pcell) {
+    long tmp;
+    tmp = a_pcell;
+    a_pcell = b_pcell;
+    b_pcell = tmp;
+  }
+  // The robot is located in one of the focal point of the ellipse
+  // We need to calculate the centre of the ellipse starting from the focal point
+  long c_pcell = sqrt((a_pcell * a_pcell) - (b_pcell * b_pcell));
+  grid_map::Position centerPos(pos_X_m + (c_pcell*cos(heading_rad)),
+                               pos_Y_m + (c_pcell*sin(heading_rad)));
+  
+  
+  Length length(2*a_pcell, 2*b_pcell);
+
+  // Iterate cells over a circle ARC with radius range, center pos in nav
+  // planning grid and FOV angle
+  for (grid_map::EllipseIterator nav_iterator(nav_grid_, centerPos, length, heading_rad);
+       !nav_iterator.isPastEnd(); ++nav_iterator) {
+    
+    // If cell is empty
+    if (isGridValueFree(*nav_iterator)) {
+
+      //                      cout << "[map.cpp@performSensingOperation] Cell is
+      //                      free" << endl;
+      nav_grid_.getPosition(*nav_iterator, candidatePos);
+
+      // relative cell position respect to center
+      // rel_x = candidatePos.x() - pos_X_m;
+      // rel_y = candidatePos.y() - pos_Y_m;
+
+      // // angle between heading and cell position
+      // rel_a = std::atan2(rel_y, rel_x) - heading_rad;
+      // rel_a = constrainAnglePI(rel_a);
+      
+      // cell is also inside FOV arc
+      // if ((rel_a <= maxAngle_rad) & (rel_a >= minAngle_rad)) {
+        candidateIndex = (*nav_iterator);
+        hit = false;
+        // trace a ray between that cell and robot cell:
+        for (grid_map::LineIterator lin_iterator(nav_grid_, centerPos,
+                                                 candidatePos);
+             !lin_iterator.isPastEnd(); ++lin_iterator) {
+
+          nav_grid_.getPosition(*lin_iterator, rayPos);
+          rayIndex = (*lin_iterator);
+          // if an obstacle is found, end
+          if (isGridValueObst(*lin_iterator)) {
+            hit = true;
+           
+            break;
+          }
+
+          if (!hit) {
+            // Update the cells and the counter only if the cells is free and
+            // not already visited
+            if (isGridValueFree(*lin_iterator)) {
+              setGridValue(Map::CellValue::VIST, (*lin_iterator)(0),
+                           (*lin_iterator)(1));
+              modifiedCells++;
+            }
+
+          }
+        }
+      // }
+    }
+  }
+  return modifiedCells;
+}
+
 int Map::getInformationGain(double pos_X_m, double pos_Y_m, double heading_rad,
                             double FOV_rad, double range_m) {
   int freeCells = 0;

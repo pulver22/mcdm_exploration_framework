@@ -630,6 +630,27 @@ public:
                               double heading_rad, double FOV_rad,
                               double range_m, double minAngle_rad,
                               double maxAngle_rad);
+  
+  /**
+   * Perform the sensing operation by setting the value of the free cell scanned
+   * to 2
+   * @param  pos_X_m      metric position x coordinate (in "map" frame id) in m.
+   * @param  pos_Y_m      metric position y coordinate (in "map" frame id) in m.
+   * @param  heading_rad  metric orientation coordinate (in "map" frame id) in
+   * radians
+   * @param  FOV_rad      Field of View from current heading (Arc width in
+   * radians) [UNUSED]
+   * @param  range_m      Max. distance to consider in m.
+   * @param  minAngle_rad Min angle from current heading (in radians) to
+   * consider in scan
+   * @param  maxAngle_rad Max angle from current heading (in radians) to
+   * consider in scan
+   * @return int          Number of modified cells at nav grid.
+   */
+  int performSensingOperationEllipse(double pos_X_m, double pos_Y_m,
+                              double heading_rad, double FOV_rad,
+                              double range_m, double minAngle_rad,
+                              double maxAngle_rad, long a_pcell, long b_pcell);
 
   /**
    * Returns number of free cells in scanning area at nav grid

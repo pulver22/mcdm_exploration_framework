@@ -20,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   rfid_grid_map
   strands_navigation_msgs
   topological_navigation
-  topological_localization
+  bayesian_topological_localisation
 
 )
 

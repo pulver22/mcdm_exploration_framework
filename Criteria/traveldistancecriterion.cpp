@@ -33,7 +33,7 @@ double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
                                          double *batteryTime,
                                          GridMap *belief_map,
                                          unordered_map<string,string> *mappingWaypoints,
-                                         vector<topological_localization::DistributionStamped> *belief_topomaps) {
+                                         vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
   // cout << "travel " << endl;
   Astar astar;
   Pose robotPosition = map->getRobotPosition();

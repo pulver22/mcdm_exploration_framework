@@ -133,7 +133,7 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
 void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
                                     ros::ServiceClient *path_client,
                                     double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
-                                    vector<topological_localization::DistributionStamped> *belief_topomaps) {
+                                    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
 
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
@@ -146,7 +146,7 @@ void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
 EvaluationRecords *MCDMFunction::evaluateFrontiers(
     const std::list<Pose> *frontiers, dummy::Map *map, double threshold,
     ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
-    vector<topological_localization::DistributionStamped> *belief_topomaps) {
+    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
 
   // Create the EvaluationRecords
   EvaluationRecords *toRet = new EvaluationRecords();

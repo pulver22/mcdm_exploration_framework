@@ -26,7 +26,7 @@ class TravelDistanceCriterion : public Criterion {
 public:
   TravelDistanceCriterion(double weight);
   ~TravelDistanceCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<topological_localization::DistributionStamped> *belief_topomaps);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
   double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
   // only for testing purpose
   // void insertEvaluation(Pose &p, double value);
