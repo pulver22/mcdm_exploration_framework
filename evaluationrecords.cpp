@@ -152,3 +152,7 @@ Pose EvaluationRecords::getPoseFromEncoding(string &encoding) {
   Pose p(xValue, yValue, orientationValue, rValue, phiValue);
   return p;
 }
+
+void EvaluationRecords::clear(){
+	this->evaluations.clear();
+}

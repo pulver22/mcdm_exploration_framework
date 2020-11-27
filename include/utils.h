@@ -172,6 +172,12 @@ class Utilities {
     void convertStrandTopoMapToListPose(strands_navigation_msgs::TopologicalMap *topoMap, list<Pose> *frontiers, int range, double FoV, unordered_map<string, string> *mappingWaypoints);
 
     bayesian_topological_localisation::DistributionStamped convertGridBeliefMapToTopoMap(GridMap* belief_map, list<Pose> *topoMap, unordered_map<string, string> *mappingWaypoints, string tag_id);
+
+    // bool recordContainsCandidates(EvaluationRecords* record, 
+    //                           int* count, Pose* target, Pose* previous, string* actualPose, list<Pose>* nearCandidates, vector<pair<string,list<Pose>>>* graph2,
+    //                           dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int* encodedKeyValue, Astar* astar , long* numConfiguration,
+    //                           double* totalAngle, double * travelledDistance, int* numOfTurning , double* scanAngle, bool* btMode, double* threshold,
+    //                           double *batteryTime, bool *explorationCompleted);
 };
 
 

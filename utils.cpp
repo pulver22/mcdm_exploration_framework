@@ -175,8 +175,6 @@ void Utilities::updatePathMetrics(
   //  cout << function->getEncodedKey ( *target,1 ) << endl;
   // Add it to the list of visited cells from which acting
   tabuList->push_back(*target);
-//  posToEsclude->push_back(make_pair(roundf(((*target).getX() * 100) / 100),
-//                                    roundf((*target).getY() * 100 / 100)));
   posToEsclude->push_back(make_pair(int((*target).getX()), int((*target).getY())));
   // Remove it from the list of candidate position
   cleanPossibleDestination2(nearCandidates, *target);
@@ -199,29 +197,16 @@ void Utilities::updatePathMetrics(
   path.request.goal.pose.position.x = target->getX();
   path.request.goal.pose.position.y = target->getY();
   path.request.goal.pose.orientation.w = 1;
-  //  cout << " (x_start, y_start) = (" << previous->getX() << "," <<
-  //  previous->getY() << "), (x_goal, y_goal) = (" <<
-  //          target->getX() << "," << target->getY() << ")" << endl;
   bool path_srv_call = path_client->call(path);
   if (path_srv_call) {
     // calculate path length
     path_len = getPathLen(path.response.plan.poses, robot_radius);
-    //    if (path_len<1e3)
-    //    {
-    //      printf("Path len is [%3.3f m.]",path_len);
-    //    }
-    //    else
-    //    {
-    //      printf("Path len is infinite");
-    //      path_len = 1000;
-    //    }
   } else {
-    cout << "[navigation_utilties@updatePathMetrics] Path_finding Service call failed! " << endl;
+    cout << "[utils.cpp@updatePathMetrics] Path_finding Service call failed! " << endl;
   }
-//    cout << "1: " << *travelledDistance << endl;
+
   // Update the distance counting
   *travelledDistance = *travelledDistance + path_len;
-//    cout << "2: " << *travelledDistance << endl;
   // Update the turning counting
   //  *numOfTurning = *numOfTurning + astar->getNumberOfTurning(path);
   // Update the scanning angle
@@ -312,9 +297,9 @@ Pose Utilities::getCurrentPose(float resolution, float costresolution, dummy::Ma
       start_pose.pose.orientation.z, start_pose.pose.orientation.w);
   tfScalar angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
 
-  cout << "Current position in the " << map_frame << " frame:" << initX << "," << initY
-       << " with orientation :" << angle << "(" << (angle * 180 / M_PI)
-       << " deg)" << endl;
+  // cout << "Current position in the " << map_frame << " frame:" << initX << "," << initY
+  //      << " with orientation :" << angle << "(" << (angle * 180 / M_PI)
+  //      << " deg)" << endl;
 
   int initOrientation = angle * 180 / M_PI;
   //  cout << "Orientation after casting: " << initOrientation << endl;
@@ -735,7 +720,7 @@ bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabu
 
   actionlib::SimpleActionClient<topological_navigation::GotoNodeAction> topoAC("topological_navigation", true);
   while (!topoAC.waitForServer(ros::Duration(5.0))) {
-    cout << "[navigation_utilities@createROSComms]... waiting ..." << endl;
+    cout << "[utils.cpp@moveTopological]... waiting ..." << endl;
   }
 
   topoGoal.header.frame_id = "map";
@@ -747,7 +732,7 @@ bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabu
     waypointName = search->second;
     // std::cout << "Found :" << search->second << '\n';
   } else {
-    std::cout << "Not found\n";
+    std::cout << "[utils.cpp@moveTopological]Not found\n";
   }
   topoGoal.goal.target = waypointName;
   topoGoal.goal.no_orientation = false;
@@ -759,24 +744,24 @@ bool Utilities::moveTopological(Pose target, float time_travel, list<Pose> *tabu
   while (!curr_state.isDone()){
     time_travel = std::min(time_travel, (float) 5.0);
     total_wait_time +=  time_travel;
-    cout << "     [navigation_utilties.cpp@move] Waiting for " << total_wait_time << "/60.0 seconds to reach goal" << endl;
+    // cout << "     [navigation_utilties.cpp@move] Waiting for " << total_wait_time << "/60.0 seconds to reach goal" << endl;
     topoAC.waitForResult(ros::Duration(time_travel));
     curr_state = topoAC.getState();
     // cout << "     Result: " << curr_state.getText() << endl;
 
 
     if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
-      cout << "[navigation_utilties.cpp@move] Goal position reached!" << endl;
+      cout << "[utils.cpp@moveTopological] Goal position reached!" << endl;
       success = true;
     } else if (curr_state.isDone()) {
-      cout << "[navigation_utilties.cpp@move] The base failed to move" << endl; //, adding this "
+      cout << "[utils.cpp@moveTopological] The base failed to move" << endl; //, adding this "
               // "pose to the Tabulist and posToEsclude" << endl;
       success = false;
       // std::pair<int, int> pairToRemove;
       // pairToRemove = make_pair(int(x), int(y));
       // posToEsclude->push_back(pairToRemove);
     } else if (total_wait_time > 90.0) {
-      cout << "[navigation_utilties.cpp@move] Is taking too long" << endl;
+      cout << "[utils.cpp@moveTopological] Is taking too long" << endl;
       success = false;
       curr_state = actionlib::SimpleClientGoalState::ABORTED;
     }
@@ -829,3 +814,172 @@ Utilities::convertGridBeliefMapToTopoMap(
   // exit(0);
   return topo_belief;
 }
+
+// bool Utilities::recordContainsCandidates(EvaluationRecords* record, 
+//                               int* count, Pose* target, Pose* previous, string* actualPose, list<Pose>* nearCandidates, vector<pair<string,list<Pose>>>* graph2,
+//                               dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int* encodedKeyValue, Astar* astar , long* numConfiguration,
+//                               double* totalAngle, double * travelledDistance, int* numOfTurning , double* scanAngle, bool* btMode, double* threshold,
+//                               double *batteryTime, bool *explorationCompleted){
+//   // Set the previous pose equal to the current one (represented by
+//   // target)
+//   *previous = *target;
+//   // Select the new robot destination from the list of candidates
+//   std::pair<Pose, double> result = function->selectNewPose(record);
+//   *target = result.first;
+
+//   // cout << "Target selected: " << target.getX() << ", " << target.getY() << endl;
+//   *target = utils->selectFreePoseInLocalCostmap(*target, topoMap, map, function, threshold,
+//       topo_path_client, posToEsclude, record, move_base_local_costmap_topic_name, &batteryTime, &belief_map, &mappingWaypoints, &belief_topomaps);
+//   targetPos = std::make_pair(int(target.getX()), int(target.getY()));
+
+//   // If the selected destination does not appear among the cells
+//   // already visited
+//   if ((!utils.containsPos(&posToEsclude, targetPos))) {
+//     //                                cout << "2" << endl;
+//     // Add it to the list of visited cells as first-view
+//     encodedKeyValue = 1;
+//     backTracking = false;
+
+//     success = utils.showMarkerandNavigate(target, &marker_pub, &path, &path_client,
+//                           &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime, &mappingWaypoints);
+//     cout << "Current batteryTime : " << batteryTime << "( " << 100*batteryTime/MAX_BATTERY << ")" << endl;                      
+//     if (success == true){
+// //                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//       utils.updatePathMetrics(
+//           &count, &target, &previous, actualPose, &topoMap,
+//           &graph2, &map, &function, &tabuList, &posToEsclude,
+//           &history, encodedKeyValue, &numConfiguration,
+//           &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
+//           &topo_path_client, backTracking, robot_radius);
+// //                  cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//     }
+
+//     scan = true;
+//   }
+//   // ...otherwise, if the selected cell has already been visited
+//   else {
+//     //                                cout << "3" << endl;
+//     // If the graph is empty, stop the navigation
+//     if (graph2.size() == 0) break;
+//     cout << "   topoMap: " << graph2.at(graph2.size() - 1).second.size() << endl;
+//     // If there still are more candidates to explore from the last
+//     // pose in the graph
+//     if (graph2.at(graph2.size() - 1).second.size() != 0) {
+//       cout << "[BT1 - Tabulist]There are visible cells but the "
+//               "selected one is already "
+//               "(or cannot be) explored!Come back to second best "
+//               "position from the previous position"
+//             << endl;
+//       // Remove the current position from possible candidates
+//       topoMap = graph2.at(graph2.size() - 1).second;
+//       cout << "[main] candidateposition before: " << topoMap.size() << endl;
+//       utils.cleanPossibleDestination2(&topoMap, target);
+//       utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
+//       cout << "[main] candidateposition after: " << topoMap.size() << endl;
+//       // Get the list of new candidate position with associated
+//       // evaluation
+//       record = function.evaluateFrontiers(&topoMap, &map,
+//                                           threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints, &belief_topomaps);
+//       // If there are candidate positions
+// //                  cout << "PoseToEsclude:" << endl;
+// //                  for (auto iter = posToEsclude.begin(); iter != posToEsclude.end(); iter++) {
+// //                      cout << " " << iter->first << "," << iter->second << endl;
+// //                  }
+// //                  cout << "Candidates:" << endl;
+// //                  for (auto iter = topoMap.begin(); iter != topoMap.end(); iter++) {
+// //                    cout << " " << iter->getX() << "," << iter->getY() << endl;
+// //                  }
+//       while (1) {
+//         if (record->size() != 0) {
+//           // Select the new pose of the robot
+//           std::pair<Pose, double> result = function.selectNewPose(record);
+//           target = result.first;
+//           targetPos = make_pair(int(target.getX()), int(target.getY()));
+//           cout << "   TargetPos: " << targetPos.first << ", " << targetPos.second << endl;
+//           //                      if (!contains(tabuList, target)) {
+//           if (!utils.containsPos(&posToEsclude, targetPos)) {
+//             // If the new selected position is not in the Tabulist
+
+//             encodedKeyValue = 1;
+//             scan = false;
+//             // Set that we are now in backtracking
+//             cout << "[BT1] Break the while" << endl;
+//             break; // the while loop
+//           } else {
+//             // Remove the current position from possible candidates
+//             utils.cleanPossibleDestination2(&topoMap, target);
+//             utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
+//             // Get the list of new candidate position with
+//             // associated evaluation
+//             record = function.evaluateFrontiers(&topoMap, &map,
+//                                           threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints, &belief_topomaps);
+//           }
+//         }
+//         // If there are no more candidate position from the last
+//         // position in the graph
+//         else {
+//           cout << "[BT2 - New]There are visible cells but the selected one is already "
+//                   "explored! Come back to best frontier from the two positions back in the graph. Start selecting the new record"
+//                 << endl;
+//           // Remove the last element (cell and associated candidate from
+//           // there) from the graph
+//           if (graph2.size() == 1) break;
+//           graph2.pop_back();
+//           // Select the new record from two position back in the graph
+//           topoMap = graph2.at(graph2.size() - 1).second;
+//           cout << "topoMap before: " <<topoMap.size() << endl;
+//           utils.cleanPossibleDestination2(&topoMap, target);
+//           utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
+//           cout << "topoMap after: " <<topoMap.size() << endl;
+//           record = function.evaluateFrontiers(&topoMap, &map,
+//                                           threshold, &topo_path_client, &batteryTime, &belief_map, &mappingWaypoints, &belief_topomaps);
+//           cout << "record: " << record->size() << endl;
+//         }
+//       }
+//       cout << "[BT1-2]Target: " << target.getX() << ", " << target.getY() << endl;
+//       backTracking = true;
+//       previous = utils.getCurrentPose(resolution, costresolution, &map, initFov, initRange);
+//       success = utils.showMarkerandNavigate(target, &marker_pub, &path,
+//                             &path_client, &tabuList, &posToEsclude, min_robot_speed, robot_radius, &batteryTime, &mappingWaypoints);
+//       if (success == true)
+//       {
+// //                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//         utils.updatePathMetrics(
+//             &count, &target, &previous, actualPose, &topoMap,
+//             &graph2, &map, &function, &tabuList, &posToEsclude,
+//             &history, encodedKeyValue, &numConfiguration,
+//             &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
+//             &topo_path_client, backTracking, robot_radius);
+// //                    cout << "[pure_navigation.cpp@main] travelledDistance = " << travelledDistance << endl;
+//       }
+//       scan = true;
+//     }
+//     // ... if the graph still does not present anymore candidate
+//     // positions for its last pose
+//     else {
+//       cout << "[BT2 - Tabulist]There are visible cells but the "
+//               "selected one is already "
+//               "explored! Come back to two positions ago"
+//             << endl;
+//       cout << "Graph_size: " << graph2.size() << endl;
+//       // Remove the last element (cell and associated candidate from
+//       // there) from the graph
+//       if (graph2.size() == 1) break;
+//       graph2.pop_back();
+//       // Select as new target, the new last element of the graph
+//       string targetString = graph2.at(graph2.size() - 1).first;
+//       topoMap = graph2.at(graph2.size() - 1).second;
+//       cout << "topoMap before: " << topoMap.size() << endl;
+//       utils.cleanPossibleDestination2(&topoMap, target);
+//       utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
+//       cout << "topoMap after: " << topoMap.size() << endl;
+//       target = record->getPoseFromEncoding(targetString);
+//       // Save it history as cell visited more than once
+//       history.push_back(function.getEncodedKey(target, 2));
+
+//       count = count + 1;
+//       scan = false;
+//       btMode = true;
+//     }
+//   }
+// } 

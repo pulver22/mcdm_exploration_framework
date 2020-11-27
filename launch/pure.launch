@@ -36,7 +36,7 @@
 
   <arg name="bag_descriptor" default="$(arg scenario_name)_$(arg param_1)_$(arg param_2)_$(arg param_3)_date_"/>
   <!-- I highly recomend you that the bag descriptor has correct pure nav params -->
-  <arg name="save_bag"  	default="true"/>
+  <arg name="save_bag"  	default="false"/>
 
   <!-- Topics to record:
     These two were removed because they suppose lots of data

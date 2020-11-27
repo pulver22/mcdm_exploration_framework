@@ -275,7 +275,7 @@ MCDMFunction::selectNewPose(EvaluationRecords *evaluationRecords) {
   pair<Pose, double> result = make_pair(newTarget, value);
 
   // i switch x and y to allow debugging graphically looking the image
-  cout << "New target : "
+  cout << "[mcdmfuncion.cpp@selectNewPose]New target : "
        << "x = " << newTarget.getX() << ", y = " << newTarget.getY()
        << ", orientation = " << newTarget.getOrientation() << "("
        << newTarget.getOrientation() * 180 / PI
