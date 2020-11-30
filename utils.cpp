@@ -773,23 +773,15 @@ bayesian_topological_localisation::DistributionStamped
 Utilities::convertGridBeliefMapToTopoMap(
     GridMap *belief_map, list<Pose> *topoMap,
     unordered_map<string, string> *mappingWaypoints, string tag_id) {
-  // TODO: Look for all the nodes in TopoMap and create a grid_map iterator on
-  // belief_map centered on the node
   // Retrieve node waypoint name from the mapping and return waypoint and summed
   // belief inside the message
   EvaluationRecords record;
   string encoding, waypointName;
-  double radius = 4.0;
+  double radius = 1.0;
   double probability;
   bayesian_topological_localisation::DistributionStamped topo_belief;
-  std::vector<string> layers_name = belief_map->getLayers();
-  // cout << "[convertGridBeliefMapToTopoMap@utils.cpp] layers: " <<  endl;
-  // for (auto it=layers_name.begin(); it!=layers_name.end(); ++it){
-  //   cout << "   " << *it << endl;
-  // }
-  grid_map::Matrix& data = (*belief_map)[tag_id];
-  // cout << "[convertGridBeliefMapToTopoMap@utils.cpp] tag_id: " << tag_id << ", sum: " << data.sum() << endl;
-  // cout << data << endl;
+  // grid_map::Matrix& data = (*belief_map)[tag_id];
+  
   for (auto it = topoMap->begin(); it != topoMap->end(); it ++){
     probability = 0.0;
     encoding = record.getEncodedKey(*it);
@@ -801,12 +793,13 @@ Utilities::convertGridBeliefMapToTopoMap(
     }
 
     Position center(it->getX(), it->getY());
-    
+    Position point;
     for (grid_map::CircleIterator iterator(*belief_map, center, radius); !iterator.isPastEnd(); ++iterator){
-      const grid_map::Index index(*iterator);
-      probability += data((index(0), index(1)));
+      // const grid_map::Index index(*iterator);
+      // probability = probability + data((index(0), index(1)));
+      belief_map->getPosition(*iterator, point);
+      probability += belief_map->atPosition(tag_id, point);
     }
-    // cout << " [" << waypointName <<"], probability: " << probability << endl;
     // Add the information to the returned object
     topo_belief.nodes.push_back(waypointName);
     topo_belief.values.push_back(probability);

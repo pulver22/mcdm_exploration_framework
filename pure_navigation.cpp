@@ -452,7 +452,7 @@ int main(int argc, char **argv) {
                 for (auto it = layers_name.begin(); it != layers_name.end();
                      it++) {
                   // If the laters name contains more than 2 character,
-                  // skip it because it can be some ebug layer (e.g.,
+                  // skip it because it can be some debug layer (e.g.,
                   // obst_losses)
                   if (it->size() > 2)
                     continue;
@@ -464,7 +464,7 @@ int main(int argc, char **argv) {
                   if (tag_it == tag_discovered.end()) {
                     tag_discovered.push_back(*it);
                     localization_srv.request.name = "tag_" + *it;
-                    localization_srv.request.n_particles = 500;
+                    localization_srv.request.n_particles = 2000;
                     if (localization_client.call(localization_srv)) {
                       ROS_DEBUG("[ParticleFilter] Initialization successful "
                                 "for tag %s",
@@ -629,6 +629,10 @@ int main(int argc, char **argv) {
               // If the selected destination does not appear among the cells
               // already visited
               if ((!utils.containsPos(&posToEsclude, targetPos))) {
+
+                // i switch x and y to allow debugging graphically looking the image
+                cout << "New target : x = " << targetPos.first << ", y = " << targetPos.second 
+                    << ", orientation = " << target.getOrientation() * 180 / M_PI << endl;
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 backTracking = false;
