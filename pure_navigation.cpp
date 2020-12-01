@@ -164,12 +164,12 @@ int main(int argc, char **argv) {
   }
 
   // sets console output to debug mode...
-  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
-                                     ros::console::levels::Debug)) {
-    ros::console::notifyLoggerLevelsChanged();
-  }
+  // if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
+  //                                    ros::console::levels::Debug)) {
+  //   ros::console::notifyLoggerLevelsChanged();
+  // }
   // mfc ...........................
-  ros::init(argc, argv, "mcdm_exploration_framework_node");
+  ros::init(argc, argv, "next_best_sense_node");
 
   // mfc Load params from ros
   loadROSParams();
@@ -263,17 +263,7 @@ int main(int argc, char **argv) {
 
       map.plotGridColor("/tmp/nav_start.png");
 
-      //        RFIDGridmap myGrid(argv[1], resolution, costresolution, false);
-      //        cout << "RFIDgrid created correctly" << endl;
       int gridToPathGridScale = map.getGridToPathGridScale();
-      ROS_DEBUG("[pure_navigation.cpp@main] grid To Path Grid Scale obtained");
-
-      /*NOTE: Transform between map and image, to be enabled if not present in
-      the launch file
-      //tf::Transform tranMapToImage;
-      //tranMapToImage.setOrigin(tf::Vector3(0, 30, 0.0));
-      //tf::Vector3 vecImageToMap = tf::Vector3(0, 30,0.0);
-      */
 
       // Get the initial pose in map frame
       Pose start_pose = utils.getCurrentPose(resolution, costresolution, &map,
@@ -436,7 +426,7 @@ int main(int argc, char **argv) {
           // if we also navigate for finding a tag
           if (w_rfid_gain > 0) {
             // Get an updated RFID belief map
-            ROS_INFO("Updating the belief...");
+            printf("Updating the belief...");
             if (belief_map_client.call(belief_map_srv)) {
               belief_map_msg = belief_map_srv.response.rfid_maps;
               converter.fromMessage(belief_map_msg, belief_map);
@@ -466,16 +456,16 @@ int main(int argc, char **argv) {
                     localization_srv.request.name = "tag_" + *it;
                     localization_srv.request.n_particles = 2000;
                     if (localization_client.call(localization_srv)) {
-                      ROS_DEBUG("[ParticleFilter] Initialization successful "
+                      ROS_INFO("[ParticleFilter] Initialization successful "
                                 "for tag %s",
-                                *it);
+                                it->c_str());
                       pf_topic_name = "/tag_" + *it + "/likelihood_obs";
                       pf_pub = nh.advertise<bayesian_topological_localisation::
                                                 DistributionStamped>(
                           pf_topic_name, 1000);
                       pf_topoMap_pub_list.push_back(pf_pub);
 
-                      ROS_DEBUG("Creating client...");
+                      ROS_INFO("Creating client...");
                       pf_srv_name = "/tag_" + *it + "/update_likelihood_obs";
                       pf_client =
                           nh.serviceClient<bayesian_topological_localisation::
@@ -486,7 +476,7 @@ int main(int argc, char **argv) {
                     } else
                       ROS_ERROR("[ParticleFilter] Error while initializing for "
                                 "tag %s",
-                                *it);
+                                it->c_str());
                   }
 
                   // simply publish to the PF the sensor reading
@@ -499,8 +489,8 @@ int main(int argc, char **argv) {
                   prediction_srv.request.likelihood = tmp_belief_topo;
                   if (pf_likelihoodClient_list.at(index - 1).call(
                           prediction_srv)) {
-                    ROS_DEBUG("Prediction srv called successfully");
-                    ROS_DEBUG("[PF - Tag %d ] Prediction: %s", index,
+                    printf("Prediction srv called successfully");
+                    printf("[PF - Tag %d ] Prediction: %s", index,
                               prediction_srv.response.estimated_node.c_str());
                     if (belief_topomaps.size() < index) {
                       belief_topomaps.push_back(
@@ -509,7 +499,7 @@ int main(int argc, char **argv) {
                       belief_topomaps.at(index - 1) =
                           prediction_srv.response.current_prob_dist;
                   } else
-                    ROS_ERROR("PF node did not reply!");
+                    printf("[ERROR]PF node did not reply!");               
                 }
               }
             } else {

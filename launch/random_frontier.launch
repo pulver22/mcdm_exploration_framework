@@ -20,27 +20,27 @@
                                    $(arg map_resolution)"/>
 
   <env name="ROSCONSOLE_CONFIG_FILE"
-    value="$(find mcdm_exploration_framework)/config/custom_rosconsole.conf"/>
+    value="$(find next_best_sense)/config/custom_rosconsole.conf"/>
 
   <!-- Launch the grid map visualizer: can be removed after debug!-->
   <node pkg="grid_map_visualization" type="grid_map_visualization" name="nav_grid_visualization_debug" output="screen">
-      <rosparam command="load" file="$(find mcdm_exploration_framework)/config/visualization.yaml" />
+      <rosparam command="load" file="$(find next_best_sense)/config/visualization.yaml" />
   </node>
 
   <!-- Launch the grid map visualizer: can be removed after debug!-->
   <node pkg="grid_map_visualization" type="grid_map_visualization" name="plan_grid_visualization_debug" output="screen">
-      <rosparam command="load" file="$(find mcdm_exploration_framework)/config/visualization2.yaml" />
+      <rosparam command="load" file="$(find next_best_sense)/config/visualization2.yaml" />
   </node>
 
   <!-- base bringup-->
-  <node pkg="mcdm_exploration_framework" type="random_frontier" name="ric" output="screen"  args="$(arg pure_args)">
+  <node pkg="next_best_sense" type="random_frontier" name="ric" output="screen"  args="$(arg pure_args)">
     <param name="move_base_costmap_topic_name" value="/map"/>
     <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>
   </node>
 
   <!-- start recording the experiment -->
 <!--  <include file="$(find record_ros)/launch/record_ros.launch">-->
-<!--    <arg name="path_save"   value="/media/pulver/PulverHDD/mcdm_experiments/pure_navigation/"/>-->
+<!--    <arg name="path_save"   value="/media/pulver/PulverHDD/nbs_experiments/pure_navigation/"/>-->
 <!--    <arg name="file_name"  	value="sim_INB3123"/>-->
 <!--    <arg name="topic"       value="/amcl/parameter_descriptions-->
 <!--                                    /amcl/parameter_updates-->

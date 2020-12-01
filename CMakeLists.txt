@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(mcdm_exploration_framework)
+project(next_best_sense)
 
 find_package(catkin REQUIRED COMPONENTS
   # mfc: we will record using stats_pub
@@ -27,7 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES mcdm_exploration_framework
+  LIBRARIES next_best_sense
   CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs 
   # mfc: we will record using stats_pub
   # record_ros
@@ -45,7 +45,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(mcdm_exploration_framework pose.cpp map.cpp newray.cpp mcdmfunction.cpp
+add_library(next_best_sense pose.cpp map.cpp newray.cpp mcdmfunction.cpp
 map.cpp evaluationrecords.cpp Criteria/sensingtimecriterion.cpp
 Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp
 Criteria/batterystatuscriterion.cpp Criteria/RFIDCriterion.cpp
@@ -53,19 +53,19 @@ Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cp
 PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp utils.cpp)
 
 #add_executable(mcdm_online_exploration_ros main.cpp )
-#target_link_libraries(mcdm_online_exploration_ros mcdm_exploration_framework ${catkin_LIBRARIES})
+#target_link_libraries(mcdm_online_exploration_ros next_best_sense ${catkin_LIBRARIES})
 
 add_executable(pure_navigation pure_navigation.cpp)
-target_link_libraries(pure_navigation mcdm_exploration_framework ${catkin_LIBRARIES})
+target_link_libraries(pure_navigation next_best_sense ${catkin_LIBRARIES})
 
 #add_executable(mcdm_slim mcdm_slim.cpp)
-#target_link_libraries(mcdm_slim mcdm_exploration_framework ${catkin_LIBRARIES})
+#target_link_libraries(mcdm_slim next_best_sense ${catkin_LIBRARIES})
 
 # add_executable(random_walk random_walk.cpp)
-# target_link_libraries(random_walk mcdm_exploration_framework ${catkin_LIBRARIES})
+# target_link_libraries(random_walk next_best_sense ${catkin_LIBRARIES})
 
 # add_executable(random_frontier random_frontier.cpp)
-# target_link_libraries(random_frontier mcdm_exploration_framework ${catkin_LIBRARIES})
+# target_link_libraries(random_frontier next_best_sense ${catkin_LIBRARIES})
 ## Declare a C++ executable
 add_executable(
    path_len_node
@@ -80,14 +80,14 @@ add_executable(
 list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -O3 -g  -ftest-coverage -fprofile-arcs")
 
 ## Declare a cpp executable
-# add_executable(mcdm_exploration_framework_node src/mcdm_exploration_framework_node.cpp)
+# add_executable(next_best_sense_node src/next_best_sense_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(mcdm_exploration_framework_node mcdm_exploration_framework_generate_messages_cpp)
+# add_dependencies(next_best_sense_node next_best_sense_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(mcdm_exploration_framework_node
+# target_link_libraries(next_best_sense_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -106,7 +106,7 @@ list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -O3 -g  -ftest-cover
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS mcdm_exploration_framework mcdm_exploration_framework_node
+# install(TARGETS next_best_sense next_best_sense_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -131,7 +131,7 @@ list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -O3 -g  -ftest-cover
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_mcdm_exploration_framework.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_next_best_sense.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

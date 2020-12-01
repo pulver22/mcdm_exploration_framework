@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
   //   ros::console::notifyLoggerLevelsChanged();
   //  }
   // mfc ...........................
-  ros::init(argc, argv, "mcdm_exploration_framework_node");
+  ros::init(argc, argv, "next_best_sense_node");
 
   //mfc Load params from ros
   loadROSParams();

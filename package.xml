@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>mcdm_exploration_framework</name>
+  <name>next_best_sense</name>
   <version>0.0.0</version>
-  <description>The mcdm_exploration_framework package</description>
+  <description>The next_best_sense package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -20,7 +20,7 @@
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/mcdm_exploration_framework</url> -->
+  <!-- <url type="website">http://wiki.ros.org/next_best_sense</url> -->
 
 
   <!-- Author tags are optional, mutiple are allowed, one per tag -->

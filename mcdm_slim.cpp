@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
   }
 
   auto startMCDM = chrono::high_resolution_clock::now();
-  ros::init(argc, argv, "mcdm_exploration_framework_node");
+  ros::init(argc, argv, "next_best_sense_node");
   ros::NodeHandle nh;
   ros::ServiceClient map_service_client_ =
       nh.serviceClient<nav_msgs::GetMap>("static_map");
