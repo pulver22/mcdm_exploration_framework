@@ -20,6 +20,7 @@
   <arg name="dest_folder"  	      default="/home/pulver/Desktop/MCDM/mcdm/"/>
   <arg name="scenario_name"  	    default="INB"/>
   <arg name="use_mcdm"            default="1"/>
+  <arg name="num_tags"            default="3"/>
   <arg name="pure_args"  	        default="$(arg fov) 
                                            $(arg radius) 
                                            $(arg coverage_percentage) 
@@ -32,7 +33,8 @@
                                            $(arg w_rfid_gain) 
                                            $(arg dest_folder)mcdm_result.csv 
                                            $(arg dest_folder)coverage_mcdm.csv
-                                           $(arg use_mcdm)" />
+                                           $(arg use_mcdm) 
+                                           $(arg num_tags)"/>
 
   <arg name="bag_descriptor" default="$(arg scenario_name)_$(arg w_info_gain)_$(arg w_travel_distance)_$(arg w_sensing_time)_$(arg w_battery_status)_$(arg w_rfid_gain)_date_"/>
   <!-- I highly recomend you that the bag descriptor has correct pure nav params -->

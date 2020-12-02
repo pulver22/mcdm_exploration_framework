@@ -138,7 +138,7 @@ ros::Publisher planningPub;
 ros::Publisher marker_pub;
 ros::Publisher pf_pub;
 vector<ros::Publisher> pf_topoMap_pub_list;
-vector<string> tag_discovered;
+// vector<string> tag_discovered;
 
 // mfc: we will record using stats_pub
 // record_ros::String_cmd srv_rosbag;
@@ -250,6 +250,7 @@ int main(int argc, char **argv) {
       std::string out_log = (argv[11]);
       std::string coverage_log = (argv[12]);
       bool use_mcdm = bool(atoi(argv[13]));
+      int num_tags = atoi(argv[14]);
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -347,6 +348,32 @@ int main(int argc, char **argv) {
 
       bool break_loop = false;
 
+      // Record the particle filters and create a subscriber
+      cout << "\nCreating PF agents for " << to_string(num_tags) << " tags" << endl;
+      for (int tag_id=1; tag_id<=num_tags; tag_id++){
+        localization_srv.request.name = "tag_" + to_string(tag_id);
+        localization_srv.request.n_particles = 2000;
+        if (localization_client.call(localization_srv)) {
+          printf("[ParticleFilter] Initialization successful "
+                    "for tag %d\n", tag_id);
+          pf_topic_name = "/tag_" + to_string(tag_id) + "/likelihood_obs";
+          pf_pub = nh.advertise<bayesian_topological_localisation::
+                                    DistributionStamped>(
+              pf_topic_name, 1000);
+          pf_topoMap_pub_list.push_back(pf_pub);
+
+          printf("    Creating client...\n");
+          pf_srv_name = "/tag_" + to_string(tag_id) + "/update_likelihood_obs";
+          pf_client =
+              nh.serviceClient<bayesian_topological_localisation::
+                                    UpdateLikelihoodObservation>(
+                  pf_srv_name);
+          pf_likelihoodClient_list.push_back(pf_client);
+        }else
+            ROS_ERROR("[ParticleFilter] Error while initializing for "
+                      "tag %d\n", tag_id);
+      }
+
       do {
 
         // Recently visit cells shouldn't be visited soon again
@@ -439,7 +466,7 @@ int main(int argc, char **argv) {
           map.plotGridColor("/tmp/nav_lastLoop.png");
 
           // if we also navigate for finding a tag
-          if (w_rfid_gain > 0) {
+          if (norm_w_rfid_gain > 0) {
             // Get an updated RFID belief map
             printf("Updating the belief...\n");
             if (belief_map_client.call(belief_map_srv)) {
@@ -461,40 +488,7 @@ int main(int argc, char **argv) {
                   // obst_losses)
                   if (it->size() > 2)
                     continue;
-                  // Look if this tag has already been found before
-                  std::vector<string>::iterator tag_it = std::find(
-                      tag_discovered.begin(), tag_discovered.end(), *it);
-                  // If it's the first time, record the particle filter and
-                  // create a subscriber
-                  if (tag_it == tag_discovered.end()) {
-                    tag_discovered.push_back(*it);
-                    localization_srv.request.name = "tag_" + *it;
-                    localization_srv.request.n_particles = 2000;
-                    if (localization_client.call(localization_srv)) {
-                      ROS_INFO("[ParticleFilter] Initialization successful "
-                                "for tag %s",
-                                it->c_str());
-                      pf_topic_name = "/tag_" + *it + "/likelihood_obs";
-                      pf_pub = nh.advertise<bayesian_topological_localisation::
-                                                DistributionStamped>(
-                          pf_topic_name, 1000);
-                      pf_topoMap_pub_list.push_back(pf_pub);
-
-                      ROS_INFO("Creating client...");
-                      pf_srv_name = "/tag_" + *it + "/update_likelihood_obs";
-                      pf_client =
-                          nh.serviceClient<bayesian_topological_localisation::
-                                               UpdateLikelihoodObservation>(
-                              pf_srv_name);
-                      pf_likelihoodClient_list.push_back(pf_client);
-
-                    } else
-                      ROS_ERROR("[ParticleFilter] Error while initializing for "
-                                "tag %s",
-                                it->c_str());
-                  }
-
-                  // simply publish to the PF the sensor reading
+                  // Publish to the PF the sensor reading
                   bayesian_topological_localisation::DistributionStamped
                       tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
                           &belief_map, &topoMap, &mappingWaypoints, *it);
