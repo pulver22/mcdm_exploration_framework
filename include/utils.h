@@ -118,7 +118,7 @@ class Utilities {
                             list<pair<float, float> > *posToEsclude, vector<string> *history,
                             int encodedKeyValue, long *numConfiguration,
                             double *totalAngle, double *travelledDistance, int *numOfTurning,
-                            double scanAngle, ros::ServiceClient *path_client, bool backTracking, double robot_radius);
+                            double scanAngle, ros::ServiceClient *path_client, bool backTracking, double robot_radius, unordered_map<string, string> *mappingWaypoints);
 
     double getAngleBetPoses(geometry_msgs::PoseStamped ps1, geometry_msgs::PoseStamped ps2);
 
@@ -127,14 +127,15 @@ class Utilities {
     void printResult(long newSensedCells, long totalFreeCells, double precision,
                      long numConfiguration, double travelledDistance,
                      int numOfTurning, double totalAngle, double totalScanTime, double resoion,
-                     float w_info_gain, float w_travel_distance, float w_sensing_time, std::string fileURI);
+                     float w_info_gain, float w_travel_distance, float w_sensing_time, 
+                     float w_battery_status, float w_rfid_gain, std::string fileURI);
 
     bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                                nav_msgs::GetPlan *path,
                                ros::ServiceClient *path_client,
                                list<Pose> *tabuList,
                                std::list<std::pair<float, float> > *posToEsclude,
-                               double min_robot_speed, double robot_radius, double *batteryTime,
+                               double min_robot_speed, double robot_radius, double *batteryTime, double *travelledDistance,
                                unordered_map<string, string> *mappingWaypoints);
 
     bool freeInLocalCostmap(Pose target, std::string move_base_local_costmap_topic_name);

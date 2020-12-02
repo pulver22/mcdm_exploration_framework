@@ -203,11 +203,11 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(
           // Get the weight of the single criterion
           weight = matrix->getWeight(names);
           finalValue += (*k)->getWeight() * (*k)->getEvaluation(f);
-          if ((*k)->getName().compare("informationGain") == 0) {
-            if ((*k)->getEvaluation(f) == 0) {
-              no_info_gain = true;
-            }
-          }
+          // if ((*k)->getName().compare("informationGain") == 0) {
+          //   if ((*k)->getEvaluation(f) == 0) {
+          //     no_info_gain = true;
+          //   }
+          // }
         }
       } else {
         // MCDM
@@ -234,14 +234,14 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(
             finalValue += tmpValue * weight;
           }
           lastCrit = c;
-          if (c->getName().compare("informationGain") == 0) {
-            if (c->getEvaluation(f) == 0) {
-              no_info_gain = true;
-            }
-          }
+          // if (c->getName().compare("informationGain") == 0) {
+          //   if (c->getEvaluation(f) == 0) {
+          //     no_info_gain = true;
+          //   }
+          // }
         }
       }
-      if (finalValue > threshold and no_info_gain == false) {
+      if (finalValue > threshold){// and no_info_gain == false) {
         toRet->putEvaluation(f, finalValue);
       }
     }

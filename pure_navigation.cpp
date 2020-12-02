@@ -237,6 +237,16 @@ int main(int argc, char **argv) {
       double w_sensing_time = atof(argv[8]);
       double w_battery_status = atof(argv[9]);
       double w_rfid_gain = atof(argv[10]);
+      // Normalize the weight such that their sum is always equal to 1
+      double norm_w_info_gain, norm_w_travel_distance, norm_w_sensing_time,
+      norm_w_rfid_gain, norm_w_battery_status;
+      double sum_w = w_info_gain + w_travel_distance + w_sensing_time +
+                    w_rfid_gain + w_battery_status;
+      norm_w_info_gain = w_info_gain / sum_w;
+      norm_w_travel_distance = w_travel_distance / sum_w;
+      norm_w_sensing_time = w_sensing_time / sum_w;
+      norm_w_battery_status = w_battery_status / sum_w;
+      norm_w_rfid_gain = w_rfid_gain / sum_w;
       std::string out_log = (argv[11]);
       std::string coverage_log = (argv[12]);
       bool use_mcdm = bool(atoi(argv[13]));
@@ -248,6 +258,12 @@ int main(int argc, char **argv) {
 
       cout << "   Resolution: " << resolution
            << "\n   Costresolution: " << costresolution << endl;
+      cout << "Criteria: " << endl;
+      cout << "   w_info_gain: " << norm_w_info_gain << endl;
+      cout << "   w_travel_distance: " << norm_w_travel_distance << endl;
+      cout << "   w_sensing_time: " << norm_w_sensing_time << endl;
+      cout << "   w_battery_status: " << norm_w_battery_status << endl;
+      cout << "   w_rfid_gain: " << norm_w_rfid_gain << endl;
 
       // dummy::Map map = dummy::Map(costresolution, costresolution, costwidth,
       // costheight, occdata, costorigin);
@@ -282,8 +298,8 @@ int main(int argc, char **argv) {
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
-      MCDMFunction function(w_info_gain, w_travel_distance, w_sensing_time,
-                            w_battery_status, w_rfid_gain, use_mcdm);
+      MCDMFunction function(norm_w_info_gain, norm_w_travel_distance, norm_w_sensing_time,
+                            norm_w_battery_status, norm_w_rfid_gain, use_mcdm);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -328,7 +344,6 @@ int main(int argc, char **argv) {
       bool emptyTabuList = false;
       int tabuListCount = MAX_TABULIST_COUNT;
       bool explorationCompleted = false;
-      int farestNeighborsCount = 30;
 
       bool break_loop = false;
 
@@ -426,7 +441,7 @@ int main(int argc, char **argv) {
           // if we also navigate for finding a tag
           if (w_rfid_gain > 0) {
             // Get an updated RFID belief map
-            printf("Updating the belief...");
+            printf("Updating the belief...\n");
             if (belief_map_client.call(belief_map_srv)) {
               belief_map_msg = belief_map_srv.response.rfid_maps;
               converter.fromMessage(belief_map_msg, belief_map);
@@ -489,8 +504,8 @@ int main(int argc, char **argv) {
                   prediction_srv.request.likelihood = tmp_belief_topo;
                   if (pf_likelihoodClient_list.at(index - 1).call(
                           prediction_srv)) {
-                    printf("Prediction srv called successfully");
-                    printf("[PF - Tag %d ] Prediction: %s", index,
+                    ROS_DEBUG("Prediction srv called successfully\n");
+                    printf("[PF - Tag %d ] Prediction: %s\n", index,
                               prediction_srv.response.estimated_node.c_str());
                     if (belief_topomaps.size() < index) {
                       belief_topomaps.push_back(
@@ -499,11 +514,11 @@ int main(int argc, char **argv) {
                       belief_topomaps.at(index - 1) =
                           prediction_srv.response.current_prob_dist;
                   } else
-                    printf("[ERROR]PF node did not reply!");               
+                    ROS_ERROR("PF node did not reply!\n");               
                 }
               }
             } else {
-              printf("ATTENTION! Failed to get the RFID belief map");
+              printf("ATTENTION! Failed to get the RFID belief map\n");
             }
           }
 
@@ -630,14 +645,14 @@ int main(int argc, char **argv) {
                 success = utils.showMarkerandNavigate(
                     target, &marker_pub, &path, &path_client, &tabuList,
                     &posToEsclude, min_robot_speed, robot_radius, &batteryTime,
-                    &mappingWaypoints);
+                    &travelledDistance, &mappingWaypoints);
                 if (success == true) {
                   utils.updatePathMetrics(
                       &count, &target, &previous, actualPose, &topoMap, &graph2,
                       &map, &function, &tabuList, &posToEsclude, &history,
                       encodedKeyValue, &numConfiguration, &totalAngle,
                       &travelledDistance, &numOfTurning, scanAngle,
-                      &topo_path_client, backTracking, robot_radius);
+                      &path_client, backTracking, robot_radius, &mappingWaypoints);
                 }
                 scan = true;
               }
@@ -700,8 +715,9 @@ int main(int argc, char **argv) {
 
       utils.printResult(newSensedCells, totalFreeCells, precision,
                         numConfiguration, travelledDistance, numOfTurning,
-                        totalAngle, totalScanTime, resolution, w_info_gain,
-                        w_travel_distance, w_sensing_time, out_log);
+                        totalAngle, totalScanTime, resolution, norm_w_info_gain,
+                        norm_w_travel_distance, norm_w_sensing_time, 
+                        norm_w_battery_status, norm_w_rfid_gain, out_log);
       // Find the tag
       std::vector<std::pair<int, std::pair<int, int>>> tag_positions =
           utils.findTagFromBeliefMap(&belief_map);

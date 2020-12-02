@@ -5,6 +5,7 @@
 #include "include/utils.h"
 #include "topological_navigation/GotoNodeActionGoal.h"
 #include "topological_navigation/GotoNodeAction.h"
+#include "strands_navigation_msgs/GetRouteTo.h"
 
 Utilities::Utilities() {};
 Utilities::~Utilities() {};
@@ -166,9 +167,8 @@ void Utilities::updatePathMetrics(
     list<pair<float, float> > *posToEsclude, vector<string> *history,
     int encodedKeyValue, long *numConfiguration,
     double *totalAngle, double *travelledDistance, int *numOfTurning,
-    double scanAngle, ros::ServiceClient *path_client, bool backTracking, double robot_radius) {
+    double scanAngle, ros::ServiceClient *path_client, bool backTracking, double robot_radius, unordered_map<string, string> *mappingWaypoints) {
 
-  nav_msgs::GetPlan path;
   double path_len;
   // Add it to the list of visited cells as first-view
   history->push_back(function->getEncodedKey(*target, encodedKeyValue));
@@ -187,26 +187,55 @@ void Utilities::updatePathMetrics(
   }
 
   // Calculate the path from the previous robot pose to the current one
-  //  string path = astar->pathFind ( target->getX(), target->getY(),
-  //  previous->getX(), previous->getY(), map );
-  path.request.start.header.frame_id = "map";
-  path.request.start.pose.position.x = previous->getX();
-  path.request.start.pose.position.y = previous->getY();
-  path.request.start.pose.orientation.w = 1;
-  path.request.goal.header.frame_id = "map";
-  path.request.goal.pose.position.x = target->getX();
-  path.request.goal.pose.position.y = target->getY();
-  path.request.goal.pose.orientation.w = 1;
-  bool path_srv_call = path_client->call(path);
-  if (path_srv_call) {
-    // calculate path length
-    path_len = getPathLen(path.response.plan.poses, robot_radius);
-  } else {
-    cout << "[utils.cpp@updatePathMetrics] Path_finding Service call failed! " << endl;
-  }
+
+
+  // Gridmap
+    // nav_msgs::GetPlan path;
+    // path.request.start.header.frame_id = "map";
+    // path.request.start.pose.position.x = previous->getX();
+    // path.request.start.pose.position.y = previous->getY();
+    // path.request.start.pose.orientation.w = 1;
+    // path.request.goal.header.frame_id = "map";
+    // path.request.goal.pose.position.x = target->getX();
+    // path.request.goal.pose.position.y = target->getY();
+    // path.request.goal.pose.orientation.w = 1;
+    // bool path_srv_call = path_client->call(path);
+    // if (path_srv_call) {
+    //   // calculate path length
+    //   path_len = getPathLen(path.response.plan.poses, robot_radius);
+    // } else {
+    //   cout << "[utils.cpp@updatePathMetrics] Path_finding Service call failed! " << endl;
+    // }
+
+  // Topological map
+  // strands_navigation_msgs::GetRouteTo path;
+  // string waypointName;
+  // EvaluationRecords record;
+  // bool found = false;
+  // string encoding = record.getEncodedKey(*target);
+  // cout << "encoding: " << encoding << endl;
+  // auto search = mappingWaypoints->find(encoding);
+  // if (search != mappingWaypoints->end()) {
+  //   waypointName = search->second;
+  //   found = true;
+  // } else {
+  //   found = false;
+  // }
+  // cout << "waypointName: " << waypointName << endl;
+  // if (found == true){
+  //   path.request.goal = waypointName; 
+  //   bool path_srv_call  = path_client->call(path);
+  //   if(path_srv_call){
+  //     path_len = path.response.route.source.size();
+  //   }else {
+  //     cout << "[utils.cpp@updatePathMetrics] Path_finding Service call failed! " << endl;
+  //   }
+  // }else{
+  //   path_len = 1000;
+  // }
 
   // Update the distance counting
-  *travelledDistance = *travelledDistance + path_len;
+  // *travelledDistance = *travelledDistance + path_len;
   // Update the turning counting
   //  *numOfTurning = *numOfTurning + astar->getNumberOfTurning(path);
   // Update the scanning angle
@@ -231,7 +260,8 @@ list<Pose> Utilities::cleanHistory(vector<string> *history, EvaluationRecords *r
 void Utilities::printResult(long newSensedCells, long totalFreeCells, double precision,
                  long numConfiguration, double travelledDistance,
                  int numOfTurning, double totalAngle, double totalScanTime, double resolution,
-                 float w_info_gain, float w_travel_distance, float w_sensing_time, std::string fileURI) {
+                 float w_info_gain, float w_travel_distance, float w_sensing_time,
+                 float w_battery_status, float w_rfid_gain, std::string fileURI) {
   cout << "-----------------------------------------------------------------"
        << endl;
   cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells << "[ "<< 100 * float(newSensedCells)/float(totalFreeCells) << " %]" << endl;
@@ -256,6 +286,7 @@ void Utilities::printResult(long newSensedCells, long totalFreeCells, double pre
   }
   std::ofstream txt(fileURI.c_str());
   txt << w_info_gain << ","  << w_travel_distance << "," << w_sensing_time  << ","
+    << w_battery_status << "," << w_rfid_gain << ","
     << float(newSensedCells)/float(totalFreeCells) << "," << numConfiguration << ","
     << travelledDistance << "," << totalScanTime << endl;
   txt.close();
@@ -451,7 +482,7 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                            ros::ServiceClient *path_client,
                            list<Pose> *tabuList,
                            std::list<std::pair<float, float> > *posToEsclude,
-                           double min_robot_speed, double robot_radius, double *batteryTime,
+                           double min_robot_speed, double robot_radius, double *batteryTime, double *travelledDistance,
                            unordered_map<string, string> *mappingWaypoints) {
   //---------------------------PRINT GOAL POSITION
   geometry_msgs::PointStamped p;
@@ -476,15 +507,13 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
     // calculate path length
     path_len = getPathLen(path->response.plan.poses, robot_radius);
     if (path_len < 1e3) {
-      //            printf("[navigation_utilties.cpp@showMarkerandNavigate] Path
-      //            len is [%3.3f m.]", path_len);
+                 printf("[navigation_utilties.cpp@showMarkerandNavigate] Path len is [%3.3f m.]\n", path_len);
     } else {
-      //            printf("[navigation_utilties.cpp@showMarkerandNavigate] Path
-      //            len is infinite");
+                 printf("[navigation_utilties.cpp@showMarkerandNavigate] Path len is infinite\n");
       path_len = 1000;
     }
   } else {
-    // cout << "[navigation_utilties.cpp@showMarkerandNavigate] Service call failed! " << endl;
+    printf("[navigation_utilties.cpp@showMarkerandNavigate] Service call failed!\n");
     path_len = 1000;
   }
 
@@ -492,6 +521,7 @@ bool Utilities::showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
   time_travel = std::min(time_travel, (float)120.0);
   // double tt = time_travel;
   *batteryTime -= time_travel;
+  *travelledDistance += path_len;
 //      cout << "[navigation_utilties.cpp@showMarkerandNavigate] Target is at " <<
 //      path_len << " m from the robot" << endl;
 
@@ -591,7 +621,7 @@ Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandid
     std::pair<Pose, double> result = function->selectNewPose(record);
 //    cout << "     record size: " << record->size() << endl;
     target = result.first;
-   cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
+  //  cout << "     New target selected: " << target.getX() << ", " << target.getY() << endl;
     // and start the new iteration
   }
   return target;
