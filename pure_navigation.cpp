@@ -603,12 +603,11 @@ int main(int argc, char **argv) {
                   std::make_pair(int(target.getX()), int(target.getY()));
 
               // Select a new position until it is not explored recently
-              int iter = 0;
               while (utils.containsPos(&posToEsclude, targetPos)) {
-                cout << iter + 1 << endl;
                 if (record.size() > 0) {
                   record.removeFrontier(target);
                   result = function.selectNewPose(&record);
+                  target = result.first;
                   target = utils.selectFreePoseInLocalCostmap(
                       target, &frontiers, &map, &function, threshold,
                       &topo_path_client, &posToEsclude, &record,
