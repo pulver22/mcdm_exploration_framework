@@ -574,7 +574,7 @@ int main(int argc, char **argv) {
             // cout <<"CleanedFrontiers: " << frontiers.size() << endl;
 
             record = *function.evaluateFrontiers(
-                &topoMap, &map, threshold, &topo_path_client, &batteryTime,
+                &frontiers, &map, threshold, &topo_path_client, &batteryTime,
                 &belief_map, &mappingWaypoints, &belief_topomaps);
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with
@@ -587,7 +587,7 @@ int main(int argc, char **argv) {
 
             // If there are candidate positions
             if (record.size() > 0) {
-              topoMap = record.getFrontiers();
+              frontiers = record.getFrontiers();
               // Set the previous pose equal to the current one (represented by
               // target)
               previous = target;
@@ -595,7 +595,7 @@ int main(int argc, char **argv) {
               std::pair<Pose, double> result = function.selectNewPose(&record);
               target = result.first;
               target = utils.selectFreePoseInLocalCostmap(
-                  target, &topoMap, &map, &function, threshold,
+                  target, &frontiers, &map, &function, threshold,
                   &topo_path_client, &posToEsclude, &record,
                   move_base_local_costmap_topic_name, &batteryTime, &belief_map,
                   &mappingWaypoints, &belief_topomaps);
@@ -610,7 +610,7 @@ int main(int argc, char **argv) {
                   record.removeFrontier(target);
                   result = function.selectNewPose(&record);
                   target = utils.selectFreePoseInLocalCostmap(
-                      target, &topoMap, &map, &function, threshold,
+                      target, &frontiers, &map, &function, threshold,
                       &topo_path_client, &posToEsclude, &record,
                       move_base_local_costmap_topic_name, &batteryTime,
                       &belief_map, &mappingWaypoints, &belief_topomaps);
@@ -642,7 +642,7 @@ int main(int argc, char **argv) {
                     &travelledDistance, &mappingWaypoints);
                 if (success == true) {
                   utils.updatePathMetrics(
-                      &count, &target, &previous, actualPose, &topoMap, &graph2,
+                      &count, &target, &previous, actualPose, &frontiers, &graph2,
                       &map, &function, &tabuList, &posToEsclude, &history,
                       encodedKeyValue, &numConfiguration, &totalAngle,
                       &travelledDistance, &numOfTurning, scanAngle,
