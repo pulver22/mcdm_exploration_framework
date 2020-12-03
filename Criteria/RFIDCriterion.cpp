@@ -139,6 +139,7 @@ double RFIDCriterion::evaluateEntropyTopologicalMap(
     Pose p, unordered_map<string, string> *mappingWaypoints,
     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
   float RFIDInfoGain = 0.0;
+  double likelihood, neg_likelihood, log2_likelihood, log2_neg_likelihood = 0.0;
   EvaluationRecords record;
   string encoding = record.getEncodedKey(p);
   auto search = mappingWaypoints->find(encoding);
@@ -147,11 +148,11 @@ double RFIDCriterion::evaluateEntropyTopologicalMap(
   if (search != mappingWaypoints->end()) {
     waypointName = search->second;
   } else {
-    std::cout << "Not found\n";
+    std::cout << "[RFIDCriterion.cpp@evaluateEntropyTopologicalMap] WayPoint Not found\n";
   }
   
   if (belief_topomaps->size() != 0){
-    // For every belief map, look for the waypoint and exam and access its value
+    // For every belief map, look for the waypoint and access its value
     for(int map_id=0; map_id<belief_topomaps->size(); map_id++){
       vector<string> nodes_list = belief_topomaps->at(map_id).nodes;
       int index=0;
@@ -159,7 +160,22 @@ double RFIDCriterion::evaluateEntropyTopologicalMap(
         if (*it == waypointName) break;
         else index++;
       }
-      RFIDInfoGain += belief_topomaps->at(map_id).values[index];
+      likelihood = belief_topomaps->at(map_id).values[index];
+      if (isnan(likelihood))
+          likelihood = 0.0;
+      neg_likelihood = 1 - likelihood;
+      if (isnan(neg_likelihood))
+        neg_likelihood = 0.0;
+
+      log2_likelihood = log2(likelihood);
+      if (isinf(log2_likelihood))
+        log2_likelihood = 0.0;
+      log2_neg_likelihood = log2(neg_likelihood);
+      if (isinf(log2_neg_likelihood))
+        log2_neg_likelihood = 0.0;
+
+      RFIDInfoGain += -likelihood * log2_likelihood -
+                         neg_likelihood * log2_neg_likelihood;
     }
   }
   
