@@ -834,7 +834,6 @@ Utilities::convertGridBeliefMapToTopoMap(
     topo_belief.nodes.push_back(waypointName);
     topo_belief.values.push_back(probability);
   }
-  // exit(0);
   return topo_belief;
 }
 

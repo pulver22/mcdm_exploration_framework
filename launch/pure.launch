@@ -8,10 +8,10 @@
   <!-- PARAMS .............................................................. -->
 
   <arg name="w_info_gain"  	      default="0.0"/>
-  <arg name="w_travel_distance"  	default="0.5"/>
-  <arg name="w_sensing_time"  	  default="0.1"/>
-  <arg name="w_battery_status"  	default="0.1"/>
-  <arg name="w_rfid_gain"  	      default="0.3"/>
+  <arg name="w_travel_distance"  	default="0.0"/>
+  <arg name="w_sensing_time"  	  default="0.0"/>
+  <arg name="w_battery_status"  	default="0.0"/>
+  <arg name="w_rfid_gain"  	      default="1.0"/>
   <arg name="fov"                 default="180"/>
   <arg name="radius"              default="5"/>
   <arg name="coverage_percentage" default="0.95"/>
@@ -20,7 +20,7 @@
   <arg name="dest_folder"  	      default="/home/pulver/Desktop/MCDM/mcdm/"/>
   <arg name="scenario_name"  	    default="INB"/>
   <arg name="use_mcdm"            default="1"/>
-  <arg name="num_tags"            default="3"/>
+  <arg name="num_tags"            default="1"/>
   <arg name="pure_args"  	        default="$(arg fov) 
                                            $(arg radius) 
                                            $(arg coverage_percentage) 

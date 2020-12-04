@@ -179,6 +179,5 @@ double RFIDCriterion::evaluateEntropyTopologicalMap(
     }
   }
   
-  // exit(0);
   return RFIDInfoGain;
 }

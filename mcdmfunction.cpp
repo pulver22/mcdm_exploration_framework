@@ -132,10 +132,8 @@ void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
                                     ros::ServiceClient *path_client,
                                     double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
                                     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
-
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
-    //    cout << "Criterion: " << i << " : " << c->getName() <<  endl;
     c->evaluate(p, map, path_client, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
   }
 }

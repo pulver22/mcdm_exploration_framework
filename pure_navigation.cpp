@@ -300,7 +300,7 @@ int main(int argc, char **argv) {
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
       MCDMFunction function(norm_w_info_gain, norm_w_travel_distance, norm_w_sensing_time,
-                            norm_w_battery_status, norm_w_rfid_gain, use_mcdm);
+                            norm_w_rfid_gain, norm_w_battery_status, use_mcdm);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -353,6 +353,8 @@ int main(int argc, char **argv) {
       for (int tag_id=1; tag_id<=num_tags; tag_id++){
         localization_srv.request.name = "tag_" + to_string(tag_id);
         localization_srv.request.n_particles = 2000;
+        localization_srv.request.do_prediction = true;
+        localization_srv.request.prediction_rate = 0.5;
         if (localization_client.call(localization_srv)) {
           printf("[ParticleFilter] Initialization successful "
                     "for tag %d\n", tag_id);
@@ -562,7 +564,6 @@ int main(int argc, char **argv) {
           //... otherwise, if there are further candidate new position from the
           // current pose of the robot
           else {
-
             // Remove the cells which are recently visited (part of tabuList)
             list<Pose>::iterator it_tabuList;
             for (it_tabuList = tabuList.begin(); it_tabuList != tabuList.end();
@@ -572,7 +573,6 @@ int main(int argc, char **argv) {
             // FIXME: this can still be useful by not every iteration
             // utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             // cout <<"CleanedFrontiers: " << frontiers.size() << endl;
-
             record = *function.evaluateFrontiers(
                 &frontiers, &map, threshold, &topo_path_client, &batteryTime,
                 &belief_map, &mappingWaypoints, &belief_topomaps);
@@ -584,7 +584,6 @@ int main(int argc, char **argv) {
                  it != tabuList.end(); it++) {
               record.removeFrontier(*it);
             }
-
             // If there are candidate positions
             if (record.size() > 0) {
               frontiers = record.getFrontiers();
@@ -594,27 +593,30 @@ int main(int argc, char **argv) {
               // Select the new robot destination from the list of candidates
               std::pair<Pose, double> result = function.selectNewPose(&record);
               target = result.first;
-              target = utils.selectFreePoseInLocalCostmap(
-                  target, &frontiers, &map, &function, threshold,
-                  &topo_path_client, &posToEsclude, &record,
-                  move_base_local_costmap_topic_name, &batteryTime, &belief_map,
-                  &mappingWaypoints, &belief_topomaps);
+              // target = utils.selectFreePoseInLocalCostmap(
+              //     target, &frontiers, &map, &function, threshold,
+              //     &topo_path_client, &posToEsclude, &record,
+              //     move_base_local_costmap_topic_name, &batteryTime, &belief_map,
+              //     &mappingWaypoints, &belief_topomaps);
               targetPos =
                   std::make_pair(int(target.getX()), int(target.getY()));
-
               // Select a new position until it is not explored recently
+              int iter = 0;
               while (utils.containsPos(&posToEsclude, targetPos)) {
+                iter++;
+                cout << iter << endl;
                 if (record.size() > 0) {
                   record.removeFrontier(target);
                   result = function.selectNewPose(&record);
                   target = result.first;
-                  target = utils.selectFreePoseInLocalCostmap(
-                      target, &frontiers, &map, &function, threshold,
-                      &topo_path_client, &posToEsclude, &record,
-                      move_base_local_costmap_topic_name, &batteryTime,
-                      &belief_map, &mappingWaypoints, &belief_topomaps);
+                  // target = utils.selectFreePoseInLocalCostmap(
+                  //     target, &frontiers, &map, &function, threshold,
+                  //     &topo_path_client, &posToEsclude, &record,
+                  //     move_base_local_costmap_topic_name, &batteryTime,
+                  //     &belief_map, &mappingWaypoints, &belief_topomaps);
                   targetPos =
                       std::make_pair(int(target.getX()), int(target.getY()));
+                  posToEsclude.push_back(targetPos);
                 } else {
                   break_loop = true;
                   break;
