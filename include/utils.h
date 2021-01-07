@@ -161,7 +161,7 @@ class Utilities {
                                       unordered_map<string,string> *mappingWaypoints,
                                       vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
 
-    void saveCoverage(const std::string& name, const std::string& content, bool append);
+    void filePutContents(const std::string& name, const std::string& content, bool append);
 
     /**
      * Get the "guessed" position of the tags in the belief map
@@ -179,6 +179,9 @@ class Utilities {
     //                           dummy::Map* map, MCDMFunction* function, list<Pose>* tabuList, vector<string>* history, int* encodedKeyValue, Astar* astar , long* numConfiguration,
     //                           double* totalAngle, double * travelledDistance, int* numOfTurning , double* scanAngle, bool* btMode, double* threshold,
     //                           double *batteryTime, bool *explorationCompleted);
+
+    string getCloserWaypoint(geometry_msgs::Pose *pose, strands_navigation_msgs::TopologicalMap *topoMap);
+    geometry_msgs::Pose getWaypointPoseFromName(string name, strands_navigation_msgs::TopologicalMap *topoMap);
 };
 
 

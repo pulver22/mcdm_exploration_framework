@@ -20,6 +20,7 @@
 #include <costmap_2d/costmap_2d_ros.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/GetMap.h>
 #include <nav_msgs/GetPlan.h>
@@ -42,6 +43,8 @@
 #include "bayesian_topological_localisation/LocaliseAgent.h"
 #include "bayesian_topological_localisation/DistributionStamped.h"
 #include "bayesian_topological_localisation/UpdateLikelihoodObservation.h"
+#include <gazebo_msgs/GetModelState.h>
+#include <gazebo_msgs/GetModelStateRequest.h>
 
 using namespace std;
 using namespace dummy;
@@ -104,6 +107,7 @@ std::string move_base_local_costmap_topic_name;
 std::string move_base_costmap_updates_topic_name;
 std::string  marker_pub_topic_name;
 std::string rosbag_srv_name;
+std::string gazebo_model_state_srv_name;
 double robot_radius;
 Utilities utils;
 std::string stats_topic_name;
@@ -120,6 +124,7 @@ ros::ServiceClient topo_path_client;
 ros::ServiceClient belief_map_client;
 ros::ServiceClient localization_client;
 ros::ServiceClient pf_client;
+ros::ServiceClient gazebo_model_state_client;
 vector<ros::ServiceClient> pf_likelihoodClient_list;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
@@ -144,6 +149,9 @@ vector<ros::Publisher> pf_topoMap_pub_list;
 // record_ros::String_cmd srv_rosbag;
 ros::Publisher stats_pub;
 
+vector<string> current_tag_waypoint_prediction;
+geometry_msgs::Pose pf_tag_pose, gt_tag_pose;
+double distance_pf_gt;
 // Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm
 // 100 75 5 0 15 180 0.95 0.12
 // resolution x y orientation range centralAngle precision threshold
@@ -191,6 +199,9 @@ int main(int argc, char **argv) {
   rfid_grid_map::GetBeliefMaps belief_map_srv;
   bayesian_topological_localisation::LocaliseAgent localization_srv;
   bayesian_topological_localisation::UpdateLikelihoodObservation prediction_srv;
+
+  // Create srv request for gazebo model
+  gazebo_msgs::GetModelState model_state_srv;
 
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
   stats_buffer.str("coveragePercent, numConfiguration, backTracking");
@@ -352,7 +363,7 @@ int main(int argc, char **argv) {
       cout << "\nCreating PF agents for " << to_string(num_tags) << " tags" << endl;
       for (int tag_id=1; tag_id<=num_tags; tag_id++){
         localization_srv.request.name = "tag_" + to_string(tag_id);
-        localization_srv.request.n_particles = 2000;
+        localization_srv.request.n_particles = 500;
         localization_srv.request.do_prediction = true;
         localization_srv.request.prediction_rate = 0.5;
         if (localization_client.call(localization_srv)) {
@@ -376,6 +387,8 @@ int main(int argc, char **argv) {
                       "tag %d\n", tag_id);
       }
 
+
+      sleep(5.0);
       do {
 
         // Recently visit cells shouldn't be visited soon again
@@ -416,7 +429,7 @@ int main(int argc, char **argv) {
               "," + to_string(tag_coverage_percentage) + "," +
               to_string(travelledDistance) + "\n";
           // cout << tag_coverage_percentage << endl;
-          utils.saveCoverage(coverage_log, content, true);
+          utils.filePutContents(coverage_log, content, true);
           ROS_DEBUG("  ==> Saving the coverage log ...");
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
@@ -503,6 +516,28 @@ int main(int argc, char **argv) {
                     ROS_DEBUG("Prediction srv called successfully\n");
                     printf("[PF - Tag %d ] Prediction: %s\n", index,
                               prediction_srv.response.estimated_node.c_str());
+                    // Store waypoint prediction coming from particle filter
+                    if (current_tag_waypoint_prediction.size() < index ){
+                      current_tag_waypoint_prediction.push_back(prediction_srv.response.estimated_node);
+                    } else current_tag_waypoint_prediction.at(index - 1) = prediction_srv.response.estimated_node;
+                    pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index - 1), &topological_map);
+                    // Obtain ground truth position from Gazebo's engine
+                    model_state_srv.request.model_name = "tag_" + *it;
+                    model_state_srv.request.relative_entity_name = "map";
+                    if (gazebo_model_state_client.call(model_state_srv)) {
+                      gt_tag_pose = model_state_srv.response.pose;
+                      // Look for closer waypoint to current pose
+                      // and compare it to the PF prediction
+                      string closerWaypoint = utils.getCloserWaypoint(&gt_tag_pose, &topological_map);
+                      distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x,2) + 
+                                  pow(pf_tag_pose.position.y - gt_tag_pose.position.y,2));
+                      // Save to log prediction and ground truth
+                      content =
+                          current_tag_waypoint_prediction.at(index - 1) + "," +
+                          closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
+                      cout << "Prediction VS GT: " << content << endl;
+                      utils.filePutContents("/home/pulver/Desktop/PF_prediction_" + to_string(index) + ".csv", content, true);
+                    }
                     if (belief_topomaps.size() < index) {
                       belief_topomaps.push_back(
                           prediction_srv.response.current_prob_dist);
@@ -826,6 +861,7 @@ void loadROSParams(){
   private_node_handle.param("localization_srv_name", localization_srv_name, std::string("/bayesian_topological_localisation/localise_agent"));
   private_node_handle.param("pf_topic_name", pf_topic_name, std::string("/prob_dist_obs"));
   private_node_handle.param("pf_srv_name", pf_srv_name, std::string("/update_likelihood_obs"));
+  private_node_handle.param("gazebo_model_state_srv_name", gazebo_model_state_srv_name, std::string("/gazebo/get_model_state"));
 
 }
 
@@ -864,6 +900,7 @@ ros::NodeHandle createROSComms(){
   topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
   belief_map_client = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
+  gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
   // pf_client = nh.serviceClient<bayesian_topological_localisation::UpdateLikelihoodObservation>(pf_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
 

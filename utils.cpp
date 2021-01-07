@@ -627,23 +627,48 @@ Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandid
   return target;
 }
 
-void Utilities::saveCoverage(const std::string& name, const std::string& content, bool append ) {
+void Utilities::filePutContents(const std::string &name,
+                                const std::string &content, bool append) {
   std::ofstream outfile;
   std::ifstream pFile(name);
-  if (outfile.fail()){
-    cout << "Error while opening the stream." << endl;
-    // cout << "File does not exist! Create a new one!" << endl;
+  if (outfile.fail()) {
+    std::cout << "Error while opening the stream." << endl;
+    // std::cout << "File does not exist! Create a new one!" << endl;
     // outfile.open(name);
-    // outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,coverage,numConfiguration,travelledDistance,totalScanTime";
-  }
-  else
-  {
-    if (pFile.peek() == std::ifstream::traits_type::eof()){ // file is empty
-      // cout << "File does not exist! Create a new one!" << endl;
+    // outfile <<
+    // "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,coverage,numConfiguration,travelledDistance,totalScanTime";
+  } else {
+    if (pFile.peek() == std::ifstream::traits_type::eof()) { // file is empty
+      // std::cout << "File does not exist! Create a new one!" << endl;
       outfile.open(name);
-      outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,numConfiguration,incrementalCoverage" << endl;
-    }else{
-      cout << "File exists! Appending data!" << endl;
+      if (name.find("result") != string::npos) {
+        outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,w_"
+                   "battery_status,norm_w_info_gain,norm_w_travel_distance,"
+                   "norm_w_sensing_time,norm_w_rfid_gain,norm_w_battery_status,"
+                   "coverage,numConfiguration,travelledDistance,totalScanTime,"
+                   "accumulatedRxPower,batteryStatus,accuracy"
+                << endl;
+      } else if (name.find("coverage") != string::npos) {
+        outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,w_"
+                   "battery_status,norm_w_info_gain,norm_w_travel_distance,"
+                   "norm_w_sensing_time,norm_w_rfid_gain,norm_w_battery_status,"
+                   "numConfiguration,increasingCoverage,travelledDistance"
+                << endl;
+      } else if (name.find("distance") != string::npos) {
+        outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,w_"
+                   "battery_status,tag1,tag2,tag3,tag4,tag5,tag6,tag7,tag8,"
+                   "tag9,tag10"
+                << endl;
+      } else if (name.find("accuracy") != string::npos) {
+        outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,w_"
+                   "battery_status,range,numConfiguration,accuracy"
+                << endl;
+      } else if (name.find("prediction") != string::npos) {
+        outfile << "pf_prediction, gt_closer_waypoint, metric_distance" 
+                << endl;
+      }
+    } else {
+      // std::cout << "File exists! Appending data!" << endl;
       outfile.open(name, std::ios_base::app);
     }
   }
@@ -1005,3 +1030,26 @@ Utilities::convertGridBeliefMapToTopoMap(
 //     }
 //   }
 // } 
+
+string Utilities::getCloserWaypoint(geometry_msgs::Pose *pose, strands_navigation_msgs::TopologicalMap *topoMap){
+  float minDistance = 100;
+  float tmpDistance = 0;
+  string closerWaypoint;
+
+  for(auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end(); nodesIt++){
+    tmpDistance = sqrt(pow(pose->position.x - nodesIt->pose.position.x,2) - 
+                        pow(pose->position.y - nodesIt->pose.position.y,2));
+    if (tmpDistance < minDistance){
+      minDistance = tmpDistance;
+      closerWaypoint = nodesIt->name;
+    } 
+  }
+  return closerWaypoint;
+}
+
+geometry_msgs::Pose Utilities::getWaypointPoseFromName(string name, strands_navigation_msgs::TopologicalMap *topoMap){
+  for(auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end(); nodesIt++){
+    if (nodesIt->name.compare(name) == 0) return nodesIt->pose;
+  }
+  cout << "[utils.cpp@getWaypointPoseFromName] Waypoint NOT FOUND!" << endl;
+}

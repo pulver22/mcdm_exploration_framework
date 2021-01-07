@@ -297,7 +297,7 @@ int main(int argc, char **argv) {
                     + "," + to_string(100 * float(newSensedCells)/float(totalFreeCells)) 
                     + "," + to_string(tag_coverage_percentage) 
                     + "," + to_string(travelledDistance) + "\n" ;
-          utils.saveCoverage(coverage_log, content, true );
+          utils.filePutContents(coverage_log, content, true );
 
           map.getPathPlanningIndex(target.getX(), target.getY(), i, j);
           map.getPathPlanningPosition(targetX_meter, targetY_meter, i, j);
