@@ -30,6 +30,7 @@ TravelDistanceCriterion::~TravelDistanceCriterion() {}
 
 double TravelDistanceCriterion::evaluate(Pose &p, dummy::Map *map,
                                          ros::ServiceClient *path_client,
+                                         vector<ros::ServiceClient> *pf_client_list,
                                          double *batteryTime,
                                          GridMap *belief_map,
                                          unordered_map<string,string> *mappingWaypoints,

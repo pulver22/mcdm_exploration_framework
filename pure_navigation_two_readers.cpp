@@ -98,7 +98,7 @@ int belief_counter = 0;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
-std::string belief_map_srv_name;
+std::string belief_map_srv_name_left, belief_map_srv_name_right;
 std::string make_plan_srv_name;
 std::string make_topo_plan_srv_name;
 std::string move_base_goal_topic_name;
@@ -124,7 +124,8 @@ std::string pf_topic_name;
 ros::ServiceClient map_service_client_;
 ros::ServiceClient path_client;
 ros::ServiceClient topo_path_client;
-ros::ServiceClient belief_map_client;
+ros::ServiceClient belief_map_client_left, belief_map_client_right;
+vector<ros::ServiceClient> belief_map_clients ;
 ros::ServiceClient localization_client;
 ros::ServiceClient pf_client, pf_stateless_client;
 ros::ServiceClient gazebo_model_state_client;
@@ -192,6 +193,8 @@ int main(int argc, char **argv) {
 
   // create ROS connections/services
   ros::NodeHandle nh = createROSComms();
+  belief_map_clients.push_back(belief_map_client_left);
+  belief_map_clients.push_back(belief_map_client_right);
   double path_len;
   bool path_srv_call;
   ros::Rate r(20);
@@ -201,7 +204,10 @@ int main(int argc, char **argv) {
   double coverage;
 
   // Create srv request for the RFID belief map
-  rfid_grid_map::GetBeliefMaps belief_map_srv;
+  rfid_grid_map::GetBeliefMaps belief_map_srv_left, belief_map_srv_right;
+  vector<rfid_grid_map::GetBeliefMaps> belief_map_srvs ;
+  belief_map_srvs.push_back(belief_map_srv_left);
+  belief_map_srvs.push_back(belief_map_srv_right);
   bayesian_topological_localisation::LocaliseAgent localization_srv;
   bayesian_topological_localisation::UpdateLikelihoodObservation prediction_srv;
   bayesian_topological_localisation::Predict prediction_stateless_srv;
@@ -495,83 +501,89 @@ int main(int argc, char **argv) {
           if (norm_w_rfid_gain > 0) {
             // Get an updated RFID belief map
             printf("Updating the belief...\n");
-            if (belief_map_client.call(belief_map_srv)) {
-              belief_map_msg = belief_map_srv.response.rfid_maps;
-              converter.fromMessage(belief_map_msg, belief_map);
-              std::vector<string> layers_name = belief_map.getLayers();
-              // The layers_name vector contains "ref_map, X, Y, 0" which are
-              // for not for finding the tags. So we can remove their name to
-              // avoid checking this layers.
-              layers_name.erase(layers_name.begin(), layers_name.begin() + 4);
-              // If there are any tags discovered...
-              if (layers_name.size() != 0) {
-                // We now instantiate the Particle Filter for each tag
-                // discovered
-                for (auto it = layers_name.begin(); it != layers_name.end();
-                     it++) {
-                  // If the laters name contains more than 2 character,
-                  // skip it because it can be some debug layer (e.g.,
-                  // obst_losses)
-                  if (it->size() > 2)
-                    continue;
-                  // Publish to the PF the sensor reading
-                  bayesian_topological_localisation::DistributionStamped
-                      tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
-                          &belief_map, &topoMap, &mappingWaypoints, *it);
-                  tmp_belief_topo.header.stamp = ros::Time::now();
+            cout << "Clients: " <<  belief_map_clients.size() << ", srvs: " << belief_map_srvs.size() << endl;
+            for (int i=0; i < belief_map_clients.size(); i++){
+              // rfid_grid_map::GetBeliefMaps tmp_server = belief_map_srvs[i];
+              // ros::ServiceClient tmp_client = belief_map_clients[i];
+              if (belief_map_clients[i].call(belief_map_srvs[i])) {
+                belief_map_msg = belief_map_srvs[i].response.rfid_maps;
+                converter.fromMessage(belief_map_msg, belief_map);
+                std::vector<string> layers_name = belief_map.getLayers();
+                // The layers_name vector contains "ref_map, X, Y, 0" which are
+                // for not for finding the tags. So we can remove their name to
+                // avoid checking this layers.
+                layers_name.erase(layers_name.begin(), layers_name.begin() + 4);
+                // If there are any tags discovered...
+                if (layers_name.size() != 0) {
+                  // We now instantiate the Particle Filter for each tag
+                  // discovered
+                  for (auto it = layers_name.begin(); it != layers_name.end();
+                      it++) {
+                    // If the laters name contains more than 2 character,
+                    // skip it because it can be some debug layer (e.g.,
+                    // obst_losses)
+                    if (it->size() > 2)
+                      continue;
+                    // Publish to the PF the sensor reading
+                    bayesian_topological_localisation::DistributionStamped
+                        tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
+                            &belief_map, &topoMap, &mappingWaypoints, *it);
+                    tmp_belief_topo.header.stamp = ros::Time::now();
 
-                  int index = std::stoi(*it);
-                  prediction_srv.request.likelihood = tmp_belief_topo;
-                  if (pf_likelihoodClient_list.at(index - 1).call(
-                          prediction_srv)) {
-                    ROS_DEBUG("Prediction srv called successfully\n");
-                    printf("[PF - Tag %d ] Prediction: %s\n", index,
-                              prediction_srv.response.estimated_node.c_str());
-                    // Store waypoint prediction coming from particle filter
-                    if (current_tag_waypoint_prediction.size() < index ){
-                      current_tag_waypoint_prediction.push_back(prediction_srv.response.estimated_node);
-                    } else current_tag_waypoint_prediction.at(index - 1) = prediction_srv.response.estimated_node;
-                    pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index - 1), &topological_map);
-                    // Save pf prediction (expressed as metric position) on log
-                    content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
-                    utils.filePutContents("/home/pulver/Desktop/topoNBS/pf_tag_pose_" + to_string(index) + ".csv", content, true);
-                    // Save noisy gps location on log
-                    // cout << "GPS:" << gps_tag_pose.position.x << "," << gps_tag_pose.position.y << endl;
-                    // content = to_string(gps_tag_pose.position.x) + "," + to_string(gps_tag_pose.position.y) + "\n";
-                    // utils.filePutContents("/home/pulver/Desktop/topoNBS/gps_tag_pose_" + to_string(index) + ".csv", content, true);
-                    // Obtain ground truth position from Gazebo's engine
-                    model_state_srv.request.model_name = "tag_" + *it;
-                    model_state_srv.request.relative_entity_name = "map";
-                    if (gazebo_model_state_client.call(model_state_srv)) {
-                      gt_tag_pose = model_state_srv.response.pose;
-                      // Save ground truth on log
-                      content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
-                      utils.filePutContents("/home/pulver/Desktop/topoNBS/gt_tag_pose_" + to_string(index) + ".csv", content, true);
-                      // Look for closer waypoint to current pose
-                      // and compare it to the PF prediction
-                      string closerWaypoint = utils.getCloserWaypoint(&gt_tag_pose, &topological_map);
-                      distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x,2) + 
-                                  pow(pf_tag_pose.position.y - gt_tag_pose.position.y,2));
-                      // Save to log prediction and ground truth
-                      content =
-                          current_tag_waypoint_prediction.at(index - 1) + "," +
-                          closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
-                      cout << "Prediction VS GT: " << content << endl;
-                      utils.filePutContents("/home/pulver/Desktop/topoNBS/PF_prediction_" + to_string(index) + ".csv", content, true);
-                    }
-                    if (belief_topomaps.size() < index) {
-                      belief_topomaps.push_back(
-                          prediction_srv.response.current_prob_dist);
+                    int index = std::stoi(*it);
+                    prediction_srv.request.likelihood = tmp_belief_topo;
+                    if (pf_likelihoodClient_list.at(index - 1).call(
+                            prediction_srv)) {
+                      ROS_DEBUG("Prediction srv called successfully\n");
+                      printf("[PF - Tag %d ] Prediction: %s\n", index,
+                                prediction_srv.response.estimated_node.c_str());
+                      // Store waypoint prediction coming from particle filter
+                      if (current_tag_waypoint_prediction.size() < index ){
+                        current_tag_waypoint_prediction.push_back(prediction_srv.response.estimated_node);
+                      } else current_tag_waypoint_prediction.at(index - 1) = prediction_srv.response.estimated_node;
+                      pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index - 1), &topological_map);
+                      // Save pf prediction (expressed as metric position) on log
+                      content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
+                      utils.filePutContents("/home/pulver/Desktop/topoNBS/pf_tag_pose_" + to_string(index) + ".csv", content, true);
+                      // Save noisy gps location on log
+                      // cout << "GPS:" << gps_tag_pose.position.x << "," << gps_tag_pose.position.y << endl;
+                      // content = to_string(gps_tag_pose.position.x) + "," + to_string(gps_tag_pose.position.y) + "\n";
+                      // utils.filePutContents("/home/pulver/Desktop/topoNBS/gps_tag_pose_" + to_string(index) + ".csv", content, true);
+                      // Obtain ground truth position from Gazebo's engine
+                      model_state_srv.request.model_name = "tag_" + *it;
+                      model_state_srv.request.relative_entity_name = "map";
+                      if (gazebo_model_state_client.call(model_state_srv)) {
+                        gt_tag_pose = model_state_srv.response.pose;
+                        // Save ground truth on log
+                        content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
+                        utils.filePutContents("/home/pulver/Desktop/topoNBS/gt_tag_pose_" + to_string(index) + ".csv", content, true);
+                        // Look for closer waypoint to current pose
+                        // and compare it to the PF prediction
+                        string closerWaypoint = utils.getCloserWaypoint(&gt_tag_pose, &topological_map);
+                        distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x,2) + 
+                                    pow(pf_tag_pose.position.y - gt_tag_pose.position.y,2));
+                        // Save to log prediction and ground truth
+                        content =
+                            current_tag_waypoint_prediction.at(index - 1) + "," +
+                            closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
+                        cout << "Prediction VS GT: " << content << endl;
+                        utils.filePutContents("/home/pulver/Desktop/topoNBS/PF_prediction_" + to_string(index) + ".csv", content, true);
+                      }
+                      if (belief_topomaps.size() < index) {
+                        belief_topomaps.push_back(
+                            prediction_srv.response.current_prob_dist);
+                      } else
+                        belief_topomaps.at(index - 1) =
+                            prediction_srv.response.current_prob_dist;
                     } else
-                      belief_topomaps.at(index - 1) =
-                          prediction_srv.response.current_prob_dist;
-                  } else
-                    ROS_ERROR("PF node did not reply!\n");               
+                      ROS_ERROR("PF node did not reply!\n");               
+                  }
                 }
+              } else {
+                printf("ATTENTION! Failed to get the RFID belief map\n");
               }
-            } else {
-              printf("ATTENTION! Failed to get the RFID belief map\n");
             }
+            
           }
 
           // If the exploration just started
@@ -884,7 +896,8 @@ void loadROSParams(){
 
   // LOAD ROS PARAMETERS ....................................
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
-  private_node_handle.param("belief_map_srv_name", belief_map_srv_name, std::string("/rfid_grid_map_node/get_rfid_belief"));
+  private_node_handle.param("belief_map_srv_name_left", belief_map_srv_name_left, std::string("/thorvald_left/rfid_grid_map_node/get_rfid_belief_left"));
+  private_node_handle.param("belief_map_srv_name_right", belief_map_srv_name_right, std::string("/thorvald_right/rfid_grid_map_node/get_rfid_belief_right"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("make_topo_plan_srv_name", make_topo_plan_srv_name, std::string("/get_simple_policy/get_route_to"));
@@ -904,7 +917,6 @@ void loadROSParams(){
   // private_node_handle.param("pf_srv_name", pf_srv_name, std::string("/update_likelihood_obs"));
   // private_node_handle.param("pf_stateless_srv_name", pf_stateless_srv_name, std::string("/predict_stateless"));
   private_node_handle.param("gazebo_model_state_srv_name", gazebo_model_state_srv_name, std::string("/gazebo/get_model_state"));
-
 }
 
 void printROSParams(){
@@ -912,7 +924,8 @@ void printROSParams(){
   printf("[pure_navigation@printROSParams] Using the following ros params:\n");
   printf("   - robot_radius [%3.3f]\n",  robot_radius);
   printf("   - static_map_srv_name [%s]\n", static_map_srv_name.c_str());
-  printf("   - belief_map_srv_name [%s]\n", belief_map_srv_name.c_str());
+  printf("   - belief_map_srv_name_left [%s]\n", belief_map_srv_name_left.c_str());
+  printf("   - belief_map_srv_name_right [%s]\n", belief_map_srv_name_right.c_str());
   printf("   - make_plan_srv_name [%s]\n", make_plan_srv_name.c_str());
   printf("   - make_topo_plan_srv_name [%s]\n", make_topo_plan_srv_name.c_str());
   printf("   - move_base_goal_topic_name [%s]\n", move_base_goal_topic_name.c_str());
@@ -940,12 +953,13 @@ ros::NodeHandle createROSComms(){
   map_service_client_ = nh.serviceClient<nav_msgs::GetMap>(static_map_srv_name);
   path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
   topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
-  belief_map_client = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name);
+  belief_map_client_left = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name_left);
+  belief_map_client_right = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name_right);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
   // pf_client = nh.serviceClient<bayesian_topological_localisation::UpdateLikelihoodObservation>(pf_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
-
+  
   // create publishers
   moveBasePub =   nh.advertise<geometry_msgs::PoseStamped>(move_base_goal_topic_name, 1000);
   gridPub = nh.advertise<grid_map_msgs::GridMap>(nav_grid_debug_topic_name, 1, true);

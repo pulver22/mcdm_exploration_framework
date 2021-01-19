@@ -130,18 +130,19 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
 // the evaluate method provided by Criterion class)
 void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
                                     ros::ServiceClient *path_client,
+                                    vector<ros::ServiceClient> *pf_client_list,
                                     double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
                                     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
-    c->evaluate(p, map, path_client, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
+    c->evaluate(p, map, path_client, pf_client_list, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
   }
 }
 
 // Scan a list of candidate positions,then apply the Choquet fuzzy algorithm
 EvaluationRecords *MCDMFunction::evaluateFrontiers(
     const std::list<Pose> *frontiers, dummy::Map *map, double threshold,
-    ros::ServiceClient *path_client, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
+    ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
 
   // Create the EvaluationRecords
@@ -167,7 +168,7 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(
     list<Pose>::const_iterator it2;
     for (it2 = frontiers->begin(); it2 != frontiers->end(); it2++) {
       f = *it2;
-      evaluateFrontier(f, map, path_client, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
+      evaluateFrontier(f, map, path_client, pf_client_list, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
     }
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();

@@ -86,7 +86,7 @@ class Utilities {
                               int range, int FOV, double threshold,
                               string actualPose,
                               vector<pair<string, list<Pose> >> *graph2,
-                              ros::ServiceClient *path_client,
+                              ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list,
                               MCDMFunction *function, double *batteryTime, GridMap *belief_map,
                               unordered_map<string,string> *mappingWaypoints,
                               vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
@@ -155,7 +155,7 @@ class Utilities {
     double getPathLen(std::vector<geometry_msgs::PoseStamped> poses, double robot_radius);
 
     Pose selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
-                                      double threshold, ros::ServiceClient *path_client,
+                                      double threshold, ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list,
                                       std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
                                       std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map,
                                       unordered_map<string,string> *mappingWaypoints,

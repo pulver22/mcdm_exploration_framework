@@ -86,7 +86,7 @@ void Utilities::pushInitialPositions(dummy::Map map, float x, float y, float ori
                           int range, int FOV, double threshold,
                           string actualPose,
                           vector<pair<string, list<Pose> >> *graph2,
-                          ros::ServiceClient *path_client, MCDMFunction *function,
+                          ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list, MCDMFunction *function,
                           double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
                           vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
 
@@ -106,7 +106,7 @@ void Utilities::pushInitialPositions(dummy::Map map, float x, float y, float ori
     frontiers.push_back(p4);
   }
   EvaluationRecords *record =
-      function->evaluateFrontiers(&frontiers, &map, threshold, path_client, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
+      function->evaluateFrontiers(&frontiers, &map, threshold, path_client, pf_client_list, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose> > pair = make_pair(actualPose, nearCandidates);
@@ -596,7 +596,7 @@ bool Utilities::freeInLocalCostmap(Pose target, std::string move_base_local_cost
 
 
 Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
-                                  double threshold, ros::ServiceClient *path_client, std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
+                                  double threshold, ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list, std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
                                   std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
                                   vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps)
 {
@@ -616,7 +616,7 @@ Pose Utilities::selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandid
     cleanPossibleDestination2(nearCandidates, target);
     // cout << "nearCandidate after: " << nearCandidates->size() << endl;
     // Get the list of new candidate position with  associated evaluation
-    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
+    record = function->evaluateFrontiers(nearCandidates, map, threshold, path_client, pf_client_list, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
 //    cout << "     record size: " << record->size() << endl;
@@ -666,6 +666,12 @@ void Utilities::filePutContents(const std::string &name,
       } else if (name.find("prediction") != string::npos) {
         outfile << "pf_prediction, gt_closer_waypoint, metric_distance" 
                 << endl;
+      } else if (name.find("gt_tag_pose") != string::npos) {
+        outfile << "gt_x, gt_y" << endl;
+      } else if (name.find("pf_tag_pose") != string::npos) {
+        outfile << "pf_x, pf_y" << endl;
+      } else if (name.find("gps_tag_pose") != string::npos) {
+        outfile << "gps_x, gps_y" << endl;
       }
     } else {
       // std::cout << "File exists! Appending data!" << endl;
@@ -739,27 +745,29 @@ void Utilities::convertStrandTopoMapToListPose(strands_navigation_msgs::Topologi
       nodes_it->pose.orientation.z, nodes_it->pose.orientation.w);
     
     // NOTE: create eight pose for every node
-    // for (int i=0; i<8; i++){
-    //   tmpPose = Pose(nodes_it->pose.position.x, 
-    //               nodes_it->pose.position.y,
-    //               roundf(i* M_PI / 4 * 100) / 100, 
-    //               range, 
-    //               FoV);  
-    //   frontiers->push_back(tmpPose);
-    //   encoding = record.getEncodedKey(tmpPose);
-    //   mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
-    // }
+    for (int i=0; i<1; i++){
+      tmpPose = Pose(nodes_it->pose.position.x, 
+                  nodes_it->pose.position.y,
+                  // roundf(i* M_PI / 4 * 100) / 100, 
+                  // angle * (-1 + i*2), // only two angles, one defined by the topology and the opposite one
+                  angle*(1-i) + (i)*fmod(angle + M_PI, 2*M_PI),
+                  range, 
+                  FoV);  
+      frontiers->push_back(tmpPose);
+      encoding = record.getEncodedKey(tmpPose);
+      mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
+    }
     
     // NOTE: one note per node, like in the topological map
-    angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
-    tmpPose = Pose(nodes_it->pose.position.x, 
-                    nodes_it->pose.position.y, 
-                    angle, 
-                    range, 
-                    FoV);
-    frontiers->push_back(tmpPose);
-    encoding = record.getEncodedKey(tmpPose);
-    mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
+    // angle = roundf(2 * atan2(quat[2], quat[3]) * 100) / 100;
+    // tmpPose = Pose(nodes_it->pose.position.x, 
+    //                 nodes_it->pose.position.y, 
+    //                 angle, 
+    //                 range, 
+    //                 FoV);
+    // frontiers->push_back(tmpPose);
+    // encoding = record.getEncodedKey(tmpPose);
+    // mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
   }
   // cout <<"[TOPOMAP]: " << frontiers->size() << " nodes" << endl;
 }
@@ -832,7 +840,7 @@ Utilities::convertGridBeliefMapToTopoMap(
   // belief inside the message
   EvaluationRecords record;
   string encoding, waypointName;
-  double radius = 1.0;
+  double radius = 0.5;
   double probability;
   bayesian_topological_localisation::DistributionStamped topo_belief;
   // grid_map::Matrix& data = (*belief_map)[tag_id];
