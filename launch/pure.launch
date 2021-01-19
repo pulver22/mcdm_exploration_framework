@@ -7,11 +7,11 @@
 <launch>
   <!-- PARAMS .............................................................. -->
 
-  <arg name="w_info_gain"  	      default="0.0"/>
-  <arg name="w_travel_distance"  	default="0.0"/>
-  <arg name="w_sensing_time"  	  default="0.0"/>
-  <arg name="w_battery_status"  	default="0.0"/>
-  <arg name="w_rfid_gain"  	      default="1.0"/>
+  <arg name="w_info_gain"  	      default="0.00"/>
+  <arg name="w_travel_distance"  	default="0.00"/>
+  <arg name="w_sensing_time"  	  default="0.00"/>
+  <arg name="w_battery_status"  	default="0.01"/>
+  <arg name="w_rfid_gain"  	      default="0.99"/>
   <arg name="fov"                 default="180"/>
   <arg name="radius"              default="5"/>
   <arg name="coverage_percentage" default="0.95"/>

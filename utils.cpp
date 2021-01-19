@@ -1045,7 +1045,7 @@ string Utilities::getCloserWaypoint(geometry_msgs::Pose *pose, strands_navigatio
   string closerWaypoint;
 
   for(auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end(); nodesIt++){
-    tmpDistance = sqrt(pow(pose->position.x - nodesIt->pose.position.x,2) - 
+    tmpDistance = sqrt(pow(pose->position.x - nodesIt->pose.position.x,2) + 
                         pow(pose->position.y - nodesIt->pose.position.y,2));
     if (tmpDistance < minDistance){
       minDistance = tmpDistance;
