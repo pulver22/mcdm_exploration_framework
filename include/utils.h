@@ -86,7 +86,7 @@ class Utilities {
                               int range, int FOV, double threshold,
                               string actualPose,
                               vector<pair<string, list<Pose> >> *graph2,
-                              ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list,
+                              ros::ServiceClient *path_client, vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
                               MCDMFunction *function, double *batteryTime, GridMap *belief_map,
                               unordered_map<string,string> *mappingWaypoints,
                               vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
@@ -155,7 +155,7 @@ class Utilities {
     double getPathLen(std::vector<geometry_msgs::PoseStamped> poses, double robot_radius);
 
     Pose selectFreePoseInLocalCostmap(Pose target, list<Pose> *nearCandidates, dummy::Map *map, MCDMFunction *function,
-                                      double threshold, ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list,
+                                      double threshold, ros::ServiceClient *path_client, vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
                                       std::list<std::pair<float, float> > *posToEsclude, EvaluationRecords *record,
                                       std::string move_base_local_costmap_topic_name, double *batteryTime, GridMap *belief_map,
                                       unordered_map<string,string> *mappingWaypoints,
@@ -182,6 +182,12 @@ class Utilities {
 
     string getCloserWaypoint(geometry_msgs::Pose *pose, strands_navigation_msgs::TopologicalMap *topoMap);
     geometry_msgs::Pose getWaypointPoseFromName(string name, strands_navigation_msgs::TopologicalMap *topoMap);
+    /*
+    * Calculate a prediction for a maximum horizon (e.g, 50seconds) and 
+    * obtain a list of belief, one for each second. Pass this list to RFIDCriterion
+    * and seek the corresponding one for the candidate location in exam. 
+    */
+    vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> getStatelessRFIDBelief(double secs_from_now, bool return_history, vector<ros::ServiceClient> *pf_stateless_likelihoodClient_list);
 };
 
 

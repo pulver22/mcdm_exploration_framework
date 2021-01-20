@@ -26,49 +26,52 @@ BatteryStatusCriterion::BatteryStatusCriterion(double weight)
 BatteryStatusCriterion::~BatteryStatusCriterion() {}
 
 double BatteryStatusCriterion::evaluate(
-    Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list,
+    Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
     double *batteryTime, GridMap *belief_map,
     unordered_map<string, string> *mappingWaypoints,
     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
-  Pose robotPosition = map->getRobotPosition();
-  nav_msgs::GetPlan path;
-  double path_len = 0;
-  double startX_meter, startY_meter;
-  double goalX_meter, goalY_meter;
+  // Pose robotPosition = map->getRobotPosition();
+  // nav_msgs::GetPlan path;
+  // double path_len = 0;
+  // double startX_meter, startY_meter;
+  // double goalX_meter, goalY_meter;
 
-  // Update starting point in the path
-  path.request.start.header.frame_id = "map";
-  path.request.start.pose.position.x = robotPosition.getX();
-  path.request.start.pose.position.y = robotPosition.getY();
-  path.request.start.pose.orientation.w = 1;
+  // // Update starting point in the path
+  // path.request.start.header.frame_id = "map";
+  // path.request.start.pose.position.x = robotPosition.getX();
+  // path.request.start.pose.position.y = robotPosition.getY();
+  // path.request.start.pose.orientation.w = 1;
 
-  path.request.goal.header.frame_id = "map";
-  path.request.goal.pose.position.x = p.getX();
-  path.request.goal.pose.position.y = p.getY();
-  path.request.goal.pose.orientation.w = 1;
+  // path.request.goal.header.frame_id = "map";
+  // path.request.goal.pose.position.x = p.getX();
+  // path.request.goal.pose.position.y = p.getY();
+  // path.request.goal.pose.orientation.w = 1;
 
-  bool path_srv_call = path_client->call(path);
-  if (path_srv_call) {
-    // calculate path length
-    path_len = getPathLen(path.response.plan.poses);
-    if (isnan(path_len) or path_len < 0.001) {
-      path_len = 0;
-    } else if (path_len < 1e3) {
-      //      ROS_INFO("Path len is [%3.3f m.]",path_len);
-    } else {
-      //      ROS_INFO("Path len is infinite");
-      path_len = 1000;
-    }
-  } else {
-    ROS_INFO("Path_finding Service call failed! ");
-    path_len = 1000;
-  }
-  bool collision =
-      map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
-  if (collision == true) {
-    path_len = 50000;
-  }
+  // bool path_srv_call = path_client->call(path);
+  // if (path_srv_call) {
+  //   // calculate path length
+  //   path_len = getPathLen(path.response.plan.poses);
+  //   if (isnan(path_len) or path_len < 0.001) {
+  //     path_len = 0;
+  //   } else if (path_len < 1e3) {
+  //     //      ROS_INFO("Path len is [%3.3f m.]",path_len);
+  //   } else {
+  //     //      ROS_INFO("Path len is infinite");
+  //     path_len = 1000;
+  //   }
+  // } else {
+  //   ROS_INFO("Path_finding Service call failed! ");
+  //   path_len = 1000;
+  // }
+  // bool collision =
+  //     map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
+  // if (collision == true) {
+  //   path_len = 50000;
+  // }
 
+  double path_len = Criterion::computeMetricDistance(
+        p, map, path_client, batteryTime, belief_map,
+      mappingWaypoints, belief_topomaps);
   translTime = path_len / TRANSL_SPEED;
   remainingBattery = *batteryTime - translTime;
   remainingBattery = max(remainingBattery, 0.0);

@@ -9,7 +9,7 @@
 #define BATTERY_ONE_PERCENT MAX_BATTERY/100
 
 //Velocity constants
-#define TRANSL_SPEED 0.5
+#define TRANSL_SPEED 0.1
 #define ROT_SPEED 0.1
 
 const int MAX_TABULIST_COUNT = 0;

@@ -34,7 +34,7 @@ void Criterion::insertEvaluation(Pose &p, double value) {
   EvaluationRecords *record = new EvaluationRecords();
   string pose = record->getEncodedKey(p);
   evaluation.emplace(pose, value);
-  if( isnan(value)){
+  if (isnan(value)) {
     value = 0;
   }
   if (value >= maxValue)
@@ -55,10 +55,10 @@ void Criterion::clean() {
 }
 
 void Criterion::normalize() {
-  if(highGood)
+  if (highGood)
     normalizeHighGood();
   else
-     normalizeLowGood();
+    normalizeLowGood();
 }
 
 void Criterion::normalizeHighGood() {
@@ -92,7 +92,7 @@ double Criterion::getEvaluation(Pose &p) const {
   string pose = record->getEncodedKey(p);
   double value = evaluation.at(pose);
   delete record;
-  if (isnan(value)){
+  if (isnan(value)) {
     value = 0.0;
     // cout << "Name: " << this->name << ", Value: " << value << endl;
   }
@@ -114,4 +114,104 @@ string Criterion::getEncodedKey(Pose &p) {
                "/" + to_string(p.getFOV());
 
   return key;
+}
+
+double Criterion::computeTopologicalDistance(
+    Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+    double *batteryTime, GridMap *belief_map,
+    unordered_map<string, string> *mappingWaypoints,
+    vector<bayesian_topological_localisation::DistributionStamped>
+        *belief_topomaps) {
+
+  double path_len = 0;
+
+  // Topological map
+  strands_navigation_msgs::GetRouteTo path;
+  string waypointName;
+  EvaluationRecords record;
+  bool found = false;
+  string encoding = record.getEncodedKey(p);
+  auto search = mappingWaypoints->find(encoding);
+  if (search != mappingWaypoints->end()) {
+    waypointName = search->second;
+    found = true;
+  } else {
+    found = false;
+  }
+  if (found == true) {
+    path.request.goal = waypointName;
+    bool path_srv_call = path_client->call(path);
+    if (path_srv_call) {
+      path_len = path.response.route.source.size();
+    }
+  } else {
+    path_len = 1000;
+  }
+  return path_len;
+}
+
+double Criterion::computeMetricDistance(
+    Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+    double *batteryTime, GridMap *belief_map,
+    unordered_map<string, string> *mappingWaypoints,
+    vector<bayesian_topological_localisation::DistributionStamped>
+        *belief_topomaps) {
+  // cout << "travel " << endl;
+  Astar astar;
+  Pose robotPosition = map->getRobotPosition();
+  double path_len = 0;
+
+  // Metric map
+  // Update starting point in the path
+  nav_msgs::GetPlan path;
+  path.request.start.header.frame_id = "map";
+  path.request.start.pose.position.x = robotPosition.getX();
+  path.request.start.pose.position.y = robotPosition.getY();
+  path.request.start.pose.orientation.w = 1;
+  path.request.goal.header.frame_id = "map";
+  path.request.goal.pose.position.x = p.getX();
+  path.request.goal.pose.position.y = p.getY();
+  path.request.goal.pose.orientation.w = 1;
+  bool path_srv_call = path_client->call(path);
+  if (path_srv_call) {
+    // calculate path length
+    path_len = getPathLen(path.response.plan.poses);
+    if (isnan(path_len) or path_len < 0.001) {
+      path_len = 0;
+    } else if (path_len < 1e3) {
+      //      ROS_INFO("Path len is [%3.3f m.]",path_len);
+    } else {
+      //      ROS_INFO("Path len is infinite");
+      path_len = 1000;
+    }
+  } else {
+    ROS_INFO("Path_finding Service call failed! ");
+    path_len = 1000;
+  }
+  bool collision =
+      map->checkWallsPathPlanningGrid(p.getX(), p.getY(), p.getRange());
+  if (collision == true) {
+    path_len = 50000;
+  }
+
+  return path_len;
+}
+
+double Criterion::getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
+  double len = 0;
+  geometry_msgs::Point p1, p2;
+  int npoints = poses.size();
+  //  ROS_INFO("Path has [%d] points",npoints);
+  if (npoints > 0) {
+    for (int i = 1; i < npoints; i++) {
+      p1 = poses[i].pose.position;
+      p2 = poses[i - 1].pose.position;
+      len += sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+    }
+  } else {
+    len = std::numeric_limits<double>::max();
+    //    ROS_INFO("Empty path. Len set to infinite... ");
+  }
+
+  return len;
 }

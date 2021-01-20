@@ -130,6 +130,8 @@ ros::ServiceClient localization_client;
 ros::ServiceClient pf_client, pf_stateless_client;
 ros::ServiceClient gazebo_model_state_client;
 vector<ros::ServiceClient> pf_likelihoodClient_list, pf_stateless_likelihoodClient_list;
+vector<bayesian_topological_localisation::DistributionStamped> stateless_belief_history;
+vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> mapping_time_belief;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;
@@ -501,11 +503,13 @@ int main(int argc, char **argv) {
           if (norm_w_rfid_gain > 0) {
             // Get an updated RFID belief map
             printf("Updating the belief...\n");
-            cout << "Clients: " <<  belief_map_clients.size() << ", srvs: " << belief_map_srvs.size() << endl;
+            // cout << "Clients: " <<  belief_map_clients.size() << ", srvs: " << belief_map_srvs.size() << endl;
             for (int i=0; i < belief_map_clients.size(); i++){
+              cout << "Server: " << i << endl;
               // rfid_grid_map::GetBeliefMaps tmp_server = belief_map_srvs[i];
               // ros::ServiceClient tmp_client = belief_map_clients[i];
               if (belief_map_clients[i].call(belief_map_srvs[i])) {
+                cout << "   success" << endl;
                 belief_map_msg = belief_map_srvs[i].response.rfid_maps;
                 converter.fromMessage(belief_map_msg, belief_map);
                 std::vector<string> layers_name = belief_map.getLayers();
@@ -618,7 +622,7 @@ int main(int argc, char **argv) {
             // there (calculated inside the function)
             utils.pushInitialPositions(
                 map, x, y, orientation, range, FOV, threshold, actualPose,
-                &graph2, &topo_path_client, &pf_stateless_likelihoodClient_list,  &function, &batteryTime,
+                &graph2, &topo_path_client, &mapping_time_belief,  &function, &batteryTime,
                 &belief_map, &mappingWaypoints, &belief_topomaps);
           }
 
@@ -641,8 +645,9 @@ int main(int argc, char **argv) {
             // FIXME: this can still be useful by not every iteration
             // utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             cout <<"CleanedFrontiers: " << frontiers.size() << endl;
+            mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
             record = *function.evaluateFrontiers(
-                &frontiers, &map, threshold, &topo_path_client, &pf_stateless_likelihoodClient_list, &batteryTime,
+                &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
                 &belief_map, &mappingWaypoints, &belief_topomaps);
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with

@@ -17,35 +17,39 @@ using namespace dummy;
 using namespace grid_map;
 
 RFIDCriterion::RFIDCriterion(double weight)
-    : Criterion(RFID_READING, weight, true) {
+    : Criterion(RFID_READING, weight, false) {
   // minValue = 0.0;
 }
 
 RFIDCriterion::~RFIDCriterion() {}
 
 double RFIDCriterion::evaluate(
-    Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<ros::ServiceClient> *pf_client_list,
+    Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
     double *batteryTime, GridMap *belief_map,
     unordered_map<string, string> *mappingWaypoints,
     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
   
 
-  //TODO: move the batteryCriterion::evaluate method as independent in order to compute
-  // distance between two points and being accessible from multiple criteria at the same time
-  // Once we compute distance and translation time from current point to destination,
-  // we can use that one for the particle filter's prediction.
 
   this->RFIDInfoGain = 0;
-  // bayesian_topological_localisation::Predict prediction_stateless_srv;
-  // vector<bayesian_topological_localisation::DistributionStamped> tmp_distributions;
-  // // TODO: compute travelling time from current pose and destination
-  // prediction_stateless_srv.request.secs_from_now = 5;
-  // for (int tag_index = 0; tag_index < pf_client_list->size(); tag_index++){
-  //   if (pf_client_list->at(tag_index).call(prediction_stateless_srv)){
-  //     tmp_distributions.push_back( prediction_stateless_srv.response.prob_dist);
-  //   }
-  // }
 
+  // double path_len = Criterion::computeTopologicalDistance(
+  //     p, map, path_client, batteryTime, belief_map,
+  //     mappingWaypoints, belief_topomaps);
+  // // cout << "path_len: " << path_len << endl;
+  // double time = path_len / TRANSL_SPEED;
+  // time = std::nearbyint( time * 0.5f ) * 2.0f;
+  // time = std::min(time, 50.0);
+  // // bayesian_topological_localisation::Predict prediction_stateless_srv;
+  // vector<bayesian_topological_localisation::DistributionStamped> tmp_distributions;
+  // for (int tag_index = 0; tag_index < mapping_time_belief->size(); tag_index++){
+  //   auto search = mapping_time_belief->at(tag_index).find(time);
+  //   if (search != mapping_time_belief->at(tag_index).end()){
+  //     tmp_distributions.push_back(search->second);
+  //   }
+  //   // else cout << "Not found time = " << time << endl;
+  // }
+  
   // assert( tmp_distributions.size() == belief_topomaps->size());
 
   // double prior, posterior = 0.0;
@@ -60,7 +64,7 @@ double RFIDCriterion::evaluate(
   //     this->RFIDInfoGain += tmp_KL;
   //   }
   // }
-  // cout << "KL: " << this->RFIDInfoGain << endl;
+  // cout << "KL: " << this->RFIDInfoGain << endl << endl;
 
   this->RFIDInfoGain =
       evaluateEntropyTopologicalMap(p, mappingWaypoints, belief_topomaps);
@@ -70,7 +74,7 @@ double RFIDCriterion::evaluate(
   // if (isnan(this->RFIDInfoGain)) {
   //   this->RFIDInfoGain = 0.0;
   // }
-  
+  // ros::spinOnce();
   Criterion::insertEvaluation(p, this->RFIDInfoGain);
   return this->RFIDInfoGain;
 }
