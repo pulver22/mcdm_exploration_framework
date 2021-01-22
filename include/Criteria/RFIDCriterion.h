@@ -52,8 +52,12 @@ private:
 
   std::string getTagLayerName(int tag_num);
 
-  double evaluateEntropyTopologicalMap(Pose p,unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
-
+  double evaluateEntropyTopologicalNode(
+    Pose p, unordered_map<string, string> *mappingWaypoints,
+    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
+  double evaluateEntropyTopologicalMap(vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
+  double computeKLTopologicalMap(vector<bayesian_topological_localisation::DistributionStamped> *prior_distributions, vector<bayesian_topological_localisation::DistributionStamped> *posterior_distributions);
+  double computeEntropy(double likelihood);
 protected:
   double RFIDInfoGain = 0.0;
   double tmp_belief = 0.0;

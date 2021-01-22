@@ -7,11 +7,11 @@
 #include "Eigen/Eigen"
 #include "newray.h"
 #include "utils.h"
+#include <algorithm> // std::find
 #include <math.h>
-#include <algorithm>    // std::find
 
-#include "bayesian_topological_localisation/Predict.h"
 #include "bayesian_topological_localisation/DistributionStamped.h"
+#include "bayesian_topological_localisation/Predict.h"
 
 using namespace dummy;
 using namespace grid_map;
@@ -24,57 +24,48 @@ RFIDCriterion::RFIDCriterion(double weight)
 RFIDCriterion::~RFIDCriterion() {}
 
 double RFIDCriterion::evaluate(
-    Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
+    Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+    vector<unordered_map<
+        float, bayesian_topological_localisation::DistributionStamped>>
+        *mapping_time_belief,
     double *batteryTime, GridMap *belief_map,
     unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
-  
-
+    vector<bayesian_topological_localisation::DistributionStamped>
+        *prior_distributions) {
 
   this->RFIDInfoGain = 0;
 
-  // double path_len = Criterion::computeTopologicalDistance(
-  //     p, map, path_client, batteryTime, belief_map,
-  //     mappingWaypoints, belief_topomaps);
-  // // cout << "path_len: " << path_len << endl;
-  // double time = path_len / TRANSL_SPEED;
-  // time = std::nearbyint( time * 0.5f ) * 2.0f;
-  // time = std::min(time, 50.0);
-  // // bayesian_topological_localisation::Predict prediction_stateless_srv;
-  // vector<bayesian_topological_localisation::DistributionStamped> tmp_distributions;
-  // for (int tag_index = 0; tag_index < mapping_time_belief->size(); tag_index++){
-  //   auto search = mapping_time_belief->at(tag_index).find(time);
-  //   if (search != mapping_time_belief->at(tag_index).end()){
-  //     tmp_distributions.push_back(search->second);
-  //   }
-  //   // else cout << "Not found time = " << time << endl;
-  // }
-  
-  // assert( tmp_distributions.size() == belief_topomaps->size());
+  // Compute how long it takes to go to the destination waypoint and retrieve
+  // the corresponding posterior belief maps
+  double path_len = Criterion::computeTopologicalDistance(
+      p, map, path_client, batteryTime, belief_map, mappingWaypoints,
+      prior_distributions);
+  double time = path_len / TRANSL_SPEED;
+  time = std::nearbyint(time * 0.5f) * 2.0f;
+  time = std::min(time, 50.0);
+  vector<bayesian_topological_localisation::DistributionStamped>
+      posterior_distributions;
+  for (int tag_index = 0; tag_index < mapping_time_belief->size();
+       tag_index++) {
+    auto search = mapping_time_belief->at(tag_index).find(time);
+    if (search != mapping_time_belief->at(tag_index).end()) {
+      posterior_distributions.push_back(search->second);
+    }
+    // else cout << "Not found time = " << time << endl;
+  }
 
-  // double prior, posterior = 0.0;
-  // double tmp_KL = 0.0;
-  // for (int tag_index=0; tag_index < tmp_distributions.size(); tag_index++){
-  //   for (int node_index=0; node_index < tmp_distributions[tag_index].values.size(); node_index ++){
-  //     prior = belief_topomaps->at(tag_index).values[node_index];
-  //     posterior = tmp_distributions[tag_index].values[node_index];
-  //     tmp_KL = posterior * log(posterior/prior);
-  //     if (isnan(tmp_KL) or isinf(tmp_KL))
-  //         tmp_KL = 0;
-  //     this->RFIDInfoGain += tmp_KL;
-  //   }
-  // }
-  // cout << "KL: " << this->RFIDInfoGain << endl << endl;
+  assert( posterior_distributions.size() == prior_distributions->size());
 
+  // 1) Compute entropy on a single waypoint
   this->RFIDInfoGain =
-      evaluateEntropyTopologicalMap(p, mappingWaypoints, belief_topomaps);
-  // cout << "[evaluate@RFIDCriterion.cpp] value: " << this->RFIDInfoGain << endl;
-  // Calculate entropy around the cell
-  // this->RFIDInfoGain = evaluateEntropyOverBelief(p, belief_map);
-  // if (isnan(this->RFIDInfoGain)) {
-  //   this->RFIDInfoGain = 0.0;
-  // }
-  // ros::spinOnce();
+      evaluateEntropyTopologicalNode(p, mappingWaypoints,
+      prior_distributions);
+  // 2) Compute entropy on the entire map
+  // this->RFIDInfoGain = evaluateEntropyTopologicalMap(&posterior_distributions);
+  cout << "Entropy node: " << this->RFIDInfoGain << endl;
+  // 3) Compute KL-divergence between prior and posterior distribution
+  // this->RFIDInfoGain = computeKLTopologicalMap(&prior_distribution, &posterior_distribution);
+  
   Criterion::insertEvaluation(p, this->RFIDInfoGain);
   return this->RFIDInfoGain;
 }
@@ -138,7 +129,7 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target,
 
   double total_entropy;
   Position point;
-  double likelihood, neg_likelihood, log2_likelihood, log2_neg_likelihood = 0.0;
+  double likelihood = 0.0;
   std::string tagLayerName = getTagLayerName(tag_i);
 
   total_entropy = 0;
@@ -149,23 +140,7 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target,
       // We don't add belief from positions considered obstacles...
       if (belief_map->atPosition("ref_map", point) == _free_space_val) {
         likelihood = belief_map->atPosition(tagLayerName, point);
-        if (isnan(likelihood))
-          likelihood = 0.0;
-        neg_likelihood = 1 - likelihood;
-        if (isnan(neg_likelihood))
-          neg_likelihood = 0.0;
-
-        log2_likelihood = log2(likelihood);
-        if (isinf(log2_likelihood))
-          log2_likelihood = 0.0;
-        log2_neg_likelihood = log2(neg_likelihood);
-        if (isinf(log2_neg_likelihood))
-          log2_neg_likelihood = 0.0;
-        // cout << " l: " << log2_likelihood << endl;
-        // likelihood =
-        // rfid_tools->rm.getBeliefMaps().atPosition(layerName,rel_point);
-        total_entropy += -likelihood * log2_likelihood -
-                         neg_likelihood * log2_neg_likelihood;
+        total_entropy += this->computeEntropy(likelihood);
       }
     }
   }
@@ -176,11 +151,12 @@ std::string RFIDCriterion::getTagLayerName(int tag_num) {
   return std::to_string(tag_num);
 }
 
-double RFIDCriterion::evaluateEntropyTopologicalMap(
+double RFIDCriterion::evaluateEntropyTopologicalNode(
     Pose p, unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
+    vector<bayesian_topological_localisation::DistributionStamped>
+        *belief_topomaps) {
   float RFIDInfoGain = 0.0;
-  double likelihood, neg_likelihood, log2_likelihood, log2_neg_likelihood = 0.0;
+  double likelihood = 0.0;
   EvaluationRecords record;
   string encoding = record.getEncodedKey(p);
   auto search = mappingWaypoints->find(encoding);
@@ -189,36 +165,83 @@ double RFIDCriterion::evaluateEntropyTopologicalMap(
   if (search != mappingWaypoints->end()) {
     waypointName = search->second;
   } else {
-    std::cout << "[RFIDCriterion.cpp@evaluateEntropyTopologicalMap] WayPoint Not found\n";
+    std::cout << "[RFIDCriterion.cpp@evaluateEntropyTopologicalMap] WayPoint "
+                 "Not found\n";
   }
-  
-  if (belief_topomaps->size() != 0){
+
+  if (belief_topomaps->size() != 0) {
     // For every belief map, look for the waypoint and access its value
-    for(int map_id=0; map_id<belief_topomaps->size(); map_id++){
+    for (int map_id = 0; map_id < belief_topomaps->size(); map_id++) {
       vector<string> nodes_list = belief_topomaps->at(map_id).nodes;
-      int index=0;
-      for (auto it=nodes_list.begin(); it!=nodes_list.end();it++){
-        if (*it == waypointName) break;
-        else index++;
+      int index = 0;
+      for (auto it = nodes_list.begin(); it != nodes_list.end(); it++) {
+        if (*it == waypointName)
+          break;
+        else
+          index++;
       }
       likelihood = belief_topomaps->at(map_id).values[index];
-      if (isnan(likelihood))
-          likelihood = 0.0;
-      neg_likelihood = 1 - likelihood;
-      if (isnan(neg_likelihood))
-        neg_likelihood = 0.0;
-
-      log2_likelihood = log2(likelihood);
-      if (isinf(log2_likelihood))
-        log2_likelihood = 0.0;
-      log2_neg_likelihood = log2(neg_likelihood);
-      if (isinf(log2_neg_likelihood))
-        log2_neg_likelihood = 0.0;
-
-      RFIDInfoGain += -likelihood * log2_likelihood -
-                         neg_likelihood * log2_neg_likelihood;
+      RFIDInfoGain += this->computeEntropy(likelihood);
     }
   }
-  
+
   return RFIDInfoGain;
+}
+
+double RFIDCriterion::evaluateEntropyTopologicalMap(
+    vector<bayesian_topological_localisation::DistributionStamped>
+        *belief_topomaps) {
+  double entropy = 0.0;
+  double likelihood = 0.0;
+  for (int tag_index = 0; tag_index < belief_topomaps->size(); tag_index++) {
+    for (int node_index = 0;
+         node_index < belief_topomaps->at(tag_index).values.size(); node_index++) {
+      likelihood = belief_topomaps->at(tag_index).values[node_index];
+      entropy += this->computeEntropy(likelihood);
+    }
+  }
+
+  return entropy;
+}
+
+double RFIDCriterion::computeKLTopologicalMap(
+    vector<bayesian_topological_localisation::DistributionStamped>
+        *prior_distributions,
+    vector<bayesian_topological_localisation::DistributionStamped>
+        *posterior_distributions) {
+  double prior, posterior = 0.0;
+  double tmp_KL = 0.0;
+  double KL_div = 0.0;
+  for (int tag_index = 0; tag_index < posterior_distributions->size();
+       tag_index++) {
+    for (int node_index = 0;
+         node_index < posterior_distributions->at(tag_index).values.size();
+         node_index++) {
+      prior = prior_distributions->at(tag_index).values[node_index];
+      posterior = posterior_distributions->at(tag_index).values[node_index];
+      tmp_KL = posterior * log(posterior / prior);
+      if (isnan(tmp_KL) or isinf(tmp_KL))
+        tmp_KL = 0;
+      KL_div += tmp_KL;
+    }
+  }
+  return KL_div;
+}
+
+double RFIDCriterion::computeEntropy(double likelihood) {
+  double neg_likelihood, log2_likelihood, log2_neg_likelihood = 0.0;
+  if (isnan(likelihood))
+    likelihood = 0.0;
+  neg_likelihood = 1 - likelihood;
+  if (isnan(neg_likelihood))
+    neg_likelihood = 0.0;
+
+  log2_likelihood = log2(likelihood);
+  if (isinf(log2_likelihood))
+    log2_likelihood = 0.0;
+  log2_neg_likelihood = log2(neg_likelihood);
+  if (isinf(log2_neg_likelihood))
+    log2_neg_likelihood = 0.0;
+
+  return -likelihood * log2_likelihood - neg_likelihood * log2_neg_likelihood;
 }
