@@ -131,7 +131,7 @@ ros::ServiceClient pf_client, pf_stateless_client;
 ros::ServiceClient gazebo_model_state_client;
 vector<ros::ServiceClient> pf_likelihoodClient_list, pf_stateless_likelihoodClient_list;
 vector<bayesian_topological_localisation::DistributionStamped> stateless_belief_history;
-vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> mapping_time_belief;
+vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;

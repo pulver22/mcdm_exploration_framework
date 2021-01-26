@@ -47,7 +47,10 @@
 #include <gazebo_msgs/GetModelState.h>
 #include <gazebo_msgs/GetModelStateRequest.h>
 #include <visualization_msgs/Marker.h>
+#include <ctime>
+#include <iomanip>
 #include <experimental/filesystem> // or #include <filesystem> for C++17 and up
+#include "rasberry_people_perception/NoisyGPS.h"
 using namespace std;
 using namespace dummy;
 
@@ -119,6 +122,7 @@ std::string stats_topic_name;
 std::string topological_map_topic_name;
 std::string localization_srv_name;
 std::string pf_srv_name, pf_stateless_srv_name;
+std::string gps_srv_name;
 std::string pf_topic_name;
 
 
@@ -129,10 +133,11 @@ ros::ServiceClient topo_path_client;
 ros::ServiceClient belief_map_client;
 ros::ServiceClient localization_client;
 ros::ServiceClient pf_client, pf_stateless_client;
+ros::ServiceClient gps_client;
 ros::ServiceClient gazebo_model_state_client;
-vector<ros::ServiceClient> pf_likelihoodClient_list, pf_stateless_likelihoodClient_list;
+vector<ros::ServiceClient> pf_likelihoodClient_list, pf_stateless_likelihoodClient_list, gps_client_list;
 vector<bayesian_topological_localisation::DistributionStamped> stateless_belief_history;
-vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> mapping_time_belief;
+vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;
@@ -209,6 +214,7 @@ int main(int argc, char **argv) {
   bayesian_topological_localisation::LocaliseAgent localization_srv;
   bayesian_topological_localisation::UpdateLikelihoodObservation prediction_srv;
   bayesian_topological_localisation::Predict prediction_stateless_srv;
+  rasberry_people_perception::NoisyGPS gps_srv;
 
   // Create srv request for gazebo model
   gazebo_msgs::GetModelState model_state_srv;
@@ -268,26 +274,24 @@ int main(int argc, char **argv) {
       norm_w_sensing_time = w_sensing_time / sum_w;
       norm_w_battery_status = w_battery_status / sum_w;
       norm_w_rfid_gain = w_rfid_gain / sum_w;
-      std::string out_log = (argv[11]);
-      std::string coverage_log = (argv[12]);
-      bool use_mcdm = bool(atoi(argv[13]));
-      int num_tags = atoi(argv[14]);
-      std::string log_dest_folder = (argv[15]);
+      bool use_mcdm = bool(atoi(argv[11]));
+      int num_tags = atoi(argv[12]);
+      std::string log_dest_folder = (argv[13]);
       auto t = std::time(nullptr);
       auto tm = *std::localtime(&t);
       std::ostringstream oss;
-      oss << std::put_time(&tm, "%d-%m-%Y%H-%M-%S");
+      oss << std::put_time(&tm, "%d-%m-%Y%H-%M-%S/");
       auto str = oss.str();
       log_dest_folder += str;
-      // boost::filesystem::path dstFolder = log_dest_folder + str;
       cout << "Creating folder: " << log_dest_folder << endl;
-      // boost::filesystem::create_directory(dstFolder);
       fs::create_directories(log_dest_folder);
       cout << "Creation completed! " << endl;
-      exit(0);
       std::string pf_log = log_dest_folder + "pf_tag_pose_";
       std::string gt_log = log_dest_folder + "gt_tag_pose_";
+      std::string gps_log = log_dest_folder + "gps_tag_pose_";
       std::string pf_vs_gt_log = log_dest_folder + "pf_vs_gt_";
+      std::string coverage_log = log_dest_folder + "coverage_mcdm.csv";
+      std::string out_log = log_dest_folder + "mcdm_result.csv";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -407,11 +411,14 @@ int main(int argc, char **argv) {
               nh.serviceClient<bayesian_topological_localisation::
                                     UpdateLikelihoodObservation>(
                   pf_srv_name);
+          gps_srv_name = "/tag_" + to_string(tag_id) + "/gps_pose";
+          gps_client= nh.serviceClient<rasberry_people_perception::NoisyGPS>(gps_srv_name);
           pf_stateless_srv_name = "/tag_" + to_string(tag_id) + "/predict_stateless";
           pf_stateless_client = nh.serviceClient<bayesian_topological_localisation::
                                     Predict>(
                   pf_stateless_srv_name);
           pf_likelihoodClient_list.push_back(pf_client);
+          gps_client_list.push_back(gps_client);
           pf_stateless_likelihoodClient_list.push_back(pf_stateless_client);
         }else
             ROS_ERROR("[ParticleFilter] Error while initializing for "
@@ -556,9 +563,10 @@ int main(int argc, char **argv) {
                     content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
                     utils.filePutContents(pf_log + to_string(index) + ".csv", content, true);
                     // Save noisy gps location on log
-                    // cout << "GPS:" << gps_tag_pose.position.x << "," << gps_tag_pose.position.y << endl;
-                    // content = to_string(gps_tag_pose.position.x) + "," + to_string(gps_tag_pose.position.y) + "\n";
-                    // utils.filePutContents("/home/pulver/Desktop/topoNBS/gps_tag_pose_" + to_string(index) + ".csv", content, true);
+                    if (gps_client_list.at(index - 1).call(gps_srv)){
+                      content = to_string(gps_srv.response.p.x) + "," + to_string(gps_srv.response.p.y) + "\n";
+                      utils.filePutContents(gps_log + to_string(index) + ".csv", content, true);
+                    }
                     // Obtain ground truth position from Gazebo's engine
                     model_state_srv.request.model_name = "tag_" + *it;
                     model_state_srv.request.relative_entity_name = "map";
@@ -922,8 +930,6 @@ void loadROSParams(){
   private_node_handle.param("topological_map_topic_name", topological_map_topic_name, std::string("/topological_map"));
   private_node_handle.param("localization_srv_name", localization_srv_name, std::string("/bayesian_topological_localisation/localise_agent"));
   private_node_handle.param("pf_topic_name", pf_topic_name, std::string("/prob_dist_obs"));
-  // private_node_handle.param("pf_srv_name", pf_srv_name, std::string("/update_likelihood_obs"));
-  // private_node_handle.param("pf_stateless_srv_name", pf_stateless_srv_name, std::string("/predict_stateless"));
   private_node_handle.param("gazebo_model_state_srv_name", gazebo_model_state_srv_name, std::string("/gazebo/get_model_state"));
 
 }
@@ -964,7 +970,6 @@ ros::NodeHandle createROSComms(){
   belief_map_client = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
-  // pf_client = nh.serviceClient<bayesian_topological_localisation::UpdateLikelihoodObservation>(pf_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
 
   // create publishers

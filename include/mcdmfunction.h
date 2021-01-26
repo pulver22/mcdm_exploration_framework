@@ -20,14 +20,14 @@ public:
   ~MCDMFunction();
   void evaluateFrontier(Pose &p, dummy::Map *map,
                         ros::ServiceClient *path_client,
-                        vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
+                        vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
                         double *batteryTime,
                         GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
                         vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
   EvaluationRecords *evaluateFrontiers(const std::list<Pose> *frontiers,
                                        dummy::Map *map, double threshold,
                                        ros::ServiceClient *path_client,
-                                       vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
+                                       vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
                                        double *batteryTime,
                                        GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
                                        vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);

@@ -9,6 +9,7 @@
   <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
   <maintainer email="pulver22@gmail.com">Riccardo Polvara</maintainer>
   <maintainer email="mfernandezcarmona@lincoln.ac.uk">Manuel Fernandez Carmona</maintainer>
+  <maintainer email="fdelduchetto@lincoln.ac.uk">Francesco Del Duchetto</maintainer>
 
 
   <!-- One license tag required, multiple allowed, one license per tag -->
@@ -48,6 +49,9 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>rfid_node</build_depend>
   <build_depend>rfid_grid_map</build_depend>
+  <build_depend>rasberry_people_perception</build_depend>
+  <build_depend>topological_navigation</build_depend>
+  <build_depend>bayesian_topological_localisation</build_depend>
   <!-- mfc: we will record using stats_pub
   <build_depend>record_ros</build_depend> -->
   <run_depend>geometry_msgs</run_depend>
@@ -57,6 +61,9 @@
   <run_depend>move_base_msgs</run_depend>
   <run_depend>rfid_node</run_depend>
   <run_depend>rfid_grid_map</run_depend>
+  <run_depend>rasberry_people_perception</run_depend>
+  <run_depend>topological_navigation</run_depend>
+  <run_depend>bayesian_topological_localisation</run_depend>
   <!-- <run_depend>record_ros</run_depend> -->
 
 

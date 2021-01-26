@@ -17,7 +17,7 @@ using namespace dummy;
 using namespace grid_map;
 
 RFIDCriterion::RFIDCriterion(double weight)
-    : Criterion(RFID_READING, weight, false) {
+    : Criterion(RFID_READING, weight, true) {
   // minValue = 0.0;
 }
 
@@ -25,9 +25,7 @@ RFIDCriterion::~RFIDCriterion() {}
 
 double RFIDCriterion::evaluate(
     Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
-    vector<unordered_map<
-        float, bayesian_topological_localisation::DistributionStamped>>
-        *mapping_time_belief,
+    vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
     double *batteryTime, GridMap *belief_map,
     unordered_map<string, string> *mappingWaypoints,
     vector<bayesian_topological_localisation::DistributionStamped>
@@ -44,15 +42,7 @@ double RFIDCriterion::evaluate(
   time = std::nearbyint(time * 0.5f) * 2.0f;
   time = std::min(time, 50.0);
   vector<bayesian_topological_localisation::DistributionStamped>
-      posterior_distributions;
-  for (int tag_index = 0; tag_index < mapping_time_belief->size();
-       tag_index++) {
-    auto search = mapping_time_belief->at(tag_index).find(time);
-    if (search != mapping_time_belief->at(tag_index).end()) {
-      posterior_distributions.push_back(search->second);
-    }
-    // else cout << "Not found time = " << time << endl;
-  }
+      posterior_distributions = this->findPosterior(time, mapping_time_belief);
 
   assert( posterior_distributions.size() == prior_distributions->size());
 
@@ -62,7 +52,7 @@ double RFIDCriterion::evaluate(
       prior_distributions);
   // 2) Compute entropy on the entire map
   // this->RFIDInfoGain = evaluateEntropyTopologicalMap(&posterior_distributions);
-  cout << "Entropy node: " << this->RFIDInfoGain << endl;
+  // cout << "Entropy node: " << this->RFIDInfoGain << endl;
   // 3) Compute KL-divergence between prior and posterior distribution
   // this->RFIDInfoGain = computeKLTopologicalMap(&prior_distribution, &posterior_distribution);
   
@@ -244,4 +234,20 @@ double RFIDCriterion::computeEntropy(double likelihood) {
     log2_neg_likelihood = 0.0;
 
   return -likelihood * log2_likelihood - neg_likelihood * log2_neg_likelihood;
+}
+
+vector<bayesian_topological_localisation::DistributionStamped> RFIDCriterion::findPosterior(
+    double time, vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief) {
+
+  vector<bayesian_topological_localisation::DistributionStamped> posterior_distributions;
+  for (int tag_index = 0; tag_index < mapping_time_belief->size();
+       tag_index++) {
+    auto search = mapping_time_belief->at(tag_index).find(time);
+    if (search != mapping_time_belief->at(tag_index).end()) {
+      posterior_distributions.push_back(search->second.second);
+    }
+    // else cout << "Not found time = " << time << endl;
+  }
+
+  return posterior_distributions;
 }

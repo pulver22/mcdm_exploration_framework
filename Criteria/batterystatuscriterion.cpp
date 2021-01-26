@@ -26,7 +26,7 @@ BatteryStatusCriterion::BatteryStatusCriterion(double weight)
 BatteryStatusCriterion::~BatteryStatusCriterion() {}
 
 double BatteryStatusCriterion::evaluate(
-    Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
+    Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
     double *batteryTime, GridMap *belief_map,
     unordered_map<string, string> *mappingWaypoints,
     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {

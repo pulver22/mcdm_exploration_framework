@@ -13,7 +13,7 @@ class RFIDCriterion : public Criterion {
 public:
   RFIDCriterion(double weight);
   virtual ~RFIDCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
+  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
 
 private:
   void normalize(long minSensedX, int number);
@@ -58,6 +58,8 @@ private:
   double evaluateEntropyTopologicalMap(vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
   double computeKLTopologicalMap(vector<bayesian_topological_localisation::DistributionStamped> *prior_distributions, vector<bayesian_topological_localisation::DistributionStamped> *posterior_distributions);
   double computeEntropy(double likelihood);
+  vector<bayesian_topological_localisation::DistributionStamped> findPosterior(
+    double time, vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief);
 protected:
   double RFIDInfoGain = 0.0;
   double tmp_belief = 0.0;

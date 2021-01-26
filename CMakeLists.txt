@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   strands_navigation_msgs
   topological_navigation
   bayesian_topological_localisation
+  rasberry_people_perception
 
 )
 

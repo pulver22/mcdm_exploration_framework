@@ -30,9 +30,7 @@
                                            $(arg w_travel_distance) 
                                            $(arg w_sensing_time) 
                                            $(arg w_battery_status) 
-                                           $(arg w_rfid_gain) 
-                                           $(arg dest_folder)mcdm_result.csv 
-                                           $(arg dest_folder)coverage_mcdm.csv
+                                           $(arg w_rfid_gain)
                                            $(arg use_mcdm) 
                                            $(arg num_tags)
                                            $(arg dest_folder)"/>

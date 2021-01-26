@@ -130,7 +130,7 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
 // the evaluate method provided by Criterion class)
 void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
                                     ros::ServiceClient *path_client,
-                                    vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief,
+                                    vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
                                     double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
                                     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
   for (int i = 0; i < activeCriteria.size(); i++) {
@@ -142,7 +142,7 @@ void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
 // Scan a list of candidate positions,then apply the Choquet fuzzy algorithm
 EvaluationRecords *MCDMFunction::evaluateFrontiers(
     const std::list<Pose> *frontiers, dummy::Map *map, double threshold,
-    ros::ServiceClient *path_client, vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> *mapping_time_belief, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
+    ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
     vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
 
   // Create the EvaluationRecords
