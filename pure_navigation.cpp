@@ -47,9 +47,11 @@
 #include <gazebo_msgs/GetModelState.h>
 #include <gazebo_msgs/GetModelStateRequest.h>
 #include <visualization_msgs/Marker.h>
+#include <experimental/filesystem> // or #include <filesystem> for C++17 and up
 using namespace std;
 using namespace dummy;
 
+namespace fs = std::experimental::filesystem;
 // ROS varies
 bool move(float x, float y, float orientation, float time_travel,
           list<Pose> *tabuList,
@@ -270,6 +272,22 @@ int main(int argc, char **argv) {
       std::string coverage_log = (argv[12]);
       bool use_mcdm = bool(atoi(argv[13]));
       int num_tags = atoi(argv[14]);
+      std::string log_dest_folder = (argv[15]);
+      auto t = std::time(nullptr);
+      auto tm = *std::localtime(&t);
+      std::ostringstream oss;
+      oss << std::put_time(&tm, "%d-%m-%Y%H-%M-%S");
+      auto str = oss.str();
+      log_dest_folder += str;
+      // boost::filesystem::path dstFolder = log_dest_folder + str;
+      cout << "Creating folder: " << log_dest_folder << endl;
+      // boost::filesystem::create_directory(dstFolder);
+      fs::create_directories(log_dest_folder);
+      cout << "Creation completed! " << endl;
+      exit(0);
+      std::string pf_log = log_dest_folder + "pf_tag_pose_";
+      std::string gt_log = log_dest_folder + "gt_tag_pose_";
+      std::string pf_vs_gt_log = log_dest_folder + "pf_vs_gt_";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -536,7 +554,7 @@ int main(int argc, char **argv) {
                     pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index - 1), &topological_map);
                     // Save pf prediction (expressed as metric position) on log
                     content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
-                    utils.filePutContents("/home/pulver/Desktop/topoNBS/pf_tag_pose_" + to_string(index) + ".csv", content, true);
+                    utils.filePutContents(pf_log + to_string(index) + ".csv", content, true);
                     // Save noisy gps location on log
                     // cout << "GPS:" << gps_tag_pose.position.x << "," << gps_tag_pose.position.y << endl;
                     // content = to_string(gps_tag_pose.position.x) + "," + to_string(gps_tag_pose.position.y) + "\n";
@@ -548,7 +566,7 @@ int main(int argc, char **argv) {
                       gt_tag_pose = model_state_srv.response.pose;
                       // Save ground truth on log
                       content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
-                      utils.filePutContents("/home/pulver/Desktop/topoNBS/gt_tag_pose_" + to_string(index) + ".csv", content, true);
+                      utils.filePutContents(gt_log + to_string(index) + ".csv", content, true);
                       // Look for closer waypoint to current pose
                       // and compare it to the PF prediction
                       string closerWaypoint = utils.getCloserWaypoint(&gt_tag_pose, &topological_map);
@@ -559,7 +577,7 @@ int main(int argc, char **argv) {
                           current_tag_waypoint_prediction.at(index - 1) + "," +
                           closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
                       cout << "Prediction VS GT: " << content << endl;
-                      utils.filePutContents("/home/pulver/Desktop/topoNBS/PF_prediction_" + to_string(index) + ".csv", content, true);
+                      utils.filePutContents(pf_vs_gt_log + to_string(index) + ".csv", content, true);
                     }
                     if (belief_topomaps.size() < index) {
                       belief_topomaps.push_back(
