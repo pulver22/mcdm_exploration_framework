@@ -100,7 +100,7 @@ void Utilities::pushInitialPositions(
     double threshold, string actualPose,
     vector<pair<string, list<Pose>>> *graph2, ros::ServiceClient *path_client,
     vector<unordered_map<
-        float, bayesian_topological_localisation::DistributionStamped>>
+        float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>>
         *mapping_time_belief,
     MCDMFunction *function, double *batteryTime, GridMap *belief_map,
     unordered_map<string, string> *mappingWaypoints,
@@ -652,7 +652,7 @@ Pose Utilities::selectFreePoseInLocalCostmap(
     Pose target, list<Pose> *nearCandidates, dummy::Map *map,
     MCDMFunction *function, double threshold, ros::ServiceClient *path_client,
     vector<unordered_map<
-        float, bayesian_topological_localisation::DistributionStamped>>
+        float, std::pair< string, bayesian_topological_localisation::DistributionStamped>>>
         *mapping_time_belief,
     std::list<std::pair<float, float>> *posToEsclude, EvaluationRecords *record,
     std::string move_base_local_costmap_topic_name, double *batteryTime,
@@ -1182,12 +1182,12 @@ geometry_msgs::Pose Utilities::getWaypointPoseFromName(
   cout << "[utils.cpp@getWaypointPoseFromName] Waypoint NOT FOUND!" << endl;
 }
 
-vector<unordered_map<float,
-                     bayesian_topological_localisation::DistributionStamped>>
+vector<unordered_map<float,std::pair<string,
+                     bayesian_topological_localisation::DistributionStamped>>>
 Utilities::getStatelessRFIDBelief(
     double secs_from_now, bool return_history,
     vector<ros::ServiceClient> *pf_stateless_likelihoodClient_list) {
-  vector<unordered_map<float, bayesian_topological_localisation::DistributionStamped>> mapping_time_belief;
+  vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief;
   bayesian_topological_localisation::Predict prediction_stateless_srv;
   prediction_stateless_srv.request.secs_from_now = secs_from_now;
   prediction_stateless_srv.request.return_history = return_history;
@@ -1198,16 +1198,16 @@ Utilities::getStatelessRFIDBelief(
       // cout << "Stateless Srv replied" << endl;
       vector<double> timestamp =
           prediction_stateless_srv.response.secs_from_now;
+      vector<string> estimated_node =
+          prediction_stateless_srv.response.estimated_node;
       vector<bayesian_topological_localisation::DistributionStamped> prob_dist =
           prediction_stateless_srv.response.prob_dist;
       mapping_time_belief.clear(); // Remove old belief
-      unordered_map<float,
-                    bayesian_topological_localisation::DistributionStamped>
-          map;
+      unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>> map;
       for (int ts_counter = 0; ts_counter < timestamp.size(); ts_counter++) {
         // cout << ts_counter << endl;
         map.emplace(
-            std::make_pair(timestamp[ts_counter], prob_dist[ts_counter]));
+            std::make_pair(timestamp[ts_counter], std::make_pair(estimated_node[ts_counter], prob_dist[ts_counter])));
       }
       mapping_time_belief.push_back(map);
 
