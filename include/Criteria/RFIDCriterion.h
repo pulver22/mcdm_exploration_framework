@@ -8,18 +8,26 @@
 #include "map.h"
 #include "pose.h"
 #include <vector>
+#include "utils.h"
 
 class RFIDCriterion : public Criterion {
 public:
   RFIDCriterion(double weight);
   virtual ~RFIDCriterion();
-  double evaluate(Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
+  double evaluate(
+      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+      vector<unordered_map<float,
+                           std::pair<string, bayesian_topological_localisation::
+                                                 DistributionStamped>>>
+          *mapping_time_belief,
+      double *batteryTime, GridMap *belief_map,
+      unordered_map<string, string> *mappingWaypoints, prediction_tools *tools);
 
 private:
   void normalize(long minSensedX, int number);
   int *intersect(int p1x, int p1y, int p2x, int p2y, Pose &p);
 
-   /**
+  /**
    * We sum the entropy for all cells available in a given submap (5x5) around
    * the robot for all the belief maps
    *
@@ -53,17 +61,40 @@ private:
   std::string getTagLayerName(int tag_num);
 
   double evaluateEntropyTopologicalNode(
-    Pose p, unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
-  double evaluateEntropyTopologicalMap(vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
-  double computeKLTopologicalMap(vector<bayesian_topological_localisation::DistributionStamped> *prior_distributions, vector<bayesian_topological_localisation::DistributionStamped> *posterior_distributions);
+      Pose p, unordered_map<string, string> *mappingWaypoints,
+      vector<bayesian_topological_localisation::DistributionStamped>
+          *belief_topomaps);
+  double evaluateEntropyTopologicalMap(
+      vector<bayesian_topological_localisation::DistributionStamped>
+          *belief_topomaps);
+  double computeKLTopologicalMap(
+      vector<bayesian_topological_localisation::DistributionStamped>
+          *prior_distributions,
+      vector<bayesian_topological_localisation::DistributionStamped>
+          *posterior_distributions);
   double computeEntropy(double likelihood);
-  vector<bayesian_topological_localisation::DistributionStamped> findPosterior(
-    double time, vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief);
+  vector<
+      std::pair<string, bayesian_topological_localisation::DistributionStamped>>
+  findPosterior(double time,
+                vector<unordered_map<
+                    float, std::pair<string, bayesian_topological_localisation::
+                                                 DistributionStamped>>>
+                    *mapping_time_belief);
+
+  vector<bayesian_topological_localisation::DistributionStamped>
+  getRFIDLikelihood(Pose p, prediction_tools *tools, unordered_map<string, string> *mappingWaypoints,
+      vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> *pf_update_distributions);
+
+  vector<bayesian_topological_localisation::DistributionStamped>
+      mergePriorLikelihood(prediction_tools *tools, 
+          vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> *pf_update_distributions,
+          vector<bayesian_topological_localisation::DistributionStamped> *rfid_reading_likelihoods);
+
 protected:
   double RFIDInfoGain = 0.0;
   double tmp_belief = 0.0;
-  float _free_space_val = 1.0;  // or 1.0
+  float _free_space_val = 1.0; // or 1.0
+  Utilities _utils;
 };
 
 #endif // RFIDCRITERION_H

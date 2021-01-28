@@ -32,8 +32,7 @@ double TravelDistanceCriterion::evaluate(
     Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
     vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime,
     GridMap *belief_map, unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped>
-        *belief_topomaps) {
+    prediction_tools *tools) {
   // cout << "travel " << endl;
   // Astar astar;
   // Pose robotPosition = map->getRobotPosition();
@@ -100,7 +99,7 @@ double TravelDistanceCriterion::evaluate(
 
   double path_len = Criterion::computeTopologicalDistance(
       p, map, path_client, batteryTime, belief_map,
-      mappingWaypoints, belief_topomaps);
+      mappingWaypoints, &(tools->prior_distributions));
   Criterion::insertEvaluation(p, path_len);
   return path_len;
 }

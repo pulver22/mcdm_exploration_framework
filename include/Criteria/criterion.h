@@ -17,57 +17,75 @@
 
 #ifndef CRITERION_H
 #define CRITERION_H
-#include <unordered_map>
-#include <string>
-#include "pose.h"
 #include "map.h"
+#include "pose.h"
+#include <string>
+#include <unordered_map>
 // #include "RadarModel.hpp"
-#include "constants.h"
-#include "bayesian_topological_localisation/DistributionStamped.h"
 #include "PathFinding/astar.h"
+#include "bayesian_topological_localisation/DistributionStamped.h"
+#include "constants.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "nav_msgs/GetPlan.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
 
-//using namespace import_map;
+// using namespace import_map;
 using namespace std;
 using namespace dummy;
-class Criterion
-{
-    public:
-	//Constructor and destructor
-	Criterion();
-	Criterion( string name, double weight,bool highGood);
-	~Criterion();
+class Criterion {
+public:
+  // Constructor and destructor
+  Criterion();
+  Criterion(string name, double weight, bool highGood);
+  ~Criterion();
 
-	//Other methods
-	virtual double evaluate( Pose &p, dummy::Map *map, ros::ServiceClient* path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,  double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {};
-	double getEvaluation(Pose &p) const;
-	void insertEvaluation(Pose &p, double value);
-	void clean();
-	void normalize();
-	double computeMetricDistance(Pose &p, dummy::Map *map, ros::ServiceClient* path_client,  double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
-	double computeTopologicalDistance(Pose &p, dummy::Map *map, ros::ServiceClient* path_client,  double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps);
-	double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
+  // Other methods
+  virtual double evaluate(
+      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+      vector<unordered_map<float,
+                           std::pair<string, bayesian_topological_localisation::
+                                                 DistributionStamped>>>
+          *mapping_time_belief,
+      double *batteryTime, GridMap *belief_map,
+      unordered_map<string, string> *mappingWaypoints,
+      prediction_tools *tools){};
+  double getEvaluation(Pose &p) const;
+  void insertEvaluation(Pose &p, double value);
+  void clean();
+  void normalize();
+  double computeMetricDistance(
+      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+      double *batteryTime, GridMap *belief_map,
+      unordered_map<string, string> *mappingWaypoints,
+      vector<bayesian_topological_localisation::DistributionStamped>
+          *belief_topomaps);
+  double computeTopologicalDistance(
+      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+      double *batteryTime, GridMap *belief_map,
+      unordered_map<string, string> *mappingWaypoints,
+      vector<bayesian_topological_localisation::DistributionStamped>
+          *belief_topomaps);
+  double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
 
-	//Setters and getters
-	string getName() ;
-	double getWeight() ;
-	void setName( string name);
-	void setWeight(double weight);
-    private:
-	void normalizeHighGood();
-	void normalizeLowGood();
-	string getEncodedKey(Pose &p);
+  // Setters and getters
+  string getName();
+  double getWeight();
+  void setName(string name);
+  void setWeight(double weight);
 
-  protected:
-	string name;
-	double weight = 0.0;
-	bool highGood;
-	double maxValue, minValue;
+private:
+  void normalizeHighGood();
+  void normalizeLowGood();
+  string getEncodedKey(Pose &p);
 
-  private:
-	unordered_map<string , double> evaluation;
+protected:
+  string name;
+  double weight = 0.0;
+  bool highGood;
+  double maxValue, minValue;
+
+private:
+  unordered_map<string, double> evaluation;
 };
 
 #endif // CRITERION_H

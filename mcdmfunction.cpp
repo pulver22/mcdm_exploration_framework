@@ -132,10 +132,10 @@ void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
                                     ros::ServiceClient *path_client,
                                     vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
                                     double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
-                                    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
+                                    prediction_tools *tools) {
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
-    c->evaluate(p, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
+    c->evaluate(p, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools);
   }
 }
 
@@ -143,7 +143,7 @@ void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
 EvaluationRecords *MCDMFunction::evaluateFrontiers(
     const std::list<Pose> *frontiers, dummy::Map *map, double threshold,
     ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
-    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
+    prediction_tools *tools) {
 
   // Create the EvaluationRecords
   EvaluationRecords *toRet = new EvaluationRecords();
@@ -168,7 +168,7 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(
     list<Pose>::const_iterator it2;
     for (it2 = frontiers->begin(); it2 != frontiers->end(); it2++) {
       f = *it2;
-      evaluateFrontier(f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, belief_topomaps);
+      evaluateFrontier(f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools);
     }
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();

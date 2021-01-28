@@ -29,7 +29,7 @@ double BatteryStatusCriterion::evaluate(
     Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
     double *batteryTime, GridMap *belief_map,
     unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped> *belief_topomaps) {
+    prediction_tools *tools) {
   // Pose robotPosition = map->getRobotPosition();
   // nav_msgs::GetPlan path;
   // double path_len = 0;
@@ -71,7 +71,7 @@ double BatteryStatusCriterion::evaluate(
 
   double path_len = Criterion::computeMetricDistance(
         p, map, path_client, batteryTime, belief_map,
-      mappingWaypoints, belief_topomaps);
+      mappingWaypoints, &(tools->prior_distributions));
   translTime = path_len / TRANSL_SPEED;
   remainingBattery = *batteryTime - translTime;
   remainingBattery = max(remainingBattery, 0.0);

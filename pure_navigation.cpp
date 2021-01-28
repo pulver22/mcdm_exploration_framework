@@ -4,6 +4,7 @@
 #include "mcdmfunction.h"
 #include "newray.h"
 #include "utils.h"
+#include "constants.h"
 #include "radio_models/propagationModel.cpp"
 #include <algorithm>
 #include <iostream>
@@ -38,11 +39,13 @@
 // #include "record_ros/String_cmd.h"
 // mfc ...
 #include "rfid_grid_map/GetBeliefMaps.h"
+#include "rfid_grid_map/GetFakeBeliefMaps.h"
 #include "strands_navigation_msgs/TopologicalMap.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
 #include "bayesian_topological_localisation/LocaliseAgent.h"
 #include "bayesian_topological_localisation/DistributionStamped.h"
 #include "bayesian_topological_localisation/UpdateLikelihoodObservation.h"
+#include "bayesian_topological_localisation/UpdatePriorLikelihoodObservation.h"
 #include "bayesian_topological_localisation/Predict.h"
 #include <gazebo_msgs/GetModelState.h>
 #include <gazebo_msgs/GetModelStateRequest.h>
@@ -138,6 +141,7 @@ ros::ServiceClient gazebo_model_state_client;
 vector<ros::ServiceClient> pf_likelihoodClient_list, pf_stateless_likelihoodClient_list, gps_client_list;
 vector<bayesian_topological_localisation::DistributionStamped> stateless_belief_history;
 vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief;
+prediction_tools prediction_tools;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;
@@ -315,6 +319,7 @@ int main(int argc, char **argv) {
       unordered_map<string, string> mappingWaypoints;
       utils.convertStrandTopoMapToListPose(
           &topological_map, &topoMap, initRange, initFov, &mappingWaypoints);
+      prediction_tools.topoMap = topoMap;
       ROS_DEBUG("TopologicalMap created");
 
       map.plotPathPlanningGridColor("/tmp/pathplanning_start.png");
@@ -418,6 +423,18 @@ int main(int argc, char **argv) {
                                     Predict>(
                   pf_stateless_srv_name);
           pf_likelihoodClient_list.push_back(pf_client);
+          // Create srv client for stateless update
+          pf_srv_name = "/tag_" + to_string(tag_id) + "/update_stateless";
+          pf_client =
+              nh.serviceClient<bayesian_topological_localisation::
+                                    UpdatePriorLikelihoodObservation>(
+                  pf_srv_name);
+          prediction_tools.pf_stateless_update_srv_list.push_back(pf_client);
+          // Create srv client for fake likelihood readings
+          pf_srv_name = "/tag_" + to_string(tag_id) + "/get_fake_rfid_belief";
+          pf_client =
+              nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(pf_srv_name);
+          prediction_tools.radarmodel_fake_reading_srv_list.push_back(pf_client);
           gps_client_list.push_back(gps_client);
           pf_stateless_likelihoodClient_list.push_back(pf_stateless_client);
         }else
@@ -593,6 +610,8 @@ int main(int argc, char **argv) {
                     } else
                       belief_topomaps.at(index - 1) =
                           prediction_srv.response.current_prob_dist;
+
+                      prediction_tools.prior_distributions = belief_topomaps;
                   } else
                     ROS_ERROR("PF node did not reply!\n");               
                 }
@@ -635,7 +654,7 @@ int main(int argc, char **argv) {
             utils.pushInitialPositions(
                 map, x, y, orientation, range, FOV, threshold, actualPose,
                 &graph2, &topo_path_client, &mapping_time_belief,  &function, &batteryTime,
-                &belief_map, &mappingWaypoints, &belief_topomaps);
+                &belief_map, &mappingWaypoints, &prediction_tools);
           }
 
           list<Pose> frontiers = topoMap;
@@ -660,7 +679,7 @@ int main(int argc, char **argv) {
             mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
             record = *function.evaluateFrontiers(
                 &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
-                &belief_map, &mappingWaypoints, &belief_topomaps);
+                &belief_map, &mappingWaypoints, &prediction_tools);
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with
             // cleanPossibleDestination2 Clean all the possible destination from

@@ -14,13 +14,11 @@
 
 const int MAX_TABULIST_COUNT = 0;
 
-struct RFID_tools {
-  // RadarModel *rm;
-  std::vector<std::pair<double,double>> tags_coord;
-  double freq;
-  double txtPower;
-  double sensitivity;
-  std::vector<RFIDGridmap>* RFID_maps_list;
+struct prediction_tools {
+  vector<ros::ServiceClient> pf_stateless_update_srv_list;
+  vector<ros::ServiceClient> radarmodel_fake_reading_srv_list;
+  vector<bayesian_topological_localisation::DistributionStamped> prior_distributions;
+  list<Pose> topoMap;
 };
 
 

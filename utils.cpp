@@ -3,10 +3,10 @@
 //
 
 #include "include/utils.h"
+#include "bayesian_topological_localisation/Predict.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
 #include "topological_navigation/GotoNodeAction.h"
 #include "topological_navigation/GotoNodeActionGoal.h"
-#include "bayesian_topological_localisation/Predict.h"
 
 Utilities::Utilities(){};
 Utilities::~Utilities(){};
@@ -99,13 +99,12 @@ void Utilities::pushInitialPositions(
     dummy::Map map, float x, float y, float orientation, int range, int FOV,
     double threshold, string actualPose,
     vector<pair<string, list<Pose>>> *graph2, ros::ServiceClient *path_client,
-    vector<unordered_map<
-        float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>>
+    vector<unordered_map<float,
+                         std::pair<string, bayesian_topological_localisation::
+                                               DistributionStamped>>>
         *mapping_time_belief,
     MCDMFunction *function, double *batteryTime, GridMap *belief_map,
-    unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped>
-        *belief_topomaps) {
+    unordered_map<string, string> *mappingWaypoints, prediction_tools *tools) {
 
   map.findCandidatePositions(x, y, orientation, FOV, range);
   vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
@@ -124,7 +123,7 @@ void Utilities::pushInitialPositions(
   }
   EvaluationRecords *record = function->evaluateFrontiers(
       &frontiers, &map, threshold, path_client, mapping_time_belief,
-      batteryTime, belief_map, mappingWaypoints, belief_topomaps);
+      batteryTime, belief_map, mappingWaypoints, tools);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose>> pair = make_pair(actualPose, nearCandidates);
@@ -651,14 +650,14 @@ bool Utilities::freeInLocalCostmap(
 Pose Utilities::selectFreePoseInLocalCostmap(
     Pose target, list<Pose> *nearCandidates, dummy::Map *map,
     MCDMFunction *function, double threshold, ros::ServiceClient *path_client,
-    vector<unordered_map<
-        float, std::pair< string, bayesian_topological_localisation::DistributionStamped>>>
+    vector<unordered_map<float,
+                         std::pair<string, bayesian_topological_localisation::
+                                               DistributionStamped>>>
         *mapping_time_belief,
     std::list<std::pair<float, float>> *posToEsclude, EvaluationRecords *record,
     std::string move_base_local_costmap_topic_name, double *batteryTime,
     GridMap *belief_map, unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped>
-        *belief_topomaps) {
+    prediction_tools *tools) {
   bool isFreeFromObstacle = false;
   while (isFreeFromObstacle == false) {
     //    cout << "===> Checking against localmap!" << endl;
@@ -679,7 +678,7 @@ Pose Utilities::selectFreePoseInLocalCostmap(
     // Get the list of new candidate position with  associated evaluation
     record = function->evaluateFrontiers(
         nearCandidates, map, threshold, path_client, mapping_time_belief,
-        batteryTime, belief_map, mappingWaypoints, belief_topomaps);
+        batteryTime, belief_map, mappingWaypoints, tools);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
     //    cout << "     record size: " << record->size() << endl;
@@ -948,211 +947,6 @@ Utilities::convertGridBeliefMapToTopoMap(
   return topo_belief;
 }
 
-// bool Utilities::recordContainsCandidates(EvaluationRecords* record,
-//                               int* count, Pose* target, Pose* previous,
-//                               string* actualPose, list<Pose>* nearCandidates,
-//                               vector<pair<string,list<Pose>>>* graph2,
-//                               dummy::Map* map, MCDMFunction* function,
-//                               list<Pose>* tabuList, vector<string>* history,
-//                               int* encodedKeyValue, Astar* astar , long*
-//                               numConfiguration, double* totalAngle, double *
-//                               travelledDistance, int* numOfTurning , double*
-//                               scanAngle, bool* btMode, double* threshold,
-//                               double *batteryTime, bool
-//                               *explorationCompleted){
-//   // Set the previous pose equal to the current one (represented by
-//   // target)
-//   *previous = *target;
-//   // Select the new robot destination from the list of candidates
-//   std::pair<Pose, double> result = function->selectNewPose(record);
-//   *target = result.first;
-
-//   // cout << "Target selected: " << target.getX() << ", " << target.getY() <<
-//   endl; *target = utils->selectFreePoseInLocalCostmap(*target, topoMap, map,
-//   function, threshold,
-//       topo_path_client, posToEsclude, record,
-//       move_base_local_costmap_topic_name, &batteryTime, &belief_map,
-//       &mappingWaypoints, &belief_topomaps);
-//   targetPos = std::make_pair(int(target.getX()), int(target.getY()));
-
-//   // If the selected destination does not appear among the cells
-//   // already visited
-//   if ((!utils.containsPos(&posToEsclude, targetPos))) {
-//     //                                cout << "2" << endl;
-//     // Add it to the list of visited cells as first-view
-//     encodedKeyValue = 1;
-//     backTracking = false;
-
-//     success = utils.showMarkerandNavigate(target, &marker_pub, &path,
-//     &path_client,
-//                           &tabuList, &posToEsclude, min_robot_speed,
-//                           robot_radius, &batteryTime, &mappingWaypoints);
-//     cout << "Current batteryTime : " << batteryTime << "( " <<
-//     100*batteryTime/MAX_BATTERY << ")" << endl; if (success == true){
-// //                  cout << "[pure_navigation.cpp@main] travelledDistance = "
-// << travelledDistance << endl;
-//       utils.updatePathMetrics(
-//           &count, &target, &previous, actualPose, &topoMap,
-//           &graph2, &map, &function, &tabuList, &posToEsclude,
-//           &history, encodedKeyValue, &numConfiguration,
-//           &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
-//           &topo_path_client, backTracking, robot_radius);
-// //                  cout << "[pure_navigation.cpp@main] travelledDistance = "
-// << travelledDistance << endl;
-//     }
-
-//     scan = true;
-//   }
-//   // ...otherwise, if the selected cell has already been visited
-//   else {
-//     //                                cout << "3" << endl;
-//     // If the graph is empty, stop the navigation
-//     if (graph2.size() == 0) break;
-//     cout << "   topoMap: " << graph2.at(graph2.size() - 1).second.size() <<
-//     endl;
-//     // If there still are more candidates to explore from the last
-//     // pose in the graph
-//     if (graph2.at(graph2.size() - 1).second.size() != 0) {
-//       cout << "[BT1 - Tabulist]There are visible cells but the "
-//               "selected one is already "
-//               "(or cannot be) explored!Come back to second best "
-//               "position from the previous position"
-//             << endl;
-//       // Remove the current position from possible candidates
-//       topoMap = graph2.at(graph2.size() - 1).second;
-//       cout << "[main] candidateposition before: " << topoMap.size() << endl;
-//       utils.cleanPossibleDestination2(&topoMap, target);
-//       utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
-//       cout << "[main] candidateposition after: " << topoMap.size() << endl;
-//       // Get the list of new candidate position with associated
-//       // evaluation
-//       record = function.evaluateFrontiers(&topoMap, &map,
-//                                           threshold, &topo_path_client,
-//                                           &batteryTime, &belief_map,
-//                                           &mappingWaypoints,
-//                                           &belief_topomaps);
-//       // If there are candidate positions
-// //                  cout << "PoseToEsclude:" << endl;
-// //                  for (auto iter = posToEsclude.begin(); iter !=
-// posToEsclude.end(); iter++) {
-// //                      cout << " " << iter->first << "," << iter->second <<
-// endl;
-// //                  }
-// //                  cout << "Candidates:" << endl;
-// //                  for (auto iter = topoMap.begin(); iter != topoMap.end();
-// iter++) {
-// //                    cout << " " << iter->getX() << "," << iter->getY() <<
-// endl;
-// //                  }
-//       while (1) {
-//         if (record->size() != 0) {
-//           // Select the new pose of the robot
-//           std::pair<Pose, double> result = function.selectNewPose(record);
-//           target = result.first;
-//           targetPos = make_pair(int(target.getX()), int(target.getY()));
-//           cout << "   TargetPos: " << targetPos.first << ", " <<
-//           targetPos.second << endl;
-//           //                      if (!contains(tabuList, target)) {
-//           if (!utils.containsPos(&posToEsclude, targetPos)) {
-//             // If the new selected position is not in the Tabulist
-
-//             encodedKeyValue = 1;
-//             scan = false;
-//             // Set that we are now in backtracking
-//             cout << "[BT1] Break the while" << endl;
-//             break; // the while loop
-//           } else {
-//             // Remove the current position from possible candidates
-//             utils.cleanPossibleDestination2(&topoMap, target);
-//             utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
-//             // Get the list of new candidate position with
-//             // associated evaluation
-//             record = function.evaluateFrontiers(&topoMap, &map,
-//                                           threshold, &topo_path_client,
-//                                           &batteryTime, &belief_map,
-//                                           &mappingWaypoints,
-//                                           &belief_topomaps);
-//           }
-//         }
-//         // If there are no more candidate position from the last
-//         // position in the graph
-//         else {
-//           cout << "[BT2 - New]There are visible cells but the selected one is
-//           already "
-//                   "explored! Come back to best frontier from the two
-//                   positions back in the graph. Start selecting the new
-//                   record"
-//                 << endl;
-//           // Remove the last element (cell and associated candidate from
-//           // there) from the graph
-//           if (graph2.size() == 1) break;
-//           graph2.pop_back();
-//           // Select the new record from two position back in the graph
-//           topoMap = graph2.at(graph2.size() - 1).second;
-//           cout << "topoMap before: " <<topoMap.size() << endl;
-//           utils.cleanPossibleDestination2(&topoMap, target);
-//           utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
-//           cout << "topoMap after: " <<topoMap.size() << endl;
-//           record = function.evaluateFrontiers(&topoMap, &map,
-//                                           threshold, &topo_path_client,
-//                                           &batteryTime, &belief_map,
-//                                           &mappingWaypoints,
-//                                           &belief_topomaps);
-//           cout << "record: " << record->size() << endl;
-//         }
-//       }
-//       cout << "[BT1-2]Target: " << target.getX() << ", " << target.getY() <<
-//       endl; backTracking = true; previous = utils.getCurrentPose(resolution,
-//       costresolution, &map, initFov, initRange); success =
-//       utils.showMarkerandNavigate(target, &marker_pub, &path,
-//                             &path_client, &tabuList, &posToEsclude,
-//                             min_robot_speed, robot_radius, &batteryTime,
-//                             &mappingWaypoints);
-//       if (success == true)
-//       {
-// //                    cout << "[pure_navigation.cpp@main] travelledDistance =
-// " << travelledDistance << endl;
-//         utils.updatePathMetrics(
-//             &count, &target, &previous, actualPose, &topoMap,
-//             &graph2, &map, &function, &tabuList, &posToEsclude,
-//             &history, encodedKeyValue, &numConfiguration,
-//             &totalAngle, &travelledDistance, &numOfTurning, scanAngle,
-//             &topo_path_client, backTracking, robot_radius);
-// //                    cout << "[pure_navigation.cpp@main] travelledDistance =
-// " << travelledDistance << endl;
-//       }
-//       scan = true;
-//     }
-//     // ... if the graph still does not present anymore candidate
-//     // positions for its last pose
-//     else {
-//       cout << "[BT2 - Tabulist]There are visible cells but the "
-//               "selected one is already "
-//               "explored! Come back to two positions ago"
-//             << endl;
-//       cout << "Graph_size: " << graph2.size() << endl;
-//       // Remove the last element (cell and associated candidate from
-//       // there) from the graph
-//       if (graph2.size() == 1) break;
-//       graph2.pop_back();
-//       // Select as new target, the new last element of the graph
-//       string targetString = graph2.at(graph2.size() - 1).first;
-//       topoMap = graph2.at(graph2.size() - 1).second;
-//       cout << "topoMap before: " << topoMap.size() << endl;
-//       utils.cleanPossibleDestination2(&topoMap, target);
-//       utils.cleanDestinationFromTabulist(&topoMap, &posToEsclude);
-//       cout << "topoMap after: " << topoMap.size() << endl;
-//       target = record->getPoseFromEncoding(targetString);
-//       // Save it history as cell visited more than once
-//       history.push_back(function.getEncodedKey(target, 2));
-
-//       count = count + 1;
-//       scan = false;
-//       btMode = true;
-//     }
-//   }
-// }
-
 string
 Utilities::getCloserWaypoint(geometry_msgs::Pose *pose,
                              strands_navigation_msgs::TopologicalMap *topoMap) {
@@ -1182,17 +976,21 @@ geometry_msgs::Pose Utilities::getWaypointPoseFromName(
   cout << "[utils.cpp@getWaypointPoseFromName] Waypoint NOT FOUND!" << endl;
 }
 
-vector<unordered_map<float,std::pair<string,
-                     bayesian_topological_localisation::DistributionStamped>>>
+vector<unordered_map<
+    float,
+    std::pair<string, bayesian_topological_localisation::DistributionStamped>>>
 Utilities::getStatelessRFIDBelief(
     double secs_from_now, bool return_history,
     vector<ros::ServiceClient> *pf_stateless_likelihoodClient_list) {
-  vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief;
+  vector<unordered_map<
+      float, std::pair<string,
+                       bayesian_topological_localisation::DistributionStamped>>>
+      mapping_time_belief;
   bayesian_topological_localisation::Predict prediction_stateless_srv;
   prediction_stateless_srv.request.secs_from_now = secs_from_now;
   prediction_stateless_srv.request.return_history = return_history;
-  for (int tag_index = 0; tag_index < pf_stateless_likelihoodClient_list->size();
-       tag_index++) {
+  for (int tag_index = 0;
+       tag_index < pf_stateless_likelihoodClient_list->size(); tag_index++) {
     if (pf_stateless_likelihoodClient_list->at(tag_index).call(
             prediction_stateless_srv)) {
       // cout << "Stateless Srv replied" << endl;
@@ -1203,11 +1001,14 @@ Utilities::getStatelessRFIDBelief(
       vector<bayesian_topological_localisation::DistributionStamped> prob_dist =
           prediction_stateless_srv.response.prob_dist;
       mapping_time_belief.clear(); // Remove old belief
-      unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>> map;
+      unordered_map<float, std::pair<string, bayesian_topological_localisation::
+                                                 DistributionStamped>>
+          map;
       for (int ts_counter = 0; ts_counter < timestamp.size(); ts_counter++) {
         // cout << ts_counter << endl;
-        map.emplace(
-            std::make_pair(timestamp[ts_counter], std::make_pair(estimated_node[ts_counter], prob_dist[ts_counter])));
+        map.emplace(std::make_pair(
+            timestamp[ts_counter],
+            std::make_pair(estimated_node[ts_counter], prob_dist[ts_counter])));
       }
       mapping_time_belief.push_back(map);
 
