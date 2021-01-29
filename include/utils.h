@@ -199,7 +199,7 @@ public:
   bayesian_topological_localisation::DistributionStamped
   convertGridBeliefMapToTopoMap(GridMap *belief_map, list<Pose> *topoMap,
                                 unordered_map<string, string> *mappingWaypoints,
-                                string tag_id);
+                                string tag_id, double radius);
 
   // bool recordContainsCandidates(EvaluationRecords* record,
   //                           int* count, Pose* target, Pose* previous, string*

@@ -75,7 +75,7 @@ private:
   double computeEntropy(double likelihood);
   vector<
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
-  findPosterior(double time,
+  findDistributionFromTime(double time,
                 vector<unordered_map<
                     float, std::pair<string, bayesian_topological_localisation::
                                                  DistributionStamped>>>

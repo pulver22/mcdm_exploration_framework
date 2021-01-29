@@ -910,12 +910,11 @@ bool Utilities::moveTopological(
 bayesian_topological_localisation::DistributionStamped
 Utilities::convertGridBeliefMapToTopoMap(
     GridMap *belief_map, list<Pose> *topoMap,
-    unordered_map<string, string> *mappingWaypoints, string tag_id) {
+    unordered_map<string, string> *mappingWaypoints, string tag_id, double radius) {
   // Retrieve node waypoint name from the mapping and return waypoint and summed
   // belief inside the message
   EvaluationRecords record;
   string encoding, waypointName;
-  double radius = 0.5;
   double probability;
   bayesian_topological_localisation::DistributionStamped topo_belief;
   // grid_map::Matrix& data = (*belief_map)[tag_id];

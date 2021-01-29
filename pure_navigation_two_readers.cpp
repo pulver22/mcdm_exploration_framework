@@ -531,7 +531,7 @@ int main(int argc, char **argv) {
                     // Publish to the PF the sensor reading
                     bayesian_topological_localisation::DistributionStamped
                         tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
-                            &belief_map, &topoMap, &mappingWaypoints, *it);
+                            &belief_map, &topoMap, &mappingWaypoints, *it, 0.5);
                     tmp_belief_topo.header.stamp = ros::Time::now();
 
                     int index = std::stoi(*it);
@@ -746,7 +746,6 @@ int main(int argc, char **argv) {
                 // previous while loop
                 //                                cout << "3" << endl;
                 cout << "We shouldn't be here" << endl;
-                exit(0);
               }
             }
             // ... otherwise, if there are no candidate positions

@@ -42,12 +42,13 @@ double RFIDCriterion::evaluate(
       p, map, path_client, batteryTime, belief_map, mappingWaypoints,
       &(tools->prior_distributions));
   double time = path_len / TRANSL_SPEED;
-  time = std::nearbyint(time * 0.5f) * 2.0f;
+  // fesetround(FE_DOWNWARD);
+  time = std::nearbyint(time);
   time = std::min(time, 50.0);
   // Obtain posterior distribution at the correct time
   vector<
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
-      pf_update_distributions = this->findPosterior(time, mapping_time_belief);
+      pf_update_distributions = this->findDistributionFromTime(time, mapping_time_belief);
 
   // Obtain the fake likelihood distribution
   vector<bayesian_topological_localisation::DistributionStamped>
@@ -70,6 +71,7 @@ double RFIDCriterion::evaluate(
   // node: " << this->RFIDInfoGain << endl; 3) Compute KL-divergence between
   // prior and posterior distribution this->RFIDInfoGain =
   // computeKLTopologicalMap(&(tools->prior_distributions), &posterior_distributions);
+  // cout << "   Entropy: " << this->RFIDInfoGain << endl;
 
   Criterion::insertEvaluation(p, this->RFIDInfoGain);
   return this->RFIDInfoGain;
@@ -176,8 +178,8 @@ double RFIDCriterion::evaluateEntropyTopologicalNode(
 
   if (belief_topomaps->size() != 0) {
     // For every belief map, look for the waypoint and access its value
-    for (int map_id = 0; map_id < belief_topomaps->size(); map_id++) {
-      vector<string> nodes_list = belief_topomaps->at(map_id).nodes;
+    for (int tag_id = 0; tag_id < belief_topomaps->size(); tag_id++) {
+      vector<string> nodes_list = belief_topomaps->at(tag_id).nodes;
       int index = 0;
       for (auto it = nodes_list.begin(); it != nodes_list.end(); it++) {
         if (*it == waypointName)
@@ -185,7 +187,8 @@ double RFIDCriterion::evaluateEntropyTopologicalNode(
         else
           index++;
       }
-      likelihood = belief_topomaps->at(map_id).values[index];
+      // cout << "[B]: " << accumulate(belief_topomaps->at(tag_id).values.begin(), belief_topomaps->at(tag_id).values.end(), 0.0) << endl;
+      likelihood = belief_topomaps->at(tag_id).values[index];
       RFIDInfoGain += this->computeEntropy(likelihood);
     }
   }
@@ -254,7 +257,7 @@ double RFIDCriterion::computeEntropy(double likelihood) {
 
 vector<
     std::pair<string, bayesian_topological_localisation::DistributionStamped>>
-RFIDCriterion::findPosterior(
+RFIDCriterion::findDistributionFromTime(
     double time,
     vector<unordered_map<float,
                          std::pair<string, bayesian_topological_localisation::
@@ -301,7 +304,8 @@ RFIDCriterion::getRFIDLikelihood(
   belief_map_srv.request.antenna_y = p.getY();
   belief_map_srv.request.antenna_h = p.getOrientation();
 
-  for (int tag_id = 0; tag_id < tools->radarmodel_fake_reading_srv_list.size();
+  double start = ros::Time::now().toSec();
+  for (int tag_id = 0; tag_id < tools->prior_distributions.size();
        tag_id++) { // for every tag
     for (auto it = mappingWaypoints->begin(); it != mappingWaypoints->end();
          it++) {
@@ -313,14 +317,14 @@ RFIDCriterion::getRFIDLikelihood(
     belief_map_srv.request.tag_x = tmp_pose.getX();
     belief_map_srv.request.tag_x = tmp_pose.getY();
 
-    if (tools->radarmodel_fake_reading_srv_list.at(tag_id).call(
+    if (tools->radarmodel_fake_reading_srv_list[0].call(
             belief_map_srv)) {
       belief_map_msg = belief_map_srv.response.rfid_maps;
       converter.fromMessage(belief_map_msg, belief_map);
       // Convert from gridmap to topological
       std::vector<string> layers_name = belief_map.getLayers();
       tmp_belief_topo = _utils.convertGridBeliefMapToTopoMap(
-          &belief_map, &(tools->topoMap), mappingWaypoints, layers_name[0]);
+          &belief_map, &(tools->topoMap), mappingWaypoints, layers_name[0], 1.0);
       rfid_reading_likelihoods.push_back(tmp_belief_topo);
     }
   }
@@ -346,9 +350,9 @@ RFIDCriterion::mergePriorLikelihood(
     update_srv.request.prior = pf_update_distributions->at(tag_id).second;
     update_srv.request.likelihood = rfid_reading_likelihoods->at(tag_id);
     if (tools->pf_stateless_update_srv_list.at(tag_id).call(update_srv)) {
-      if (update_srv.response.success)
-        posterior_distributions.push_back(
-            update_srv.response.current_prob_dist);
+      if (update_srv.response.success){
+        posterior_distributions.push_back(update_srv.response.current_prob_dist);
+      } 
       else
         cout << "[RFIDCriterion.cpp@mergePriorLikelihood] An error occured"
              << endl;

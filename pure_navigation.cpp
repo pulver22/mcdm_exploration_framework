@@ -106,7 +106,7 @@ int belief_counter = 0;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
-std::string belief_map_srv_name;
+std::string belief_map_srv_name, fake_belief_map_srv_name;
 std::string make_plan_srv_name;
 std::string make_topo_plan_srv_name;
 std::string move_base_goal_topic_name;
@@ -133,7 +133,7 @@ std::string pf_topic_name;
 ros::ServiceClient map_service_client_;
 ros::ServiceClient path_client;
 ros::ServiceClient topo_path_client;
-ros::ServiceClient belief_map_client;
+ros::ServiceClient belief_map_client, fake_belief_map_client;
 ros::ServiceClient localization_client;
 ros::ServiceClient pf_client, pf_stateless_client;
 ros::ServiceClient gps_client;
@@ -430,11 +430,6 @@ int main(int argc, char **argv) {
                                     UpdatePriorLikelihoodObservation>(
                   pf_srv_name);
           prediction_tools.pf_stateless_update_srv_list.push_back(pf_client);
-          // Create srv client for fake likelihood readings
-          pf_srv_name = "/tag_" + to_string(tag_id) + "/get_fake_rfid_belief";
-          pf_client =
-              nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(pf_srv_name);
-          prediction_tools.radarmodel_fake_reading_srv_list.push_back(pf_client);
           gps_client_list.push_back(gps_client);
           pf_stateless_likelihoodClient_list.push_back(pf_stateless_client);
         }else
@@ -561,7 +556,7 @@ int main(int argc, char **argv) {
                   // Publish to the PF the sensor reading
                   bayesian_topological_localisation::DistributionStamped
                       tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
-                          &belief_map, &topoMap, &mappingWaypoints, *it);
+                          &belief_map, &topoMap, &mappingWaypoints, *it, 0.5);
                   tmp_belief_topo.header.stamp = ros::Time::now();
 
                   int index = std::stoi(*it);
@@ -933,6 +928,7 @@ void loadROSParams(){
   // LOAD ROS PARAMETERS ....................................
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
   private_node_handle.param("belief_map_srv_name", belief_map_srv_name, std::string("/rfid_grid_map_node/get_rfid_belief"));
+  private_node_handle.param("fake_belief_map_srv_name", fake_belief_map_srv_name, std::string("/rfid_grid_map_node/get_fake_rfid_belief"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("make_topo_plan_srv_name", make_topo_plan_srv_name, std::string("/get_simple_policy/get_route_to"));
@@ -959,6 +955,7 @@ void printROSParams(){
   printf("   - robot_radius [%3.3f]\n",  robot_radius);
   printf("   - static_map_srv_name [%s]\n", static_map_srv_name.c_str());
   printf("   - belief_map_srv_name [%s]\n", belief_map_srv_name.c_str());
+  printf("   - fake_belief_map_srv_name [%s]\n", fake_belief_map_srv_name.c_str());
   printf("   - make_plan_srv_name [%s]\n", make_plan_srv_name.c_str());
   printf("   - make_topo_plan_srv_name [%s]\n", make_topo_plan_srv_name.c_str());
   printf("   - move_base_goal_topic_name [%s]\n", move_base_goal_topic_name.c_str());
@@ -987,6 +984,7 @@ ros::NodeHandle createROSComms(){
   path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
   topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
   belief_map_client = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name);
+  fake_belief_map_client = nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(fake_belief_map_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
@@ -998,6 +996,8 @@ ros::NodeHandle createROSComms(){
   marker_pub =  nh.advertise<geometry_msgs::PointStamped>(marker_pub_topic_name, 10);
   stats_pub =  nh.advertise<std_msgs::String>(stats_topic_name, 1, true);
 
+  // Create srv client for fake likelihood readings
+  prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_belief_map_client);
 
   // create subscribers, only when we are sure the right people is publishing
 //  printf("[pure_navigation@createROSComms] Waiting for move_base action server to come up");
