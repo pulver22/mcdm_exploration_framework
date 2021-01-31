@@ -63,8 +63,8 @@ double RFIDCriterion::evaluate(
           tools, &pf_update_distributions, &rfid_reading_likelihoods);
 
   // 1) Compute entropy on a single waypoint
-  this->RFIDInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,
-                                                      &posterior_distributions);
+  // this->RFIDInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,
+                                                      // &posterior_distributions);
   // 2) Compute entropy on the entire map
   this->RFIDInfoGain =
   evaluateEntropyTopologicalMap(&posterior_distributions); 
