@@ -316,7 +316,7 @@ RFIDCriterion::getRFIDLikelihood(
     }
     tmp_pose = record.getPoseFromEncoding(waypoint_encoding);
     belief_map_srv.request.tag_x = tmp_pose.getX();
-    belief_map_srv.request.tag_x = tmp_pose.getY();
+    belief_map_srv.request.tag_y = tmp_pose.getY();
 
     if (tools->radarmodel_fake_reading_srv_list[0].call(
             belief_map_srv)) {
