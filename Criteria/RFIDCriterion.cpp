@@ -19,7 +19,7 @@ using namespace dummy;
 using namespace grid_map;
 
 RFIDCriterion::RFIDCriterion(double weight)
-    : Criterion(RFID_READING, weight, true) {
+    : Criterion(RFID_READING, weight, false) { // true maximises
   // minValue = 0.0;
 }
 
@@ -45,7 +45,7 @@ double RFIDCriterion::evaluate(
   // fesetround(FE_DOWNWARD);
   time = std::nearbyint(time);
   time = std::min(time, 50.0);
-  // Obtain posterior distribution at the correct time
+  // Obtain prior distribution at the correct time
   vector<
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
       pf_update_distributions = this->findDistributionFromTime(time, mapping_time_belief);
@@ -63,11 +63,12 @@ double RFIDCriterion::evaluate(
           tools, &pf_update_distributions, &rfid_reading_likelihoods);
 
   // 1) Compute entropy on a single waypoint
-  this->RFIDInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,
-                                                      &posterior_distributions);
+  // this->RFIDInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,
+                                                      // &posterior_distributions);
   // 2) Compute entropy on the entire map
-  // this->RFIDInfoGain =
-  // evaluateEntropyTopologicalMap(&posterior_distributions); cout << "Entropy
+  this->RFIDInfoGain =
+  evaluateEntropyTopologicalMap(&posterior_distributions); 
+  // cout << "Entropy
   // node: " << this->RFIDInfoGain << endl; 3) Compute KL-divergence between
   // prior and posterior distribution this->RFIDInfoGain =
   // computeKLTopologicalMap(&(tools->prior_distributions), &posterior_distributions);

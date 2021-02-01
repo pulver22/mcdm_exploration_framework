@@ -5,8 +5,6 @@
 #include "include/utils.h"
 #include "bayesian_topological_localisation/Predict.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
-#include "topological_navigation/GotoNodeAction.h"
-#include "topological_navigation/GotoNodeActionGoal.h"
 
 Utilities::Utilities(){};
 Utilities::~Utilities(){};
@@ -853,9 +851,12 @@ bool Utilities::moveTopological(
   string encoding = record.getEncodedKey(target);
   bool success = false;
 
-  actionlib::SimpleActionClient<topological_navigation::GotoNodeAction> topoAC(
-      "topological_navigation", true);
-  while (!topoAC.waitForServer(ros::Duration(5.0))) {
+  if (!this->topoAC) {
+
+    this->topoAC = new actionlib::SimpleActionClient<topological_navigation::GotoNodeAction>("topological_navigation", true);
+  }
+  
+  while (!this->topoAC->waitForServer(ros::Duration(5.0))) {
     cout << "[utils.cpp@moveTopological]... waiting ..." << endl;
   }
 
@@ -873,7 +874,7 @@ bool Utilities::moveTopological(
   topoGoal.goal.target = waypointName;
   topoGoal.goal.no_orientation = false;
 
-  topoAC.sendGoal(topoGoal.goal);
+  this->topoAC->sendGoal(topoGoal.goal);
 
   actionlib::SimpleClientGoalState curr_state =
       actionlib::SimpleClientGoalState::PENDING;
@@ -883,8 +884,8 @@ bool Utilities::moveTopological(
     total_wait_time += time_travel;
     // cout << "     [navigation_utilties.cpp@move] Waiting for " <<
     // total_wait_time << "/60.0 seconds to reach goal" << endl;
-    topoAC.waitForResult(ros::Duration(time_travel));
-    curr_state = topoAC.getState();
+    this->topoAC->waitForResult(ros::Duration(time_travel));
+    curr_state = this->topoAC->getState();
     // cout << "     Result: " << curr_state.getText() << endl;
 
     if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
