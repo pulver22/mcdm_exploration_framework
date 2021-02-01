@@ -47,8 +47,6 @@
 #include "bayesian_topological_localisation/UpdateLikelihoodObservation.h"
 #include "bayesian_topological_localisation/UpdatePriorLikelihoodObservation.h"
 #include "bayesian_topological_localisation/Predict.h"
-#include <gazebo_msgs/GetModelState.h>
-#include <gazebo_msgs/GetModelStateRequest.h>
 #include <visualization_msgs/Marker.h>
 #include <ctime>
 #include <iomanip>
@@ -220,8 +218,6 @@ int main(int argc, char **argv) {
   bayesian_topological_localisation::Predict prediction_stateless_srv;
   rasberry_people_perception::NoisyGPS gps_srv;
 
-  // Create srv request for gazebo model
-  gazebo_msgs::GetModelState model_state_srv;
 
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
   stats_buffer.str("coveragePercent, numConfiguration, backTracking");
@@ -439,6 +435,10 @@ int main(int argc, char **argv) {
 
 
       sleep(5.0);
+
+      // add the service client to utils so it can use it
+      utils.setGazeboModelStateClient(gazebo_model_state_client);
+
       do {
 
         // Recently visit cells shouldn't be visited soon again
@@ -532,6 +532,8 @@ int main(int argc, char **argv) {
           
           // here save the tag's closest nodes
           std::vector<string> closest_waypoints;
+          // here save the tag ids
+          std::vector<string> tag_ids;
           // if we also navigate for finding a tag
           if (norm_w_rfid_gain > 0) {
             // Get an updated RFID belief map
@@ -582,17 +584,16 @@ int main(int argc, char **argv) {
                       content = to_string(gps_srv.response.p.x) + "," + to_string(gps_srv.response.p.y) + "\n";
                       utils.filePutContents(gps_log + to_string(index) + ".csv", content, true);
                     }
+                    
                     // Obtain ground truth position from Gazebo's engine
-                    model_state_srv.request.model_name = "tag_" + *it;
-                    model_state_srv.request.relative_entity_name = "map";
-                    if (gazebo_model_state_client.call(model_state_srv)) {
-                      gt_tag_pose = model_state_srv.response.pose;
+                    string closerWaypoint;
+                    if (utils.getTagClosestWaypoint(*it, topological_map, closerWaypoint, gt_tag_pose))
+                    {
                       // Save ground truth on log
                       content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
                       utils.filePutContents(gt_log + to_string(index) + ".csv", content, true);
                       // Look for closer waypoint to current pose
                       // and compare it to the PF prediction
-                      string closerWaypoint = utils.getCloserWaypoint(&gt_tag_pose, &topological_map);
                       distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x,2) + 
                                   pow(pf_tag_pose.position.y - gt_tag_pose.position.y,2));
                       // Save to log prediction and ground truth
@@ -604,6 +605,7 @@ int main(int argc, char **argv) {
                       // save closest waypoint for this tag
                       closest_waypoints.push_back(closerWaypoint);
                     }
+                    tag_ids.push_back(*it);
                     if (belief_topomaps.size() < index) {
                       belief_topomaps.push_back(
                           prediction_srv.response.current_prob_dist);
@@ -771,7 +773,7 @@ int main(int argc, char **argv) {
                 success = utils.showMarkerandNavigate(
                     target, &marker_pub, &path, &path_client, &tabuList,
                     &posToEsclude, min_robot_speed, robot_radius, &batteryTime,
-                    &travelledDistance, &mappingWaypoints);
+                    &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
                   utils.updatePathMetrics(
                       &count, &target, &previous, actualPose, &frontiers, &graph2,

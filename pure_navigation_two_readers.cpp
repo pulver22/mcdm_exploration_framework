@@ -44,8 +44,6 @@
 #include "bayesian_topological_localisation/DistributionStamped.h"
 #include "bayesian_topological_localisation/UpdateLikelihoodObservation.h"
 #include "bayesian_topological_localisation/Predict.h"
-#include <gazebo_msgs/GetModelState.h>
-#include <gazebo_msgs/GetModelStateRequest.h>
 #include <visualization_msgs/Marker.h>
 using namespace std;
 using namespace dummy;
@@ -213,9 +211,6 @@ int main(int argc, char **argv) {
   bayesian_topological_localisation::LocaliseAgent localization_srv;
   bayesian_topological_localisation::UpdateLikelihoodObservation prediction_srv;
   bayesian_topological_localisation::Predict prediction_stateless_srv;
-
-  // Create srv request for gazebo model
-  gazebo_msgs::GetModelState model_state_srv;
 
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
   stats_buffer.str("coveragePercent, numConfiguration, backTracking");
@@ -406,8 +401,11 @@ int main(int argc, char **argv) {
                       "tag %d\n", tag_id);
       }
 
-
-      sleep(5.0);
+      sleep(5.0); 
+      
+      // add the service client to utils so it can use it
+      utils.setGazeboModelStateClient(gazebo_model_state_client);
+      
       do {
 
         // Recently visit cells shouldn't be visited soon again
@@ -499,6 +497,10 @@ int main(int argc, char **argv) {
           map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
           map.plotGridColor("/tmp/nav_lastLoop.png");
 
+          // here save the tag's closest nodes
+          std::vector<string> closest_waypoints;
+          // here save the tag ids
+          std::vector<string> tag_ids;
           // if we also navigate for finding a tag
           if (norm_w_rfid_gain > 0) {
             // Get an updated RFID belief map
@@ -554,25 +556,27 @@ int main(int argc, char **argv) {
                       // content = to_string(gps_tag_pose.position.x) + "," + to_string(gps_tag_pose.position.y) + "\n";
                       // utils.filePutContents("/home/pulver/Desktop/topoNBS/gps_tag_pose_" + to_string(index) + ".csv", content, true);
                       // Obtain ground truth position from Gazebo's engine
-                      model_state_srv.request.model_name = "tag_" + *it;
-                      model_state_srv.request.relative_entity_name = "map";
-                      if (gazebo_model_state_client.call(model_state_srv)) {
-                        gt_tag_pose = model_state_srv.response.pose;
+                      // Obtain ground truth position from Gazebo's engine
+                      string closerWaypoint;
+                      if (utils.getTagClosestWaypoint(*it, topological_map, closerWaypoint, gt_tag_pose))
+                      {
                         // Save ground truth on log
-                        content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
-                        utils.filePutContents("/home/pulver/Desktop/topoNBS/gt_tag_pose_" + to_string(index) + ".csv", content, true);
+                        content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y) + "\n";
+                        utils.filePutContents(gt_log + to_string(index) + ".csv", content, true);
                         // Look for closer waypoint to current pose
                         // and compare it to the PF prediction
-                        string closerWaypoint = utils.getCloserWaypoint(&gt_tag_pose, &topological_map);
-                        distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x,2) + 
-                                    pow(pf_tag_pose.position.y - gt_tag_pose.position.y,2));
+                        distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x, 2) +
+                                              pow(pf_tag_pose.position.y - gt_tag_pose.position.y, 2));
                         // Save to log prediction and ground truth
                         content =
                             current_tag_waypoint_prediction.at(index - 1) + "," +
                             closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
                         cout << "Prediction VS GT: " << content << endl;
-                        utils.filePutContents("/home/pulver/Desktop/topoNBS/PF_prediction_" + to_string(index) + ".csv", content, true);
+                        utils.filePutContents(pf_vs_gt_log + to_string(index) + ".csv", content, true);
+                        // save closest waypoint for this tag
+                        closest_waypoints.push_back(closerWaypoint);
                       }
+                      tag_ids.push_back(*it);
                       if (belief_topomaps.size() < index) {
                         belief_topomaps.push_back(
                             prediction_srv.response.current_prob_dist);
@@ -636,6 +640,16 @@ int main(int argc, char **argv) {
           //... otherwise, if there are further candidate new position from the
           // current pose of the robot
           else {
+            // Remove the closest cells to every tag, to avoind investing the agent!
+            unordered_map<string, string>::iterator it = mappingWaypoints.begin(); // this contains (encoding, waypoint name)
+            for (std::pair<string,string> element : mappingWaypoints){
+              if (std::find(closest_waypoints.begin(), closest_waypoints.end(), element.second) != closest_waypoints.end()){
+                Pose rm_pose = record.getPoseFromEncoding(element.first);
+                frontiers.remove(rm_pose);
+                std::cout << "Removed node because the picker is on it: " << element.second << std::endl;
+              }
+            }
+
             // Remove the cells which are recently visited (part of tabuList)
             list<Pose>::iterator it_tabuList;
             for (it_tabuList = tabuList.begin(); it_tabuList != tabuList.end();
@@ -729,7 +743,7 @@ int main(int argc, char **argv) {
                 success = utils.showMarkerandNavigate(
                     target, &marker_pub, &path, &path_client, &tabuList,
                     &posToEsclude, min_robot_speed, robot_radius, &batteryTime,
-                    &travelledDistance, &mappingWaypoints);
+                    &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
                   utils.updatePathMetrics(
                       &count, &target, &previous, actualPose, &frontiers, &graph2,
