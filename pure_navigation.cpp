@@ -529,7 +529,9 @@ int main(int argc, char **argv) {
           planningPub.publish(map.toMessagePathPlanning());
           map.plotPathPlanningGridColor("/tmp/pathplanning_lastLoop.png");
           map.plotGridColor("/tmp/nav_lastLoop.png");
-
+          
+          // here save the tag's closest nodes
+          std::vector<string> closest_waypoints;
           // if we also navigate for finding a tag
           if (norm_w_rfid_gain > 0) {
             // Get an updated RFID belief map
@@ -553,6 +555,7 @@ int main(int argc, char **argv) {
                   // obst_losses)
                   if (it->size() > 2)
                     continue;
+
                   // Publish to the PF the sensor reading
                   bayesian_topological_localisation::DistributionStamped
                       tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
@@ -598,6 +601,8 @@ int main(int argc, char **argv) {
                           closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
                       cout << "Prediction VS GT: " << content << endl;
                       utils.filePutContents(pf_vs_gt_log + to_string(index) + ".csv", content, true);
+                      // save closest waypoint for this tag
+                      closest_waypoints.push_back(closerWaypoint);
                     }
                     if (belief_topomaps.size() < index) {
                       belief_topomaps.push_back(
@@ -662,6 +667,17 @@ int main(int argc, char **argv) {
           //... otherwise, if there are further candidate new position from the
           // current pose of the robot
           else {
+            // Remove the closest cells to every tag, to avoind investing the agent!
+            unordered_map<string, string>::iterator it = mappingWaypoints.begin(); // this contains (encoding, waypoint name)
+            for (std::pair<string,string> element : mappingWaypoints){
+              if (std::find(closest_waypoints.begin(), closest_waypoints.end(), element.second) != closest_waypoints.end()){
+                Pose rm_pose = record.getPoseFromEncoding(element.first);
+                frontiers.remove(rm_pose);
+                std::cout << "Removed node because the picker is on it: " << element.second << std::endl;
+              }
+            }
+
+
             // Remove the cells which are recently visited (part of tabuList)
             list<Pose>::iterator it_tabuList;
             for (it_tabuList = tabuList.begin(); it_tabuList != tabuList.end();
