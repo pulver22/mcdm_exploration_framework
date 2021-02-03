@@ -59,8 +59,8 @@ PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp utils.cpp)
 add_executable(pure_navigation pure_navigation.cpp)
 target_link_libraries(pure_navigation next_best_sense ${catkin_LIBRARIES} stdc++fs)
 
-# add_executable(pure_navigation_two_readers pure_navigation_two_readers.cpp)
-# target_link_libraries(pure_navigation_two_readers next_best_sense ${catkin_LIBRARIES})
+add_executable(pure_navigation_two_readers pure_navigation_two_readers.cpp)
+target_link_libraries(pure_navigation_two_readers next_best_sense ${catkin_LIBRARIES} stdc++fs)
 
 #add_executable(mcdm_slim mcdm_slim.cpp)
 #target_link_libraries(mcdm_slim next_best_sense ${catkin_LIBRARIES})

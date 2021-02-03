@@ -318,17 +318,25 @@ RFIDCriterion::getRFIDLikelihood(
     belief_map_srv.request.tag_x = tmp_pose.getX();
     belief_map_srv.request.tag_y = tmp_pose.getY();
 
-    if (tools->radarmodel_fake_reading_srv_list[0].call(
-            belief_map_srv)) {
-      belief_map_msg = belief_map_srv.response.rfid_maps;
-      converter.fromMessage(belief_map_msg, belief_map);
-      // Convert from gridmap to topological
-      std::vector<string> layers_name = belief_map.getLayers();
-      tmp_belief_topo = _utils.convertGridBeliefMapToTopoMap(
-          &belief_map, &(tools->topoMap), mappingWaypoints, layers_name[0], 1.0);
-      rfid_reading_likelihoods.push_back(tmp_belief_topo);
+    for (auto& x : tools->radarmodel_fake_reading_srv_list){
+      if (x.call(belief_map_srv)) {
+        // cout << "Service CALLED" << endl;
+        belief_map_msg = belief_map_srv.response.rfid_maps;
+        converter.fromMessage(belief_map_msg, belief_map);
+        // cout << belief_map["42"].sum() << endl;
+        // Convert from gridmap to topological
+        // NOTE: There should be only one layer called '42'
+        std::vector<string> layers_name = belief_map.getLayers();
+        tmp_belief_topo = _utils.convertGridBeliefMapToTopoMap(
+            &belief_map, &(tools->topoMap), mappingWaypoints, layers_name[0], 1.0);
+        rfid_reading_likelihoods.push_back(tmp_belief_topo);
+
+        // cout << "[C]: " << accumulate(tmp_belief_topo.values.begin(), tmp_belief_topo.values.end(), 0.0) << endl;
+      }
     }
   }
+  // cout << "Correction: " << ros::Time::now().toSec() - start << endl;
+  // cout << "rfid_reading_likelihoods: " << rfid_reading_likelihoods.size() << endl;
 
   return rfid_reading_likelihoods;
 }
