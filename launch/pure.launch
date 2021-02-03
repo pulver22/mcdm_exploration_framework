@@ -6,7 +6,7 @@
 
 <launch>
   <!-- PARAMS .............................................................. -->
-
+  <arg name="two_readers"         default="false"/>
   <arg name="w_info_gain"  	      default="0.00"/>
   <arg name="w_travel_distance"  	default="0.00"/>
   <arg name="w_sensing_time"  	  default="0.00"/>
@@ -61,8 +61,13 @@
 
   <!-- base bringup -->
   <!-- GDB: launch-prefix=gdb -ex run -/-args -->
-  <node pkg="next_best_sense" type="pure_navigation" name="nbs" output="screen"  args="$(arg pure_args)">
-  <!-- <node pkg="next_best_sense" type="pure_navigation_two_readers" name="nbs" output="screen"  args="$(arg pure_args)"> -->
+  <node pkg="next_best_sense" type="pure_navigation" name="nbs" output="screen"  args="$(arg pure_args)" unless="$(arg two_readers)">
+    <param name="move_base_costmap_topic_name" value="/map"/>
+    <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>
+    <param name="belief_map_srv_name" value="/thorvald/rfid_grid_map_node/get_rfid_belief"/>
+    <param name="fake_belief_map_srv_name" value="/thorvald/rfid_grid_map_node/get_rfid_fake_belief"/>
+  </node>
+  <node pkg="next_best_sense" type="pure_navigation_two_readers" name="nbs" output="screen"  args="$(arg pure_args)" if="$(arg two_readers)">
     <param name="move_base_costmap_topic_name" value="/map"/>
     <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>
     <param name="belief_map_srv_name" value="/thorvald/rfid_grid_map_node/get_rfid_belief"/>
