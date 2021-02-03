@@ -38,17 +38,25 @@
 // #include "record_ros/String_cmd.h"
 // mfc ...
 #include "rfid_grid_map/GetBeliefMaps.h"
+#include "rfid_grid_map/GetFakeBeliefMaps.h"
 #include "strands_navigation_msgs/TopologicalMap.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
 #include "bayesian_topological_localisation/LocaliseAgent.h"
 #include "bayesian_topological_localisation/DistributionStamped.h"
 #include "bayesian_topological_localisation/UpdateLikelihoodObservation.h"
+#include "bayesian_topological_localisation/UpdatePriorLikelihoodObservation.h"
 #include "bayesian_topological_localisation/Predict.h"
 #include <gazebo_msgs/GetModelState.h>
 #include <gazebo_msgs/GetModelStateRequest.h>
 #include <visualization_msgs/Marker.h>
+#include <ctime>
+#include <iomanip>
+#include <experimental/filesystem> // or #include <filesystem> for C++17 and up
+#include "rasberry_people_perception/NoisyGPS.h"
 using namespace std;
 using namespace dummy;
+
+namespace fs = std::experimental::filesystem;
 
 // ROS varies
 bool move(float x, float y, float orientation, float time_travel,
@@ -98,7 +106,7 @@ int belief_counter = 0;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name;
-std::string belief_map_srv_name_left, belief_map_srv_name_right;
+std::string belief_map_srv_name_left, belief_map_srv_name_right, fake_belief_map_srv_name_left, fake_belief_map_srv_name_right;
 std::string make_plan_srv_name;
 std::string make_topo_plan_srv_name;
 std::string move_base_goal_topic_name;
@@ -117,6 +125,7 @@ std::string stats_topic_name;
 std::string topological_map_topic_name;
 std::string localization_srv_name;
 std::string pf_srv_name, pf_stateless_srv_name;
+std::string gps_srv_name;
 std::string pf_topic_name;
 
 
@@ -124,14 +133,17 @@ std::string pf_topic_name;
 ros::ServiceClient map_service_client_;
 ros::ServiceClient path_client;
 ros::ServiceClient topo_path_client;
-ros::ServiceClient belief_map_client_left, belief_map_client_right;
+ros::ServiceClient belief_map_client_left, belief_map_client_right, fake_belief_map_client_left, fake_belief_map_client_right;
 vector<ros::ServiceClient> belief_map_clients ;
 ros::ServiceClient localization_client;
 ros::ServiceClient pf_client, pf_stateless_client;
+ros::ServiceClient gps_client;
 ros::ServiceClient gazebo_model_state_client;
 vector<ros::ServiceClient> pf_likelihoodClient_list, pf_stateless_likelihoodClient_list;
+vector<ros::ServiceClient> gps_client_list;
 vector<bayesian_topological_localisation::DistributionStamped> stateless_belief_history;
 vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief;
+prediction_tools prediction_tools;
 // mfc: we will record using stats_pub
 //ros::ServiceClient rosbag_client;
 nav_msgs::GetMap srv_map;
@@ -213,6 +225,7 @@ int main(int argc, char **argv) {
   bayesian_topological_localisation::LocaliseAgent localization_srv;
   bayesian_topological_localisation::UpdateLikelihoodObservation prediction_srv;
   bayesian_topological_localisation::Predict prediction_stateless_srv;
+  rasberry_people_perception::NoisyGPS gps_srv;
 
   // Create srv request for gazebo model
   gazebo_msgs::GetModelState model_state_srv;
@@ -272,10 +285,24 @@ int main(int argc, char **argv) {
       norm_w_sensing_time = w_sensing_time / sum_w;
       norm_w_battery_status = w_battery_status / sum_w;
       norm_w_rfid_gain = w_rfid_gain / sum_w;
-      std::string out_log = (argv[11]);
-      std::string coverage_log = (argv[12]);
-      bool use_mcdm = bool(atoi(argv[13]));
-      int num_tags = atoi(argv[14]);
+      bool use_mcdm = bool(atoi(argv[11]));
+      int num_tags = atoi(argv[12]);
+      std::string log_dest_folder = (argv[13]);
+      auto t = std::time(nullptr);
+      auto tm = *std::localtime(&t);
+      std::ostringstream oss;
+      oss << std::put_time(&tm, "%d-%m-%Y%H-%M-%S/");
+      auto str = oss.str();
+      log_dest_folder += str;
+      cout << "Creating folder: " << log_dest_folder << endl;
+      fs::create_directories(log_dest_folder);
+      cout << "Creation completed! " << endl;
+      std::string pf_log = log_dest_folder + "pf_tag_pose_";
+      std::string gt_log = log_dest_folder + "gt_tag_pose_";
+      std::string gps_log = log_dest_folder + "gps_tag_pose_";
+      std::string pf_vs_gt_log = log_dest_folder + "pf_vs_gt_";
+      std::string coverage_log = log_dest_folder + "coverage_mcdm.csv";
+      std::string out_log = log_dest_folder + "mcdm_result.csv";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -299,6 +326,7 @@ int main(int argc, char **argv) {
       unordered_map<string, string> mappingWaypoints;
       utils.convertStrandTopoMapToListPose(
           &topological_map, &topoMap, initRange, initFov, &mappingWaypoints);
+      prediction_tools.topoMap = topoMap;
       ROS_DEBUG("TopologicalMap created");
 
       map.plotPathPlanningGridColor("/tmp/pathplanning_start.png");
@@ -395,10 +423,20 @@ int main(int argc, char **argv) {
               nh.serviceClient<bayesian_topological_localisation::
                                     UpdateLikelihoodObservation>(
                   pf_srv_name);
+          gps_srv_name = "/tag_" + to_string(tag_id) + "/gps_pose";
+          gps_client= nh.serviceClient<rasberry_people_perception::NoisyGPS>(gps_srv_name);
+          gps_client_list.push_back(gps_client);
           pf_stateless_srv_name = "/tag_" + to_string(tag_id) + "/predict_stateless";
           pf_stateless_client = nh.serviceClient<bayesian_topological_localisation::
                                     Predict>(
                   pf_stateless_srv_name);
+          // Create srv client for stateless update
+          pf_srv_name = "/tag_" + to_string(tag_id) + "/update_stateless";
+          pf_client =
+              nh.serviceClient<bayesian_topological_localisation::
+                                    UpdatePriorLikelihoodObservation>(
+                  pf_srv_name);
+          prediction_tools.pf_stateless_update_srv_list.push_back(pf_client);
           pf_likelihoodClient_list.push_back(pf_client);
           pf_stateless_likelihoodClient_list.push_back(pf_stateless_client);
         }else
@@ -548,11 +586,12 @@ int main(int argc, char **argv) {
                       pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index - 1), &topological_map);
                       // Save pf prediction (expressed as metric position) on log
                       content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
-                      utils.filePutContents("/home/pulver/Desktop/topoNBS/pf_tag_pose_" + to_string(index) + ".csv", content, true);
+                      utils.filePutContents(pf_log + to_string(index) + ".csv", content, true);
                       // Save noisy gps location on log
-                      // cout << "GPS:" << gps_tag_pose.position.x << "," << gps_tag_pose.position.y << endl;
-                      // content = to_string(gps_tag_pose.position.x) + "," + to_string(gps_tag_pose.position.y) + "\n";
-                      // utils.filePutContents("/home/pulver/Desktop/topoNBS/gps_tag_pose_" + to_string(index) + ".csv", content, true);
+                      if (gps_client_list.at(index - 1).call(gps_srv)){
+                        content = to_string(gps_srv.response.p.x) + "," + to_string(gps_srv.response.p.y) + "\n";
+                        utils.filePutContents(gps_log + to_string(index) + ".csv", content, true);
+                      }
                       // Obtain ground truth position from Gazebo's engine
                       model_state_srv.request.model_name = "tag_" + *it;
                       model_state_srv.request.relative_entity_name = "map";
@@ -560,7 +599,7 @@ int main(int argc, char **argv) {
                         gt_tag_pose = model_state_srv.response.pose;
                         // Save ground truth on log
                         content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
-                        utils.filePutContents("/home/pulver/Desktop/topoNBS/gt_tag_pose_" + to_string(index) + ".csv", content, true);
+                        utils.filePutContents(gt_log + to_string(index) + ".csv", content, true);
                         // Look for closer waypoint to current pose
                         // and compare it to the PF prediction
                         string closerWaypoint = utils.getCloserWaypoint(&gt_tag_pose, &topological_map);
@@ -571,7 +610,7 @@ int main(int argc, char **argv) {
                             current_tag_waypoint_prediction.at(index - 1) + "," +
                             closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
                         cout << "Prediction VS GT: " << content << endl;
-                        utils.filePutContents("/home/pulver/Desktop/topoNBS/PF_prediction_" + to_string(index) + ".csv", content, true);
+                        utils.filePutContents(pf_vs_gt_log + to_string(index) + ".csv", content, true);
                       }
                       if (belief_topomaps.size() < index) {
                         belief_topomaps.push_back(
@@ -579,6 +618,8 @@ int main(int argc, char **argv) {
                       } else
                         belief_topomaps.at(index - 1) =
                             prediction_srv.response.current_prob_dist;
+
+                        prediction_tools.prior_distributions = belief_topomaps;
                     } else
                       ROS_ERROR("PF node did not reply!\n");               
                   }
@@ -623,7 +664,7 @@ int main(int argc, char **argv) {
             utils.pushInitialPositions(
                 map, x, y, orientation, range, FOV, threshold, actualPose,
                 &graph2, &topo_path_client, &mapping_time_belief,  &function, &batteryTime,
-                &belief_map, &mappingWaypoints, &belief_topomaps);
+                &belief_map, &mappingWaypoints, &prediction_tools);
           }
 
           list<Pose> frontiers = topoMap;
@@ -648,7 +689,7 @@ int main(int argc, char **argv) {
             mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
             record = *function.evaluateFrontiers(
                 &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
-                &belief_map, &mappingWaypoints, &belief_topomaps);
+                &belief_map, &mappingWaypoints, &prediction_tools);
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with
             // cleanPossibleDestination2 Clean all the possible destination from
@@ -902,6 +943,8 @@ void loadROSParams(){
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
   private_node_handle.param("belief_map_srv_name_left", belief_map_srv_name_left, std::string("/thorvald_left/rfid_grid_map_node/get_rfid_belief_left"));
   private_node_handle.param("belief_map_srv_name_right", belief_map_srv_name_right, std::string("/thorvald_right/rfid_grid_map_node/get_rfid_belief_right"));
+  private_node_handle.param("fake_belief_map_srv_name_left", fake_belief_map_srv_name_left, std::string("/thorvald_right/rfid_grid_map_node/get_fake_rfid_belief_left"));
+  private_node_handle.param("fake_belief_map_srv_name_right", fake_belief_map_srv_name_right, std::string("/thorvald_right/rfid_grid_map_node/get_fake_rfid_belief_right"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("make_topo_plan_srv_name", make_topo_plan_srv_name, std::string("/get_simple_policy/get_route_to"));
@@ -930,6 +973,8 @@ void printROSParams(){
   printf("   - static_map_srv_name [%s]\n", static_map_srv_name.c_str());
   printf("   - belief_map_srv_name_left [%s]\n", belief_map_srv_name_left.c_str());
   printf("   - belief_map_srv_name_right [%s]\n", belief_map_srv_name_right.c_str());
+  printf("   - fake_belief_map_srv_name_left [%s]\n", fake_belief_map_srv_name_left.c_str());
+  printf("   - fake_belief_map_srv_name_right [%s]\n", fake_belief_map_srv_name_right.c_str());
   printf("   - make_plan_srv_name [%s]\n", make_plan_srv_name.c_str());
   printf("   - make_topo_plan_srv_name [%s]\n", make_topo_plan_srv_name.c_str());
   printf("   - move_base_goal_topic_name [%s]\n", move_base_goal_topic_name.c_str());
@@ -959,6 +1004,8 @@ ros::NodeHandle createROSComms(){
   topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
   belief_map_client_left = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name_left);
   belief_map_client_right = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name_right);
+  fake_belief_map_client_left = nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(fake_belief_map_srv_name_left);
+  fake_belief_map_client_right = nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(fake_belief_map_srv_name_right);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
   // pf_client = nh.serviceClient<bayesian_topological_localisation::UpdateLikelihoodObservation>(pf_srv_name);
@@ -971,7 +1018,9 @@ ros::NodeHandle createROSComms(){
   marker_pub =  nh.advertise<geometry_msgs::PointStamped>(marker_pub_topic_name, 10);
   stats_pub =  nh.advertise<std_msgs::String>(stats_topic_name, 1, true);
 
-
+  // Create srv client for fake likelihood readings
+  prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_belief_map_client_left);
+  prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_belief_map_client_right);
   // create subscribers, only when we are sure the right people is publishing
 //  printf("[pure_navigation@createROSComms] Waiting for move_base action server to come up");
 //  MoveBaseClient ac(move_base_srv_name, true);

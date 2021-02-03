@@ -438,7 +438,7 @@ int main(int argc, char **argv) {
       }
 
 
-      sleep(5.0);
+      sleep(10.0);
       do {
 
         // Recently visit cells shouldn't be visited soon again
@@ -458,8 +458,9 @@ int main(int argc, char **argv) {
           target = utils.getCurrentPose(resolution, costresolution, &map,
                                         initFov, initRange);
           cout << "\n============================================" << endl;
-          cout << "New iteration, position: " << target.getX() << ","
-               << target.getY() << "[ " << newSensedCells << " sensed] - ["
+          cout << "New iteration[" << count + 1 
+               << "], position: " << target.getX() << "," << target.getY() 
+               << "[ " << newSensedCells << " sensed] - ["
                << totalFreeCells << " total]"
                << "[ " << coverage << " %] - ["
                << (ros::Time::now().toSec() - startMCDM) / 60.0 << " min ] - ["
@@ -567,8 +568,8 @@ int main(int argc, char **argv) {
                   if (pf_likelihoodClient_list.at(index - 1).call(
                           prediction_srv)) {
                     ROS_DEBUG("Prediction srv called successfully\n");
-                    printf("[PF - Tag %d ] Prediction: %s\n", index,
-                              prediction_srv.response.estimated_node.c_str());
+                    // printf("[PF - Tag %d ] Prediction: %s\n", index,
+                    //           prediction_srv.response.estimated_node.c_str());
                     // Store waypoint prediction coming from particle filter
                     if (current_tag_waypoint_prediction.size() < index ){
                       current_tag_waypoint_prediction.push_back(prediction_srv.response.estimated_node);
@@ -599,7 +600,7 @@ int main(int argc, char **argv) {
                       content =
                           current_tag_waypoint_prediction.at(index - 1) + "," +
                           closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
-                      cout << "Prediction VS GT: " << content << endl;
+                      // cout << "Prediction VS GT: " << content << endl;
                       utils.filePutContents(pf_vs_gt_log + to_string(index) + ".csv", content, true);
                       // save closest waypoint for this tag
                       closest_waypoints.push_back(closerWaypoint);
@@ -620,6 +621,7 @@ int main(int argc, char **argv) {
               printf("ATTENTION! Failed to get the RFID belief map\n");
             }
           }
+          cout << "Belief updated!" << endl;
 
           // If the exploration just started
           if (count == 0) {
@@ -673,7 +675,7 @@ int main(int argc, char **argv) {
               if (std::find(closest_waypoints.begin(), closest_waypoints.end(), element.second) != closest_waypoints.end()){
                 Pose rm_pose = record.getPoseFromEncoding(element.first);
                 frontiers.remove(rm_pose);
-                std::cout << "Removed node because the picker is on it: " << element.second << std::endl;
+                // std::cout << "Removed node because the picker is on it: " << element.second << std::endl;
               }
             }
 
@@ -686,7 +688,7 @@ int main(int argc, char **argv) {
             }
             // FIXME: this can still be useful by not every iteration
             // utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
-            cout <<"CleanedFrontiers: " << frontiers.size() << endl;
+            // cout <<"CleanedFrontiers: " << frontiers.size() << endl;
             mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
             record = *function.evaluateFrontiers(
                 &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
@@ -719,7 +721,7 @@ int main(int argc, char **argv) {
               int iter = 0;
               while (utils.containsPos(&posToEsclude, targetPos)) {
                 iter++;
-                cout << iter << endl;
+                // cout << iter << endl;
                 if (record.size() > 0) {
                   record.removeFrontier(target);
                   result = function.selectNewPose(&record);
@@ -747,8 +749,8 @@ int main(int argc, char **argv) {
               if ((!utils.containsPos(&posToEsclude, targetPos))) {
 
                 // i switch x and y to allow debugging graphically looking the image
-                cout << "New target : x = " << targetPos.first << ", y = " << targetPos.second 
-                    << ", orientation = " << target.getOrientation() * 180 / M_PI << endl;
+                // cout << "New target : x = " << targetPos.first << ", y = " << targetPos.second 
+                //     << ", orientation = " << target.getOrientation() * 180 / M_PI << endl;
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 backTracking = false;
@@ -823,7 +825,7 @@ int main(int argc, char **argv) {
 
       }
       // Perform exploration until a certain stopping criterion is achieved
-      while (batteryPercentage > 10.0);
+      while (batteryPercentage > 10.0 and count < 25);
       // Plotting utilities
       map.drawVisitedCells();
       map.printVisitedCells(history);
