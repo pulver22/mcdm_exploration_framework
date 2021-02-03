@@ -520,7 +520,10 @@ bool Utilities::showMarkerandNavigate(
     ros::ServiceClient *path_client, list<Pose> *tabuList,
     std::list<std::pair<float, float>> *posToEsclude, double min_robot_speed,
     double robot_radius, double *batteryTime, double *travelledDistance,
-    unordered_map<string, string> *mappingWaypoints) {
+    unordered_map<string, string> *mappingWaypoints, 
+    strands_navigation_msgs::TopologicalMap topological_map,
+    std::vector<string> tag_ids)
+{
   //---------------------------PRINT GOAL POSITION
   geometry_msgs::PointStamped p;
   p.header.frame_id = "map";
@@ -572,7 +575,7 @@ bool Utilities::showMarkerandNavigate(
   //             posToEsclude); // full resolution
 
   return moveTopological(target, time_travel, tabuList, posToEsclude,
-                         mappingWaypoints);
+                         mappingWaypoints, topological_map, tag_ids);
 }
 
 bool Utilities::freeInLocalCostmap(
@@ -841,10 +844,53 @@ void Utilities::convertStrandTopoMapToListPose(
   // cout <<"[TOPOMAP]: " << frontiers->size() << " nodes" << endl;
 }
 
+void Utilities::setGazeboModelStateClient(ros::ServiceClient &gazebo_model_state_client)
+{
+  this->gazebo_model_state_client = &gazebo_model_state_client;
+}
+
+bool Utilities::getGazeboModelPose(string model_name, string relative_entity_name, geometry_msgs::Pose &model_pose)
+{
+  // Create srv request for gazebo model
+  gazebo_msgs::GetModelState model_state_srv;
+  if (!this->gazebo_model_state_client){
+    std::cout << "[utils.cpp@getGazeboModelPose]... set the gazebo client first with setGazeboModelStateClient" << std::endl;
+    return false;
+  }
+  model_state_srv.request.model_name = model_name;
+  model_state_srv.request.relative_entity_name = relative_entity_name;
+  if (this->gazebo_model_state_client->call(model_state_srv))
+  {
+    model_pose = model_state_srv.response.pose;
+    return true;
+  }
+  return false;
+}
+
+bool Utilities::getTagClosestWaypoint(
+    string tag_id, strands_navigation_msgs::TopologicalMap topological_map,
+    string &closest_waypoint_name, geometry_msgs::Pose &closest_waypoint_pose)
+{
+  string model_name = "tag_" + tag_id;
+  string relative_entity_name = "map";
+
+  if (getGazeboModelPose(model_name, relative_entity_name, closest_waypoint_pose))
+  {
+    // Look for closer waypoint to current pose
+    // and compare it to the PF prediction
+    closest_waypoint_name = getCloserWaypoint(&closest_waypoint_pose, &topological_map);
+    return true;
+  }
+  return false;
+}
+
 bool Utilities::moveTopological(
     Pose target, float time_travel, list<Pose> *tabuList,
     std::list<std::pair<float, float>> *posToEsclude,
-    unordered_map<string, string> *mappingWaypoints) {
+    unordered_map<string, string> *mappingWaypoints,
+    strands_navigation_msgs::TopologicalMap topological_map,
+    std::vector<string> tag_ids)
+{
 
   topological_navigation::GotoNodeActionGoal topoGoal;
   EvaluationRecords record;
@@ -880,7 +926,7 @@ bool Utilities::moveTopological(
       actionlib::SimpleClientGoalState::PENDING;
   float total_wait_time = 0.0;
   while (!curr_state.isDone()) {
-    time_travel = std::min(time_travel, (float)5.0);
+    time_travel = std::min(time_travel, (float)2.0);
     total_wait_time += time_travel;
     // cout << "     [navigation_utilties.cpp@move] Waiting for " <<
     // total_wait_time << "/60.0 seconds to reach goal" << endl;
@@ -902,7 +948,23 @@ bool Utilities::moveTopological(
     } else if (total_wait_time > 90.0) {
       cout << "[utils.cpp@moveTopological] Is taking too long" << endl;
       success = false;
+      this->topoAC->cancelAllGoals();
       curr_state = actionlib::SimpleClientGoalState::ABORTED;
+    } else { // here we are still navigating toward the goal
+      // check that the goal is still reachable, i.e. that no tag is on it
+      string closest_waypoint_name;
+      geometry_msgs::Pose closest_waypoint_pose;
+      for (auto tag_id : tag_ids) {
+        if (getTagClosestWaypoint(tag_id, topological_map, closest_waypoint_name, closest_waypoint_pose)){
+          if (closest_waypoint_name == waypointName){
+            //abort navigation
+            cout << "[utils.cpp@moveTopological] An agent is on the goal node, aborting" << endl;
+            success = false;
+            this->topoAC->cancelAllGoals();
+            curr_state = actionlib::SimpleClientGoalState::ABORTED;
+          }
+        }
+      }
     }
   }
   return success;

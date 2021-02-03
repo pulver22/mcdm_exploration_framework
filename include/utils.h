@@ -36,6 +36,9 @@
 #include <tf2_ros/transform_listener.h>
 #include "topological_navigation/GotoNodeAction.h"
 #include "topological_navigation/GotoNodeActionGoal.h"
+#include <gazebo_msgs/GetModelState.h>
+#include <gazebo_msgs/GetModelStateRequest.h>
+#include "strands_navigation_msgs/TopologicalMap.h"
 // mfc: we will record using stats_pub
 //#include "record_ros/record.h"
 //#include "record_ros/String_cmd.h"
@@ -47,7 +50,8 @@ using namespace grid_map;
 class Utilities {
 
 private:
-    actionlib::SimpleActionClient<topological_navigation::GotoNodeAction>* topoAC;
+    actionlib::SimpleActionClient<topological_navigation::GotoNodeAction> *topoAC;
+    ros::ServiceClient *gazebo_model_state_client;
 
 public:
     Utilities();
@@ -153,7 +157,9 @@ public:
                                std::list<std::pair<float, float>> *posToEsclude,
                                double min_robot_speed, double robot_radius,
                                double *batteryTime, double *travelledDistance,
-                               unordered_map<string, string> *mappingWaypoints);
+                               unordered_map<string, string> *mappingWaypoints,
+                               strands_navigation_msgs::TopologicalMap topological_map,
+                               std::vector<string> tag_ids);
 
     bool freeInLocalCostmap(Pose target,
                             std::string move_base_local_costmap_topic_name);
@@ -162,10 +168,20 @@ public:
     bool move(float x, float y, float orientation, float time_travel,
               list<Pose> *tabuList,
               std::list<std::pair<float, float>> *posToEsclude);
+    
+    void setGazeboModelStateClient(ros::ServiceClient &gazebo_model_state_client);
+
+    bool getGazeboModelPose(string model_name, string relative_entity_name, geometry_msgs::Pose &model_pose);
+
+    bool getTagClosestWaypoint(
+        string tag_id, strands_navigation_msgs::TopologicalMap topological_map,
+        string &closest_waypoint_name, geometry_msgs::Pose &closest_waypoint_pose);
 
     bool moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
-                         std::list<std::pair<float, float>> *posToEsclude,
-                         unordered_map<string, string> *mappingWaypoints);
+                            std::list<std::pair<float, float>> *posToEsclude,
+                            unordered_map<string, string> *mappingWaypoints,
+                            strands_navigation_msgs::TopologicalMap topological_map,
+                            std::vector<string> tag_ids);
 
     Pose getCurrentPose(float resolution, float costresolution, dummy::Map *map,
                         double initFov, int initRange);
