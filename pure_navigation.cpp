@@ -280,7 +280,7 @@ int main(int argc, char **argv) {
       auto t = std::time(nullptr);
       auto tm = *std::localtime(&t);
       std::ostringstream oss;
-      oss << std::put_time(&tm, "%d-%m-%Y%H-%M-%S/");
+      oss << std::put_time(&tm, "%d-%m-%Y-%H-%M-%S/");
       auto str = oss.str();
       log_dest_folder += str;
       cout << "Creating folder: " << log_dest_folder << endl;

@@ -81,14 +81,14 @@ private:
                                                  DistributionStamped>>>
                     *mapping_time_belief);
 
-  vector<bayesian_topological_localisation::DistributionStamped>
+  vector<vector<bayesian_topological_localisation::DistributionStamped>>
   getRFIDLikelihood(Pose p, prediction_tools *tools, unordered_map<string, string> *mappingWaypoints,
       vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> *pf_update_distributions);
 
   vector<bayesian_topological_localisation::DistributionStamped>
       mergePriorLikelihood(prediction_tools *tools, 
           vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> *pf_update_distributions,
-          vector<bayesian_topological_localisation::DistributionStamped> *rfid_reading_likelihoods);
+          vector<vector<bayesian_topological_localisation::DistributionStamped>> *rfid_reading_likelihoods);
 
 protected:
   double RFIDInfoGain = 0.0;

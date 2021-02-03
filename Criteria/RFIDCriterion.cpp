@@ -51,12 +51,14 @@ double RFIDCriterion::evaluate(
       pf_update_distributions = this->findDistributionFromTime(time, mapping_time_belief);
 
   // Obtain the fake likelihood distribution
-  vector<bayesian_topological_localisation::DistributionStamped>
+  vector<vector<bayesian_topological_localisation::DistributionStamped>>
       rfid_reading_likelihoods = this->getRFIDLikelihood(
           p, tools, mappingWaypoints, &pf_update_distributions);
 
   // Compute posterior belief integrating update and correction step of the
   // particle filter
+  // cout << "Pf prior: " << pf_update_distributions.size() << endl;
+  // cout << "RFID Likelihood: " << rfid_reading_likelihoods.size() << endl;
   assert(pf_update_distributions.size() == rfid_reading_likelihoods.size());
   vector<bayesian_topological_localisation::DistributionStamped>
       posterior_distributions = this->mergePriorLikelihood(
@@ -282,14 +284,14 @@ RFIDCriterion::findDistributionFromTime(
   return posterior_distributions;
 }
 
-vector<bayesian_topological_localisation::DistributionStamped>
+vector<vector<bayesian_topological_localisation::DistributionStamped>>
 RFIDCriterion::getRFIDLikelihood(
     Pose p, prediction_tools *tools,
     unordered_map<string, string> *mappingWaypoints,
     vector<std::pair<string,
                      bayesian_topological_localisation::DistributionStamped>>
         *pf_update_distributions) {
-  vector<bayesian_topological_localisation::DistributionStamped>
+  vector<vector<bayesian_topological_localisation::DistributionStamped>>
       rfid_reading_likelihoods;
   bayesian_topological_localisation::DistributionStamped tmp_belief_topo;
   rfid_grid_map::GetFakeBeliefMaps belief_map_srv;
@@ -308,6 +310,8 @@ RFIDCriterion::getRFIDLikelihood(
   double start = ros::Time::now().toSec();
   for (int tag_id = 0; tag_id < tools->prior_distributions.size();
        tag_id++) { // for every tag
+    // Create vector of distributions for the current tag
+    vector<bayesian_topological_localisation::DistributionStamped> tmp_distributions;
     for (auto it = mappingWaypoints->begin(); it != mappingWaypoints->end();
          it++) {
       // NOTE: mappingWaypoints contains pair <encoding, waypoint_name>
@@ -317,10 +321,8 @@ RFIDCriterion::getRFIDLikelihood(
     tmp_pose = record.getPoseFromEncoding(waypoint_encoding);
     belief_map_srv.request.tag_x = tmp_pose.getX();
     belief_map_srv.request.tag_y = tmp_pose.getY();
-
     for (auto& x : tools->radarmodel_fake_reading_srv_list){
       if (x.call(belief_map_srv)) {
-        // cout << "Service CALLED" << endl;
         belief_map_msg = belief_map_srv.response.rfid_maps;
         converter.fromMessage(belief_map_msg, belief_map);
         // cout << belief_map["42"].sum() << endl;
@@ -329,11 +331,12 @@ RFIDCriterion::getRFIDLikelihood(
         std::vector<string> layers_name = belief_map.getLayers();
         tmp_belief_topo = _utils.convertGridBeliefMapToTopoMap(
             &belief_map, &(tools->topoMap), mappingWaypoints, layers_name[0], 1.0);
-        rfid_reading_likelihoods.push_back(tmp_belief_topo);
+        tmp_distributions.push_back(tmp_belief_topo);
 
         // cout << "[C]: " << accumulate(tmp_belief_topo.values.begin(), tmp_belief_topo.values.end(), 0.0) << endl;
-      }
+      }else cout << "[ERROR]Service NOT CALLED" << endl;
     }
+    rfid_reading_likelihoods.push_back(tmp_distributions);
   }
   // cout << "Correction: " << ros::Time::now().toSec() - start << endl;
   // cout << "rfid_reading_likelihoods: " << rfid_reading_likelihoods.size() << endl;
@@ -347,25 +350,35 @@ RFIDCriterion::mergePriorLikelihood(
     vector<std::pair<string,
                      bayesian_topological_localisation::DistributionStamped>>
         *pf_update_distributions,
-    vector<bayesian_topological_localisation::DistributionStamped>
+    vector<vector<bayesian_topological_localisation::DistributionStamped>>
         *rfid_reading_likelihoods) {
 
   vector<bayesian_topological_localisation::DistributionStamped>
       posterior_distributions;
   bayesian_topological_localisation::UpdatePriorLikelihoodObservation
       update_srv;
+  // double start = ros::Time::now().toSec();
   for (int tag_id = 0; tag_id < tools->pf_stateless_update_srv_list.size();
        tag_id++) {
-    update_srv.request.prior = pf_update_distributions->at(tag_id).second;
-    update_srv.request.likelihood = rfid_reading_likelihoods->at(tag_id);
-    if (tools->pf_stateless_update_srv_list.at(tag_id).call(update_srv)) {
-      if (update_srv.response.success){
-        posterior_distributions.push_back(update_srv.response.current_prob_dist);
-      } 
-      else
-        cout << "[RFIDCriterion.cpp@mergePriorLikelihood] An error occured"
-             << endl;
+    // NOTE: each tag has one associated distribution for each antenna present
+    // We need to recursively update the prior with each new reading
+    bayesian_topological_localisation::DistributionStamped 
+        tmp_distribution = pf_update_distributions->at(tag_id).second;
+    for(auto& rfid_likelihood : rfid_reading_likelihoods->at(tag_id)){
+      update_srv.request.prior = tmp_distribution;
+      update_srv.request.likelihood = rfid_likelihood;
+      // Integrate the RFID likelihood with the distribution coming from the PF
+      if (tools->pf_stateless_update_srv_list.at(tag_id).call(update_srv)) {
+        if (update_srv.response.success){
+          // Set the prior with the new posterior
+          tmp_distribution = update_srv.response.current_prob_dist;
+        } 
+        else
+          cout << "[RFIDCriterion.cpp@mergePriorLikelihood] An error occured" << endl;
+      }
     }
+    posterior_distributions.push_back(tmp_distribution);
   }
+  // cout << "Merge: " << ros::Time::now().toSec() - start << endl;
   return posterior_distributions;
 }

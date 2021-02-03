@@ -207,6 +207,8 @@ int main(int argc, char **argv) {
   ros::NodeHandle nh = createROSComms();
   belief_map_clients.push_back(belief_map_client_left);
   belief_map_clients.push_back(belief_map_client_right);
+  prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_belief_map_client_left);
+  prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_belief_map_client_right);
   double path_len;
   bool path_srv_call;
   ros::Rate r(20);
@@ -286,7 +288,7 @@ int main(int argc, char **argv) {
       auto t = std::time(nullptr);
       auto tm = *std::localtime(&t);
       std::ostringstream oss;
-      oss << std::put_time(&tm, "%d-%m-%Y%H-%M-%S/");
+      oss << std::put_time(&tm, "%d-%m-%Y-%H-%M-%S/");
       auto str = oss.str();
       log_dest_folder += str;
       cout << "Creating folder: " << log_dest_folder << endl;
@@ -425,6 +427,7 @@ int main(int argc, char **argv) {
           pf_stateless_client = nh.serviceClient<bayesian_topological_localisation::
                                     Predict>(
                   pf_stateless_srv_name);
+          pf_likelihoodClient_list.push_back(pf_client);
           // Create srv client for stateless update
           pf_srv_name = "/tag_" + to_string(tag_id) + "/update_stateless";
           pf_client =
@@ -432,7 +435,6 @@ int main(int argc, char **argv) {
                                     UpdatePriorLikelihoodObservation>(
                   pf_srv_name);
           prediction_tools.pf_stateless_update_srv_list.push_back(pf_client);
-          pf_likelihoodClient_list.push_back(pf_client);
           pf_stateless_likelihoodClient_list.push_back(pf_stateless_client);
         }else
             ROS_ERROR("[ParticleFilter] Error while initializing for "
@@ -463,8 +465,9 @@ int main(int argc, char **argv) {
           target = utils.getCurrentPose(resolution, costresolution, &map,
                                         initFov, initRange);
           cout << "\n============================================" << endl;
-          cout << "New iteration, position: " << target.getX() << ","
-               << target.getY() << "[ " << newSensedCells << " sensed] - ["
+          cout << "New iteration[" << count + 1 
+               << "], position: " << target.getX() << "," << target.getY() 
+               << "[ " << newSensedCells << " sensed] - ["
                << totalFreeCells << " total]"
                << "[ " << coverage << " %] - ["
                << (ros::Time::now().toSec() - startMCDM) / 60.0 << " min ] - ["
@@ -579,8 +582,8 @@ int main(int argc, char **argv) {
                     if (pf_likelihoodClient_list.at(index - 1).call(
                             prediction_srv)) {
                       ROS_DEBUG("Prediction srv called successfully\n");
-                      printf("[PF - Tag %d ] Prediction: %s\n", index,
-                                prediction_srv.response.estimated_node.c_str());
+                      // printf("[PF - Tag %d ] Prediction: %s\n", index,
+                      //           prediction_srv.response.estimated_node.c_str());
                       // Store waypoint prediction coming from particle filter
                       if (current_tag_waypoint_prediction.size() < index ){
                         current_tag_waypoint_prediction.push_back(prediction_srv.response.estimated_node);
@@ -611,7 +614,7 @@ int main(int argc, char **argv) {
                         content =
                             current_tag_waypoint_prediction.at(index - 1) + "," +
                             closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
-                        cout << "Prediction VS GT: " << content << endl;
+                        // cout << "Prediction VS GT: " << content << endl;
                         utils.filePutContents(pf_vs_gt_log + to_string(index) + ".csv", content, true);
                         // save closest waypoint for this tag
                         closest_waypoints.push_back(closerWaypoint);
@@ -688,7 +691,7 @@ int main(int argc, char **argv) {
               if (std::find(closest_waypoints.begin(), closest_waypoints.end(), element.second) != closest_waypoints.end()){
                 Pose rm_pose = record.getPoseFromEncoding(element.first);
                 frontiers.remove(rm_pose);
-                std::cout << "Removed node because the picker is on it: " << element.second << std::endl;
+                // std::cout << "Removed node because the picker is on it: " << element.second << std::endl;
               }
             }
 
@@ -700,8 +703,9 @@ int main(int argc, char **argv) {
             }
             // FIXME: this can still be useful by not every iteration
             // utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
-            cout <<"CleanedFrontiers: " << frontiers.size() << endl;
+            // cout <<"CleanedFrontiers: " << frontiers.size() << endl;
             mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
+            // cout << "Stateless update obtained" << endl;
             record = *function.evaluateFrontiers(
                 &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
                 &belief_map, &mappingWaypoints, &prediction_tools);
@@ -733,7 +737,7 @@ int main(int argc, char **argv) {
               int iter = 0;
               while (utils.containsPos(&posToEsclude, targetPos)) {
                 iter++;
-                cout << iter << endl;
+                // cout << iter << endl;
                 if (record.size() > 0) {
                   record.removeFrontier(target);
                   result = function.selectNewPose(&record);
@@ -958,8 +962,8 @@ void loadROSParams(){
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
   private_node_handle.param("belief_map_srv_name_left", belief_map_srv_name_left, std::string("/thorvald_left/rfid_grid_map_node/get_rfid_belief_left"));
   private_node_handle.param("belief_map_srv_name_right", belief_map_srv_name_right, std::string("/thorvald_right/rfid_grid_map_node/get_rfid_belief_right"));
-  private_node_handle.param("fake_belief_map_srv_name_left", fake_belief_map_srv_name_left, std::string("/thorvald_right/rfid_grid_map_node/get_fake_rfid_belief_left"));
-  private_node_handle.param("fake_belief_map_srv_name_right", fake_belief_map_srv_name_right, std::string("/thorvald_right/rfid_grid_map_node/get_fake_rfid_belief_right"));
+  private_node_handle.param("fake_belief_map_srv_name_left", fake_belief_map_srv_name_left, std::string("/thorvald_left/rfid_grid_map_node/get_rfid_fake_belief_left"));
+  private_node_handle.param("fake_belief_map_srv_name_right", fake_belief_map_srv_name_right, std::string("/thorvald_right/rfid_grid_map_node/get_rfid_fake_belief_right"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("make_topo_plan_srv_name", make_topo_plan_srv_name, std::string("/get_simple_policy/get_route_to"));
@@ -1033,9 +1037,6 @@ ros::NodeHandle createROSComms(){
   marker_pub =  nh.advertise<geometry_msgs::PointStamped>(marker_pub_topic_name, 10);
   stats_pub =  nh.advertise<std_msgs::String>(stats_topic_name, 1, true);
 
-  // Create srv client for fake likelihood readings
-  prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_belief_map_client_left);
-  prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_belief_map_client_right);
   // create subscribers, only when we are sure the right people is publishing
 //  printf("[pure_navigation@createROSComms] Waiting for move_base action server to come up");
 //  MoveBaseClient ac(move_base_srv_name, true);
