@@ -284,7 +284,8 @@ int main(int argc, char **argv) {
       norm_w_rfid_gain = w_rfid_gain / sum_w;
       bool use_mcdm = bool(atoi(argv[11]));
       int num_tags = atoi(argv[12]);
-      std::string log_dest_folder = (argv[13]);
+      int max_iterations = atoi(argv[13]);
+      std::string log_dest_folder = (argv[14]);
       auto t = std::time(nullptr);
       auto tm = *std::localtime(&t);
       std::ostringstream oss;
@@ -840,7 +841,7 @@ int main(int argc, char **argv) {
 
       }
       // Perform exploration until a certain stopping criterion is achieved
-      while (batteryPercentage > 10.0);
+      while (batteryPercentage > 10.0 and count < max_iterations);
       // Plotting utilities
       map.drawVisitedCells();
       map.printVisitedCells(history);

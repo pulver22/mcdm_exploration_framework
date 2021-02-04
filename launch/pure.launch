@@ -21,6 +21,7 @@
   <arg name="scenario_name"  	    default="INB"/>
   <arg name="use_mcdm"            default="1"/>
   <arg name="num_tags"            default="1"/>
+  <arg name="max_iterations"      default="30"/>
   <arg name="pure_args"  	        default="$(arg fov) 
                                            $(arg radius) 
                                            $(arg coverage_percentage) 
@@ -33,6 +34,7 @@
                                            $(arg w_rfid_gain)
                                            $(arg use_mcdm) 
                                            $(arg num_tags)
+                                           $(arg max_iterations)
                                            $(arg dest_folder)"/>
 
   <arg name="bag_descriptor" default="$(arg scenario_name)_$(arg w_info_gain)_$(arg w_travel_distance)_$(arg w_sensing_time)_$(arg w_battery_status)_$(arg w_rfid_gain)_date_"/>
@@ -65,7 +67,7 @@
     <param name="move_base_costmap_topic_name" value="/map"/>
     <param name="move_base_costmap_updates_topic_name" value="/move_base/global_costmap/costmap_updates"/>
     <param name="belief_map_srv_name" value="/thorvald/rfid_grid_map_node/get_rfid_belief"/>
-    <param name="fake_belief_map_srv_name" value="/thorvald/rfid_grid_map_node/get_rfid_fake_belief"/>
+    <!-- <param name="fake_belief_map_srv_name" value="/thorvald/rfid_grid_map_node/get_rfid_fake_belief"/> -->
   </node>
   <node pkg="next_best_sense" type="pure_navigation_two_readers" name="nbs" output="screen"  args="$(arg pure_args)" if="$(arg two_readers)">
     <param name="move_base_costmap_topic_name" value="/map"/>
