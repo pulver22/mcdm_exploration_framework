@@ -533,7 +533,7 @@ bool Utilities::showMarkerandNavigate(
 
   marker_pub->publish(p);
   //----------------------------------------------
-  move_base_msgs::MoveBaseGoal goal;
+  // move_base_msgs::MoveBaseGoal goal;
 
   // Update the destination point with the target
   path->request.goal.header.frame_id = "map";
@@ -575,7 +575,7 @@ bool Utilities::showMarkerandNavigate(
   //             posToEsclude); // full resolution
 
   return moveTopological(target, time_travel, tabuList, posToEsclude,
-                         mappingWaypoints, topological_map, tag_ids);
+                         mappingWaypoints, topological_map, tag_ids, marker_pub);
 }
 
 bool Utilities::freeInLocalCostmap(
@@ -889,7 +889,7 @@ bool Utilities::moveTopological(
     std::list<std::pair<float, float>> *posToEsclude,
     unordered_map<string, string> *mappingWaypoints,
     strands_navigation_msgs::TopologicalMap topological_map,
-    std::vector<string> tag_ids)
+    std::vector<string> tag_ids, ros::Publisher *marker_pub)
 {
 
   topological_navigation::GotoNodeActionGoal topoGoal;
@@ -958,10 +958,25 @@ bool Utilities::moveTopological(
         if (getTagClosestWaypoint(tag_id, topological_map, closest_waypoint_name, closest_waypoint_pose)){
           if (closest_waypoint_name == waypointName){
             //abort navigation
-            cout << "[utils.cpp@moveTopological] An agent is on the goal node, aborting" << endl;
+            cout << "[utils.cpp@moveTopological] An agent is on the goal node" << endl;
             success = false;
             this->topoAC->cancelAllGoals();
-            curr_state = actionlib::SimpleClientGoalState::ABORTED;
+            auto [new_waypointName, new_waypointPose] = getCloserConnectedWaypoint(waypointName, target, &topological_map);
+            topoGoal.goal.target = new_waypointName;
+            topoGoal.goal.no_orientation = false;
+            this->topoAC->sendGoal(topoGoal.goal);
+            curr_state = actionlib::SimpleClientGoalState::PENDING;
+            cout << "[utils.cpp@moveTopological] ... now going to: " << new_waypointName << endl;
+            //---------------------------PRINT GOAL POSITION
+            geometry_msgs::PointStamped p;
+            p.header.frame_id = "map";
+            p.header.stamp = ros::Time::now();
+            p.point.x = new_waypointPose.position.x;
+            p.point.y = new_waypointPose.position.y;
+
+            marker_pub->publish(p);
+            //----------------------------------------------
+            waypointName = new_waypointName;
           }
         }
       }
@@ -1026,6 +1041,50 @@ Utilities::getCloserWaypoint(geometry_msgs::Pose *pose,
     }
   }
   return closerWaypoint;
+}
+
+tuple <string, geometry_msgs::Pose>
+Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
+        strands_navigation_msgs::TopologicalMap *topoMap)
+{
+  float minDistance = 100;
+  float tmpDistance = 0;
+  string closerWaypoint;
+  geometry_msgs::Pose closerPose;
+  std::vector<strands_navigation_msgs::Edge> edges;
+
+  for (auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end();
+       nodesIt++)
+  {
+    if (nodesIt->name.compare(node_name) == 0){
+      edges = nodesIt->edges;
+      break;
+    }
+
+  }
+
+  for (auto edgesIt = edges.begin(); edgesIt != edges.end();
+        edgesIt++)
+  {
+    for (auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end();
+          nodesIt++)
+    {
+      if (nodesIt->name.compare(edgesIt->node) == 0) 
+      {
+        tmpDistance = sqrt(pow(pose.getX() - nodesIt->pose.position.x, 2) +
+                              pow(pose.getY() - nodesIt->pose.position.y, 2));
+        if (tmpDistance < minDistance)
+        {
+          minDistance = tmpDistance;
+          closerWaypoint = nodesIt->name;
+          closerPose.position.x = nodesIt->pose.position.x;
+          closerPose.position.y = nodesIt->pose.position.y;
+          closerPose.orientation.w = 1.0;
+        }
+      }
+    }
+  }
+  return {closerWaypoint, closerPose};
 }
 
 geometry_msgs::Pose Utilities::getWaypointPoseFromName(
