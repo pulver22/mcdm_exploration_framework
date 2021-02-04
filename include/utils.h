@@ -178,10 +178,10 @@ public:
         string &closest_waypoint_name, geometry_msgs::Pose &closest_waypoint_pose);
 
     bool moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
-                            std::list<std::pair<float, float>> *posToEsclude,
-                            unordered_map<string, string> *mappingWaypoints,
-                            strands_navigation_msgs::TopologicalMap topological_map,
-                            std::vector<string> tag_ids);
+                         std::list<std::pair<float, float>> *posToEsclude,
+                         unordered_map<string, string> *mappingWaypoints,
+                         strands_navigation_msgs::TopologicalMap topological_map,
+                         std::vector<string> tag_ids, ros::Publisher *marker_pub);
 
     Pose getCurrentPose(float resolution, float costresolution, dummy::Map *map,
                         double initFov, int initRange);
@@ -236,6 +236,10 @@ public:
 
     string getCloserWaypoint(geometry_msgs::Pose *pose,
                              strands_navigation_msgs::TopologicalMap *topoMap);
+
+    tuple<string, geometry_msgs::Pose> getCloserConnectedWaypoint(string node_name, Pose pose,
+                                                                  strands_navigation_msgs::TopologicalMap *topoMap);
+
     geometry_msgs::Pose
     getWaypointPoseFromName(string name,
                             strands_navigation_msgs::TopologicalMap *topoMap);
