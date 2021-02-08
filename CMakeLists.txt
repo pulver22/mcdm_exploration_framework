@@ -81,7 +81,7 @@ add_executable(
    ${catkin_LIBRARIES}
  )
 
-list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -O3 -g  -ftest-coverage -fprofile-arcs")
+list( APPEND CMAKE_CXX_FLAGS "-std=c++1z ${CMAKE_CXX_FLAGS} -O3 -g  -ftest-coverage -fprofile-arcs")
 
 ## Declare a cpp executable
 # add_executable(next_best_sense_node src/next_best_sense_node.cpp)
