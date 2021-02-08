@@ -934,7 +934,7 @@ bool Utilities::moveTopological(
     curr_state = this->topoAC->getState();
     // cout << "     Result: " << curr_state.getText() << endl;
 
-    if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED) {
+    if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED && this->topoAC->getResult()->success) {
       cout << "[utils.cpp@moveTopological] Goal position reached!" << endl;
       success = true;
     } else if (curr_state.isDone()) {
