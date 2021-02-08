@@ -117,11 +117,8 @@ string Criterion::getEncodedKey(Pose &p) {
 }
 
 double Criterion::computeTopologicalDistance(
-    Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
-    double *batteryTime, GridMap *belief_map,
-    unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped>
-        *belief_topomaps) {
+    Pose &p, ros::ServiceClient *path_client,
+    unordered_map<string, string> *mappingWaypoints) {
 
   double path_len = 0;
 
@@ -147,15 +144,15 @@ double Criterion::computeTopologicalDistance(
   } else {
     path_len = 1000;
   }
+
+  // path_len = number of nodes between current and destination pose
+  // 3 is assumed to be the distance in meters between two adjacent nodes
+  // (path_len -1) is the number of edges in the path
+  path_len = std::fmax(0, 3*(path_len-1));
   return path_len;
 }
 
-double Criterion::computeMetricDistance(
-    Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
-    double *batteryTime, GridMap *belief_map,
-    unordered_map<string, string> *mappingWaypoints,
-    vector<bayesian_topological_localisation::DistributionStamped>
-        *belief_topomaps) {
+double Criterion::computeMetricDistance(Pose &p, dummy::Map *map, ros::ServiceClient *path_client) {
   // cout << "travel " << endl;
   Astar astar;
   Pose robotPosition = map->getRobotPosition();

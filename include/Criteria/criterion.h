@@ -53,18 +53,9 @@ public:
   void insertEvaluation(Pose &p, double value);
   void clean();
   void normalize();
-  double computeMetricDistance(
-      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
-      double *batteryTime, GridMap *belief_map,
-      unordered_map<string, string> *mappingWaypoints,
-      vector<bayesian_topological_localisation::DistributionStamped>
-          *belief_topomaps);
-  double computeTopologicalDistance(
-      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
-      double *batteryTime, GridMap *belief_map,
-      unordered_map<string, string> *mappingWaypoints,
-      vector<bayesian_topological_localisation::DistributionStamped>
-          *belief_topomaps);
+  double computeMetricDistance(Pose &p, dummy::Map *map, ros::ServiceClient *path_client);
+  double computeTopologicalDistance(Pose &p, ros::ServiceClient *path_client,
+      unordered_map<string, string> *mappingWaypoints);
   double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
 
   // Setters and getters

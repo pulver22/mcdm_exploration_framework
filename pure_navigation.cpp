@@ -1014,7 +1014,7 @@ ros::NodeHandle createROSComms(){
   moveBasePub =   nh.advertise<geometry_msgs::PoseStamped>(move_base_goal_topic_name, 1000);
   gridPub = nh.advertise<grid_map_msgs::GridMap>(nav_grid_debug_topic_name, 1, true);
   planningPub = nh.advertise<grid_map_msgs::GridMap>(planning_grid_debug_topic_name, 1, true);
-  marker_pub =  nh.advertise<geometry_msgs::PointStamped>(marker_pub_topic_name, 10);
+  marker_pub =  nh.advertise<visualization_msgs::Marker>(marker_pub_topic_name, 10);
   stats_pub =  nh.advertise<std_msgs::String>(stats_topic_name, 1, true);
 
   // Create srv client for fake likelihood readings
