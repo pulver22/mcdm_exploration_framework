@@ -231,7 +231,7 @@ double RFIDCriterion::computeKLTopologicalMap(
          node_index++) {
       prior = prior_distributions->at(tag_index).values[node_index];
       posterior = posterior_distributions->at(tag_index).values[node_index];
-      tmp_KL = posterior * log(posterior / prior);
+      tmp_KL = posterior * log2(posterior / prior);
       if (isnan(tmp_KL) or isinf(tmp_KL))
         tmp_KL = 0;
       KL_div += tmp_KL;
