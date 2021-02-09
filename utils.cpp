@@ -530,10 +530,10 @@ double Utilities::getAngleBetPoses(geometry_msgs::PoseStamped ps1,
 }
 
 bool Utilities::showMarkerandNavigate(
-    Pose target, ros::Publisher *marker_pub, nav_msgs::GetPlan *path,
+    Pose target, ros::Publisher *marker_pub, dummy::Map *map,
     ros::ServiceClient *path_client, list<Pose> *tabuList,
     std::list<std::pair<float, float>> *posToEsclude, double min_robot_speed,
-    double robot_radius, double *batteryTime, double *travelledDistance,
+    double *batteryTime, double *travelledDistance,
     unordered_map<string, string> *mappingWaypoints, 
     strands_navigation_msgs::TopologicalMap topological_map,
     std::vector<string> tag_ids)
@@ -553,44 +553,17 @@ bool Utilities::showMarkerandNavigate(
   //----------------------------------------------
   // move_base_msgs::MoveBaseGoal goal;
 
-  // Update the destination point with the target
-  path->request.goal.header.frame_id = "map";
-  path->request.goal.pose.position.x = target.getX();
-  path->request.goal.pose.position.y = target.getY();
-  path->request.goal.pose.orientation.w = 1;
+  // Get distance from metric map
+  // double path_len = criterion_utils_.computeMetricDistance(target, map, path_len);
+  // Get distance from topological map
+  double path_len = criterion_utils_.computeTopologicalDistance(target, path_client, mappingWaypoints);
 
-  bool path_srv_call = path_client->call(*path);
-  float path_len;
-  if (path_srv_call) {
-    // calculate path length
-    path_len = getPathLen(path->response.plan.poses, robot_radius);
-    if (path_len < 1e3) {
-      printf("[navigation_utilties.cpp@showMarkerandNavigate] Path len is "
-             "[%3.3f m.]\n",
-             path_len);
-    } else {
-      printf("[navigation_utilties.cpp@showMarkerandNavigate] Path len is "
-             "infinite\n");
-      path_len = 1000;
-    }
-  } else {
-    printf("[navigation_utilties.cpp@showMarkerandNavigate] Service call "
-           "failed!\n");
-    path_len = 1000;
-  }
 
   float time_travel = 2 * path_len / min_robot_speed;
   time_travel = std::min(time_travel, (float)120.0);
   // double tt = time_travel;
   *batteryTime -= time_travel;
   *travelledDistance += path_len;
-  //      cout << "[navigation_utilties.cpp@showMarkerandNavigate] Target is at
-  //      " << path_len << " m from the robot" << endl;
-
-  // return move(p.point.x, p.point.y, roundf(target.getOrientation() * 100) /
-  // 100,
-  //             time_travel, tabuList,
-  //             posToEsclude); // full resolution
 
   return moveTopological(target, time_travel, tabuList, posToEsclude,
                          mappingWaypoints, topological_map, tag_ids, marker_pub);

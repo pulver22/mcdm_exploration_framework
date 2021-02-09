@@ -789,8 +789,8 @@ int main(int argc, char **argv) {
                 // }
 
                 success = utils.showMarkerandNavigate(
-                    target, &marker_pub, &path, &path_client, &tabuList,
-                    &posToEsclude, min_robot_speed, robot_radius, &batteryTime,
+                    target, &marker_pub, &map, &path_client, &tabuList,
+                    &posToEsclude, min_robot_speed, &batteryTime,
                     &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
                   utils.updatePathMetrics(

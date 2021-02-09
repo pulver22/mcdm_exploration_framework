@@ -40,6 +40,7 @@
 #include <gazebo_msgs/GetModelStateRequest.h>
 #include "strands_navigation_msgs/TopologicalMap.h"
 #include "visualization_msgs/Marker.h"
+#include "Criteria/criterion.h"
 // mfc: we will record using stats_pub
 //#include "record_ros/record.h"
 //#include "record_ros/String_cmd.h"
@@ -54,6 +55,7 @@ private:
     actionlib::SimpleActionClient<topological_navigation::GotoNodeAction> *topoAC;
     ros::ServiceClient *gazebo_model_state_client;
     visualization_msgs::Marker goal_marker_;
+    Criterion criterion_utils_;
 
 public:
     Utilities();
@@ -153,11 +155,11 @@ public:
                      float w_rfid_gain, std::string fileURI);
 
     bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
-                               nav_msgs::GetPlan *path,
+                               dummy::Map *map,
                                ros::ServiceClient *path_client,
                                list<Pose> *tabuList,
                                std::list<std::pair<float, float>> *posToEsclude,
-                               double min_robot_speed, double robot_radius,
+                               double min_robot_speed,
                                double *batteryTime, double *travelledDistance,
                                unordered_map<string, string> *mappingWaypoints,
                                strands_navigation_msgs::TopologicalMap topological_map,

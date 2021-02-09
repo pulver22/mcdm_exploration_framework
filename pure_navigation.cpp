@@ -92,7 +92,6 @@ double sensing_range, offsetY_base_rmld, FoV;
 int statusPTU, prevStatusPTU;
 double timeOfScanning = 0;
 bool btMode = false;
-double min_robot_speed = 0.1;
 nav_msgs::GetPlan path;
 float tag_coverage_percentage = 0.0;
 GridMap belief_map;
@@ -775,8 +774,8 @@ int main(int argc, char **argv) {
                 // }
 
                 success = utils.showMarkerandNavigate(
-                    target, &marker_pub, &path, &path_client, &tabuList,
-                    &posToEsclude, min_robot_speed, robot_radius, &batteryTime,
+                    target, &marker_pub, &map, &path_client, &tabuList,
+                    &posToEsclude, TRANSL_SPEED, &batteryTime,
                     &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
                   utils.updatePathMetrics(
