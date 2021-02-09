@@ -6,7 +6,21 @@
 #include "bayesian_topological_localisation/Predict.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
 
-Utilities::Utilities(){};
+
+Utilities::Utilities(){
+  goal_marker_.header.frame_id = "/map";
+  goal_marker_.type = goal_marker_.SPHERE;
+  goal_marker_.pose.position.z = 6;
+  goal_marker_.pose.orientation.w = 1;
+  goal_marker_.scale.x = 0.5;
+  goal_marker_.scale.y = 0.5;
+  goal_marker_.scale.z = 0.5;
+  goal_marker_.scale.z = 1;
+  goal_marker_.color.a = 1.0;
+  goal_marker_.color.r = 1;
+  goal_marker_.color.g = 1;
+  goal_marker_.color.b = 0;
+};
 Utilities::~Utilities(){};
 
 bool Utilities::contains(std::list<Pose> &list, Pose &p) {
@@ -525,13 +539,17 @@ bool Utilities::showMarkerandNavigate(
     std::vector<string> tag_ids)
 {
   //---------------------------PRINT GOAL POSITION
-  geometry_msgs::PointStamped p;
-  p.header.frame_id = "map";
-  p.header.stamp = ros::Time::now();
-  p.point.x = target.getX();
-  p.point.y = target.getY();
+  // geometry_msgs::PointStamped p;
+  // p.header.frame_id = "map";
+  // p.header.stamp = ros::Time::now();
+  // p.point.x = target.getX();
+  // p.point.y = target.getY();
 
-  marker_pub->publish(p);
+  goal_marker_.header.stamp = ros::Time::now();
+  goal_marker_.pose.position.x = target.getX();
+  goal_marker_.pose.position.y = target.getY();
+
+  marker_pub->publish(goal_marker_);
   //----------------------------------------------
   // move_base_msgs::MoveBaseGoal goal;
 
@@ -968,13 +986,16 @@ bool Utilities::moveTopological(
             curr_state = actionlib::SimpleClientGoalState::PENDING;
             cout << "[utils.cpp@moveTopological] ... now going to: " << new_waypointName << endl;
             //---------------------------PRINT GOAL POSITION
-            geometry_msgs::PointStamped p;
-            p.header.frame_id = "map";
-            p.header.stamp = ros::Time::now();
-            p.point.x = new_waypointPose.position.x;
-            p.point.y = new_waypointPose.position.y;
+            // geometry_msgs::PointStamped p;
+            // p.header.frame_id = "map";
+            // p.header.stamp = ros::Time::now();
+            // p.point.x = new_waypointPose.position.x;
+            // p.point.y = new_waypointPose.position.y;
 
-            marker_pub->publish(p);
+            goal_marker_.header.stamp = ros::Time::now();
+            goal_marker_.pose.position.x = target.getX();
+            goal_marker_.pose.position.y = target.getY();
+            marker_pub->publish(goal_marker_);
             //----------------------------------------------
             waypointName = new_waypointName;
           }

@@ -38,9 +38,7 @@ double RFIDCriterion::evaluate(
 
   // Compute how long it takes to go to the destination waypoint and retrieve
   // the corresponding posterior belief maps
-  double path_len = Criterion::computeTopologicalDistance(
-      p, map, path_client, batteryTime, belief_map, mappingWaypoints,
-      &(tools->prior_distributions));
+  double path_len = Criterion::computeTopologicalDistance( p, path_client, mappingWaypoints);
   double time = path_len / TRANSL_SPEED;
   // fesetround(FE_DOWNWARD);
   time = std::nearbyint(time);

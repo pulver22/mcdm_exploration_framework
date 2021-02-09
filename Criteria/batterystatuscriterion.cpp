@@ -69,9 +69,8 @@ double BatteryStatusCriterion::evaluate(
   //   path_len = 50000;
   // }
 
-  double path_len = Criterion::computeMetricDistance(
-        p, map, path_client, batteryTime, belief_map,
-      mappingWaypoints, &(tools->prior_distributions));
+  // double path_len = Criterion::computeMetricDistance(p, map, path_client);
+  double path_len = Criterion::computeTopologicalDistance( p, path_client, mappingWaypoints);
   translTime = path_len / TRANSL_SPEED;
   remainingBattery = *batteryTime - translTime;
   remainingBattery = max(remainingBattery, 0.0);

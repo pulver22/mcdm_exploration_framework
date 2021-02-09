@@ -39,6 +39,7 @@
 #include <gazebo_msgs/GetModelState.h>
 #include <gazebo_msgs/GetModelStateRequest.h>
 #include "strands_navigation_msgs/TopologicalMap.h"
+#include "visualization_msgs/Marker.h"
 // mfc: we will record using stats_pub
 //#include "record_ros/record.h"
 //#include "record_ros/String_cmd.h"
@@ -52,6 +53,7 @@ class Utilities {
 private:
     actionlib::SimpleActionClient<topological_navigation::GotoNodeAction> *topoAC;
     ros::ServiceClient *gazebo_model_state_client;
+    visualization_msgs::Marker goal_marker_;
 
 public:
     Utilities();

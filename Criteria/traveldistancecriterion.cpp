@@ -97,9 +97,7 @@ double TravelDistanceCriterion::evaluate(
   //   path_len = 1000;
   // }
 
-  double path_len = Criterion::computeTopologicalDistance(
-      p, map, path_client, batteryTime, belief_map,
-      mappingWaypoints, &(tools->prior_distributions));
+  double path_len = Criterion::computeTopologicalDistance( p, path_client, mappingWaypoints);
   Criterion::insertEvaluation(p, path_len);
   return path_len;
 }
