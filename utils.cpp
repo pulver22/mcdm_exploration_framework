@@ -993,8 +993,8 @@ bool Utilities::moveTopological(
             // p.point.y = new_waypointPose.position.y;
 
             goal_marker_.header.stamp = ros::Time::now();
-            goal_marker_.pose.position.x = target.getX();
-            goal_marker_.pose.position.y = target.getY();
+            goal_marker_.pose.position.x = new_waypointPose.position.x;
+            goal_marker_.pose.position.y = new_waypointPose.position.y;
             marker_pub->publish(goal_marker_);
             //----------------------------------------------
             waypointName = new_waypointName;
