@@ -580,6 +580,7 @@ int main(int argc, char **argv) {
 
                     int index = std::stoi(*it);
                     prediction_srv.request.likelihood = tmp_belief_topo;
+                    prediction_srv.request.identifying = true;
                     if (pf_likelihoodClient_list.at(index - 1).call(
                             prediction_srv)) {
                       ROS_DEBUG("Prediction srv called successfully\n");
