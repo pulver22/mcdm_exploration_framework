@@ -248,7 +248,7 @@ void Utilities::updatePathMetrics(
   // string waypointName;
   // EvaluationRecords record;
   // bool found = false;
-  // string encoding = record.getEncodedKey(*target);
+  // string encoding = record_.getEncodedKey(*target);
   // cout << "encoding: " << encoding << endl;
   // auto search = mappingWaypoints->find(encoding);
   // if (search != mappingWaypoints->end()) {
@@ -798,7 +798,6 @@ void Utilities::convertStrandTopoMapToListPose(
   tf::Quaternion quat;
   tfScalar angle;
   Pose tmpPose;
-  EvaluationRecords record;
   string encoding;
   // Iterate on all the nodes of the topological map and create a list of Pose
   // elements
@@ -817,7 +816,7 @@ void Utilities::convertStrandTopoMapToListPose(
                // topology and the opposite one
                angle * (1 - i) + (i)*fmod(angle + M_PI, 2 * M_PI), range, FoV);
       frontiers->push_back(tmpPose);
-      encoding = record.getEncodedKey(tmpPose);
+      encoding = record_.getEncodedKey(tmpPose);
       mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
     }
 
@@ -829,7 +828,7 @@ void Utilities::convertStrandTopoMapToListPose(
     //                 range,
     //                 FoV);
     // frontiers->push_back(tmpPose);
-    // encoding = record.getEncodedKey(tmpPose);
+    // encoding = record_.getEncodedKey(tmpPose);
     // mappingWaypoints->insert(std::make_pair(encoding, nodes_it->name));
   }
   // cout <<"[TOPOMAP]: " << frontiers->size() << " nodes" << endl;
@@ -884,8 +883,8 @@ bool Utilities::moveTopological(
 {
 
   topological_navigation::GotoNodeActionGoal topoGoal;
-  EvaluationRecords record;
-  string encoding = record.getEncodedKey(target);
+  
+  string encoding = record_.getEncodedKey(target);
   bool success = false;
 
   if (!this->topoAC) {
@@ -916,9 +915,9 @@ bool Utilities::moveTopological(
   actionlib::SimpleClientGoalState curr_state =
       actionlib::SimpleClientGoalState::PENDING;
   float total_wait_time = 0.0;
+  float delta_t = std::min(time_travel, (float)2.0);
   while (!curr_state.isDone()) {
-    time_travel = std::min(time_travel, (float)2.0);
-    total_wait_time += time_travel;
+    total_wait_time += delta_t;
     // cout << "     [navigation_utilties.cpp@move] Waiting for " <<
     // total_wait_time << "/60.0 seconds to reach goal" << endl;
     this->topoAC->waitForResult(ros::Duration(time_travel));
@@ -936,7 +935,7 @@ bool Utilities::moveTopological(
       // std::pair<int, int> pairToRemove;
       // pairToRemove = make_pair(int(x), int(y));
       // posToEsclude->push_back(pairToRemove);
-    } else if (total_wait_time > 90.0) {
+    } else if (total_wait_time > time_travel) {
       cout << "[utils.cpp@moveTopological] Is taking too long" << endl;
       success = false;
       this->topoAC->cancelAllGoals();
@@ -985,7 +984,7 @@ Utilities::convertGridBeliefMapToTopoMap(
     unordered_map<string, string> *mappingWaypoints, string tag_id, double radius) {
   // Retrieve node waypoint name from the mapping and return waypoint and summed
   // belief inside the message
-  EvaluationRecords record;
+
   string encoding, waypointName;
   double probability;
   bayesian_topological_localisation::DistributionStamped topo_belief;
@@ -993,7 +992,7 @@ Utilities::convertGridBeliefMapToTopoMap(
 
   for (auto it = topoMap->begin(); it != topoMap->end(); it++) {
     probability = 0.0;
-    encoding = record.getEncodedKey(*it);
+    encoding = record_.getEncodedKey(*it);
     auto search = mappingWaypoints->find(encoding);
     if (search != mappingWaypoints->end()) {
       waypointName = search->second;

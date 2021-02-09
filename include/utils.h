@@ -56,6 +56,7 @@ private:
     ros::ServiceClient *gazebo_model_state_client;
     visualization_msgs::Marker goal_marker_;
     Criterion criterion_utils_;
+    EvaluationRecords record_;
 
 public:
     Utilities();
