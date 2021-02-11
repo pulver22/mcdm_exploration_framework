@@ -27,6 +27,7 @@
 #include <nav_msgs/GetPlan.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Bool.h>
 #include <ros/ros.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -52,7 +53,7 @@
 #include <iomanip>
 #include <experimental/filesystem> // or #include <filesystem> for C++17 and up
 #include "rasberry_people_perception/NoisyGPS.h"
-using namespace std;
+    using namespace std;
 using namespace dummy;
 
 namespace fs = std::experimental::filesystem;
@@ -116,6 +117,7 @@ std::string move_base_costmap_updates_topic_name;
 std::string  marker_pub_topic_name;
 std::string rosbag_srv_name;
 std::string gazebo_model_state_srv_name;
+std::string experiment_finished_topic_name;
 double robot_radius;
 Utilities utils;
 std::string stats_topic_name;
@@ -162,6 +164,7 @@ vector<ros::Publisher> pf_topoMap_pub_list;
 // mfc: we will record using stats_pub
 // record_ros::String_cmd srv_rosbag;
 ros::Publisher stats_pub;
+ros::Publisher experiment_finished_pub;
 
 vector<string> current_tag_waypoint_prediction;
 geometry_msgs::Pose pf_tag_pose, gt_tag_pose, gps_tag_pose;
@@ -232,6 +235,10 @@ int main(int argc, char **argv) {
   //   cout << "Error occurring while recording the bag. Exiting now!" << endl;
   //   ros::shutdown();
   // }
+
+  std_msgs::Bool finished;
+  finished.data = false;
+  experiment_finished_pub.publish(finished);
 
   while (ros::ok()) {
 
@@ -848,6 +855,11 @@ int main(int argc, char **argv) {
       cout << "------------------ TABULIST -----------------" << endl;
       utils.calculateDistance(tabuList, &topo_path_client, robot_radius);
 
+      cout << "------------------- ending experiment ---------------" << endl;
+      std_msgs::Bool finished;
+      finished.data = true;
+      experiment_finished_pub.publish(finished);
+
       utils.printResult(newSensedCells, totalFreeCells, precision,
                         numConfiguration, travelledDistance, numOfTurning,
                         totalAngle, totalScanTime, resolution, norm_w_info_gain,
@@ -871,6 +883,8 @@ int main(int argc, char **argv) {
       cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "s, "
            << totalTimeMCDM / 60 << " m " << endl;
       cout << "Spinning at the end" << endl;
+
+
 
       sleep(1);
       ros::shutdown();
@@ -967,7 +981,7 @@ void loadROSParams(){
   private_node_handle.param("localization_srv_name", localization_srv_name, std::string("/bayesian_topological_localisation/localise_agent"));
   private_node_handle.param("pf_topic_name", pf_topic_name, std::string("/prob_dist_obs"));
   private_node_handle.param("gazebo_model_state_srv_name", gazebo_model_state_srv_name, std::string("/gazebo/get_model_state"));
-
+  private_node_handle.param("experiment_finished_topic_name", experiment_finished_topic_name, std::string("/experiment_finished"));
 }
 
 void printROSParams(){
@@ -989,6 +1003,7 @@ void printROSParams(){
   printf("   - stats_topic_name [%s]\n", stats_topic_name.c_str());
   printf("   - topological_map_topic_name [%s]\n", topological_map_topic_name.c_str());
   printf("   - pf_topic_name [%s]\n", pf_topic_name.c_str());
+  printf("   - experiment_finished_topic_name [%s]\n", experiment_finished_topic_name.c_str());
 
   printf("/////////////////////////////////////////////////////////////////////////\n");
 
@@ -1016,7 +1031,7 @@ ros::NodeHandle createROSComms(){
   planningPub = nh.advertise<grid_map_msgs::GridMap>(planning_grid_debug_topic_name, 1, true);
   marker_pub =  nh.advertise<visualization_msgs::Marker>(marker_pub_topic_name, 10);
   stats_pub =  nh.advertise<std_msgs::String>(stats_topic_name, 1, true);
-
+  experiment_finished_pub = nh.advertise<std_msgs::Bool>(experiment_finished_topic_name, 1, true);
   // Create srv client for fake likelihood readings
   prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_belief_map_client);
 
