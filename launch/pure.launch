@@ -8,10 +8,10 @@
   <!-- PARAMS .............................................................. -->
   <arg name="two_readers"         default="true"/>
   <arg name="w_info_gain"  	      default="0.00"/>
-  <arg name="w_travel_distance"  	default="0.00"/>
-  <arg name="w_sensing_time"  	  default="0.00"/>
-  <arg name="w_battery_status"  	default="0.01"/>
-  <arg name="w_rfid_gain"  	      default="0.99"/>
+  <arg name="w_travel_distance"  	default="0.2"/>
+  <arg name="w_sensing_time"  	  default="0.1"/>
+  <arg name="w_battery_status"  	default="0.2"/>
+  <arg name="w_rfid_gain"  	      default="0.5"/>
   <arg name="fov"                 default="180"/>
   <arg name="radius"              default="5"/>
   <arg name="coverage_percentage" default="0.95"/>
@@ -21,7 +21,7 @@
   <arg name="scenario_name"  	    default="INB"/>
   <arg name="use_mcdm"            default="1"/>
   <arg name="num_tags"            default="1"/>
-  <arg name="max_iterations"      default="30"/>
+  <arg name="max_iterations"      default="10"/>
   <arg name="pure_args"  	        default="$(arg fov) 
                                            $(arg radius) 
                                            $(arg coverage_percentage) 

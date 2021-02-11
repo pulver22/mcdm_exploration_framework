@@ -145,10 +145,9 @@ double Criterion::computeTopologicalDistance(
     path_len = 1000;
   }
 
-  // path_len = number of nodes between current and destination pose
+  // path_len = number of edges between current and destination pose
   // 3 is assumed to be the distance in meters between two adjacent nodes
-  // (path_len -1) is the number of edges in the path
-  path_len = std::fmax(0, 3*(path_len-1));
+  path_len = 3*path_len;
   return path_len;
 }
 
@@ -211,4 +210,22 @@ double Criterion::getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
   }
 
   return len;
+}
+
+double Criterion::getPathLenFromMatrix(string currentRobotWayPoint, 
+    Pose &p, std::unordered_map<string, double> *distances_map, 
+    unordered_map<string, string> *mappingWaypoints){
+  string encoding = Criterion::record_.getEncodedKey(p);
+  auto search = mappingWaypoints->find(encoding);
+  string goal_wp;
+  bool found = false;
+  if (search != mappingWaypoints->end()) {
+    goal_wp = search->second;
+    found = true;
+  } else {
+    found = false;
+  }
+  string key = currentRobotWayPoint + goal_wp;
+  //TODO: convert current waypoint and destination one into index and then retrieve distance
+  return distances_map->at(key);
 }

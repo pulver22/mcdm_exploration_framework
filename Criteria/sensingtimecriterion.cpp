@@ -29,10 +29,10 @@ SensingTimeCriterion::SensingTimeCriterion(double weight)
 
 SensingTimeCriterion::~SensingTimeCriterion() {}
 
-double SensingTimeCriterion::evaluate(
+double SensingTimeCriterion::evaluate(string currentRobotWayPoint, 
     Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime,
     GridMap *belief_map, unordered_map<string, string> *mappingWaypoints,
-    prediction_tools *tools) {
+    prediction_tools *tools, std::unordered_map<string, double> *distances_map) {
   NewRay ray;
   double sensingTime;
   double angle = 0;

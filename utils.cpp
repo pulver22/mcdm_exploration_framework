@@ -107,7 +107,7 @@ void Utilities::cleanDestinationFromTabulist(
   // possibleDestinations->size() << endl;
 }
 
-void Utilities::pushInitialPositions(
+void Utilities::pushInitialPositions(string currentRobotWayPoint,
     dummy::Map map, float x, float y, float orientation, int range, int FOV,
     double threshold, string actualPose,
     vector<pair<string, list<Pose>>> *graph2, ros::ServiceClient *path_client,
@@ -116,7 +116,8 @@ void Utilities::pushInitialPositions(
                                                DistributionStamped>>>
         *mapping_time_belief,
     MCDMFunction *function, double *batteryTime, GridMap *belief_map,
-    unordered_map<string, string> *mappingWaypoints, prediction_tools *tools) {
+    unordered_map<string, string> *mappingWaypoints, prediction_tools *tools,
+    std::unordered_map<string, double> *distances_map) {
 
   map.findCandidatePositions(x, y, orientation, FOV, range);
   vector<pair<float, float>> candidatePosition = map.getCandidatePositions();
@@ -133,9 +134,9 @@ void Utilities::pushInitialPositions(
     frontiers.push_back(p3);
     frontiers.push_back(p4);
   }
-  EvaluationRecords *record = function->evaluateFrontiers(
+  EvaluationRecords *record = function->evaluateFrontiers(currentRobotWayPoint,
       &frontiers, &map, threshold, path_client, mapping_time_belief,
-      batteryTime, belief_map, mappingWaypoints, tools);
+      batteryTime, belief_map, mappingWaypoints, tools, distances_map);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose>> pair = make_pair(actualPose, nearCandidates);
@@ -558,10 +559,8 @@ bool Utilities::showMarkerandNavigate(
   // Get distance from topological map
   double path_len = criterion_utils_.computeTopologicalDistance(target, path_client, mappingWaypoints);
 
-
   float time_travel = 2 * path_len / min_robot_speed;
   time_travel = std::min(time_travel, (float)120.0);
-  // double tt = time_travel;
   *batteryTime -= time_travel;
   *travelledDistance += path_len;
 
@@ -639,7 +638,7 @@ bool Utilities::freeInLocalCostmap(
   return ans;
 }
 
-Pose Utilities::selectFreePoseInLocalCostmap(
+Pose Utilities::selectFreePoseInLocalCostmap(string currentRobotWayPoint, 
     Pose target, list<Pose> *nearCandidates, dummy::Map *map,
     MCDMFunction *function, double threshold, ros::ServiceClient *path_client,
     vector<unordered_map<float,
@@ -649,7 +648,7 @@ Pose Utilities::selectFreePoseInLocalCostmap(
     std::list<std::pair<float, float>> *posToEsclude, EvaluationRecords *record,
     std::string move_base_local_costmap_topic_name, double *batteryTime,
     GridMap *belief_map, unordered_map<string, string> *mappingWaypoints,
-    prediction_tools *tools) {
+    prediction_tools *tools, std::unordered_map<string, double> *distances_map) {
   bool isFreeFromObstacle = false;
   while (isFreeFromObstacle == false) {
     //    cout << "===> Checking against localmap!" << endl;
@@ -668,9 +667,9 @@ Pose Utilities::selectFreePoseInLocalCostmap(
     cleanPossibleDestination2(nearCandidates, target);
     // cout << "nearCandidate after: " << nearCandidates->size() << endl;
     // Get the list of new candidate position with  associated evaluation
-    record = function->evaluateFrontiers(
+    record = function->evaluateFrontiers(currentRobotWayPoint,
         nearCandidates, map, threshold, path_client, mapping_time_belief,
-        batteryTime, belief_map, mappingWaypoints, tools);
+        batteryTime, belief_map, mappingWaypoints, tools, distances_map);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
     //    cout << "     record size: " << record->size() << endl;
@@ -857,11 +856,11 @@ bool Utilities::getGazeboModelPose(string model_name, string relative_entity_nam
   return false;
 }
 
-bool Utilities::getTagClosestWaypoint(
-    string tag_id, strands_navigation_msgs::TopologicalMap topological_map,
+bool Utilities::getModelClosestWaypoint(
+    string model_name, strands_navigation_msgs::TopologicalMap topological_map,
     string &closest_waypoint_name, geometry_msgs::Pose &closest_waypoint_pose)
 {
-  string model_name = "tag_" + tag_id;
+  // string model_name = "tag_" + tag_id;
   string relative_entity_name = "map";
 
   if (getGazeboModelPose(model_name, relative_entity_name, closest_waypoint_pose))
@@ -910,6 +909,14 @@ bool Utilities::moveTopological(
   topoGoal.goal.target = waypointName;
   topoGoal.goal.no_orientation = false;
 
+  // NOTE: since time passes between pose selection and sending goal, it can be
+  // that the target is now occupied by the tag. We need then to select a
+  // connected node to the one we would like to go.
+  bool change_destination = updateDestinationWaypoint(
+      tag_ids, topological_map, waypointName, &target, marker_pub, &topoGoal, &success);
+
+  cout << "[utils.cpp@moveTopological] New robot destination: "
+             << topoGoal.goal.target << endl;
   this->topoAC->sendGoal(topoGoal.goal);
 
   actionlib::SimpleClientGoalState curr_state =
@@ -918,23 +925,15 @@ bool Utilities::moveTopological(
   float delta_t = std::min(time_travel, (float)2.0);
   while (!curr_state.isDone()) {
     total_wait_time += delta_t;
-    // cout << "     [navigation_utilties.cpp@move] Waiting for " <<
-    // total_wait_time << "/60.0 seconds to reach goal" << endl;
     this->topoAC->waitForResult(ros::Duration(time_travel));
     curr_state = this->topoAC->getState();
-    // cout << "     Result: " << curr_state.getText() << endl;
-
+    
     if (curr_state == actionlib::SimpleClientGoalState::SUCCEEDED && this->topoAC->getResult()->success) {
       cout << "[utils.cpp@moveTopological] Goal position reached!" << endl;
       success = true;
     } else if (curr_state.isDone()) {
-      cout << "[utils.cpp@moveTopological] The base failed to move"
-           << endl; //, adding this "
-                    // "pose to the Tabulist and posToEsclude" << endl;
+      cout << "[utils.cpp@moveTopological] The base failed to move" << endl; 
       success = false;
-      // std::pair<int, int> pairToRemove;
-      // pairToRemove = make_pair(int(x), int(y));
-      // posToEsclude->push_back(pairToRemove);
     } else if (total_wait_time > time_travel) {
       cout << "[utils.cpp@moveTopological] Is taking too long" << endl;
       success = false;
@@ -942,37 +941,46 @@ bool Utilities::moveTopological(
       curr_state = actionlib::SimpleClientGoalState::ABORTED;
     } else { // here we are still navigating toward the goal
       // check that the goal is still reachable, i.e. that no tag is on it
-      string closest_waypoint_name;
-      geometry_msgs::Pose closest_waypoint_pose;
-      for (auto tag_id : tag_ids) {
-        if (getTagClosestWaypoint(tag_id, topological_map, closest_waypoint_name, closest_waypoint_pose)){
-          if (closest_waypoint_name == waypointName){
-            //abort navigation
-            cout << "[utils.cpp@moveTopological] An agent is on the goal node" << endl;
-            success = false;
-            this->topoAC->cancelAllGoals();
-            auto [new_waypointName, new_waypointPose] = getCloserConnectedWaypoint(waypointName, target, &topological_map);
-            topoGoal.goal.target = new_waypointName;
-            topoGoal.goal.no_orientation = false;
-            this->topoAC->sendGoal(topoGoal.goal);
-            curr_state = actionlib::SimpleClientGoalState::PENDING;
-            cout << "[utils.cpp@moveTopological] ... now going to: " << new_waypointName << endl;
-            //---------------------------PRINT GOAL POSITION
-            // geometry_msgs::PointStamped p;
-            // p.header.frame_id = "map";
-            // p.header.stamp = ros::Time::now();
-            // p.point.x = new_waypointPose.position.x;
-            // p.point.y = new_waypointPose.position.y;
 
-            goal_marker_.header.stamp = ros::Time::now();
-            goal_marker_.pose.position.x = new_waypointPose.position.x;
-            goal_marker_.pose.position.y = new_waypointPose.position.y;
-            marker_pub->publish(goal_marker_);
-            //----------------------------------------------
-            waypointName = new_waypointName;
-          }
-        }
+      bool change_destination = updateDestinationWaypoint(
+        tag_ids, topological_map, waypointName, &target, marker_pub, &topoGoal, &success);
+      if (change_destination == true){
+        this->topoAC->cancelAllGoals();
+        // Send the updated goal
+        this->topoAC->sendGoal(topoGoal.goal);
+        curr_state = actionlib::SimpleClientGoalState::PENDING;
+        cout << "[utils.cpp@moveTopological] New robot destination: "
+             << topoGoal.goal.target << endl;
       }
+
+      // for (auto tag_id : tag_ids) {
+      //   if (getTagClosestWaypoint(tag_id, topological_map, closest_waypoint_name_, closest_waypoint_pose_)){
+      //     if (closest_waypoint_name_ == waypointName){
+      //       //abort navigation
+      //       cout << "[utils.cpp@moveTopological] We are already navigating but an agent is on the goal node." << endl;
+      //       success = false;
+      //       this->topoAC->cancelAllGoals();
+      //       auto [new_waypointName, new_waypointPose] = getCloserConnectedWaypoint(waypointName, target, &topological_map);
+      //       topoGoal.goal.target = new_waypointName;
+      //       topoGoal.goal.no_orientation = false;
+      //       this->topoAC->sendGoal(topoGoal.goal);
+      //       curr_state = actionlib::SimpleClientGoalState::PENDING;
+      //       cout << "[utils.cpp@moveTopological] ... now going to: " << new_waypointName << endl;
+      //       //---------------------------PRINT GOAL POSITION
+      //       // geometry_msgs::PointStamped p;
+      //       // p.header.frame_id = "map";
+      //       // p.header.stamp = ros::Time::now();
+      //       // p.point.x = new_waypointPose.position.x;
+      //       // p.point.y = new_waypointPose.position.y;
+      //       goal_marker_.header.stamp = ros::Time::now();
+      //       goal_marker_.pose.position.x = new_waypointPose.position.x;
+      //       goal_marker_.pose.position.y = new_waypointPose.position.y;
+      //       marker_pub->publish(goal_marker_);
+      //       //----------------------------------------------
+      //       waypointName = new_waypointName;
+      //     }
+      //   }
+      // }
     }
   }
   return success;
@@ -1130,4 +1138,80 @@ Utilities::getStatelessRFIDBelief(
       cout << "Stateless Srv No answer" << endl;
   }
   return mapping_time_belief;
+}
+
+
+bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids, 
+            strands_navigation_msgs::TopologicalMap topological_map, string waypointName,
+            Pose *target, ros::Publisher *marker_pub,
+            topological_navigation::GotoNodeActionGoal *topoGoal,
+            bool *success){
+  bool change_destination = false;
+  for (auto tag_id : tag_ids) {
+    string model_name = "tag_" + tag_id;
+    if (getModelClosestWaypoint(model_name, topological_map, closest_waypoint_name_,
+                              closest_waypoint_pose_)) {
+      if (closest_waypoint_name_ == waypointName) {
+        cout << "[utils.cpp@moveTopological] Even before moving, an agent is "
+                "on the goal node. Changing destination to neighbour node."
+             << endl;
+        auto [new_waypointName, new_waypointPose] =
+            getCloserConnectedWaypoint(waypointName, *target, &topological_map);
+        topoGoal->goal.target = new_waypointName;
+        topoGoal->goal.no_orientation = false;
+        goal_marker_.header.stamp = ros::Time::now();
+        goal_marker_.pose.position.x = new_waypointPose.position.x;
+        goal_marker_.pose.position.y = new_waypointPose.position.y;
+        marker_pub->publish(goal_marker_);
+        change_destination = true;
+        *success = false;
+      }
+    }
+  }
+  return change_destination;
+}
+
+void Utilities::saveMap(const std::unordered_map<string, double> *map, string path){
+  std::cout<<"Save in " << path << endl;
+  const auto start = std::chrono::steady_clock::now();
+  std::ofstream f;
+  f.open(path.c_str());
+  for(auto iter=map->begin(); iter!=map->end(); iter++){
+      // fwrite(&(iter->first), sizeof(string), 1, f);
+      // fwrite(&(iter->second), sizeof(double), 1, f);
+      f << iter->first << "," << iter->second << "\n" ;
+  }
+  f.close();
+  const auto end = std::chrono::steady_clock::now();
+  std::cout<<"Save time = "<< std::chrono::duration<double, std::milli> (end-start).count() << " ms" << std::endl;
+}
+
+bool Utilities::loadMap(std::unordered_map<string, double> *map, string path){
+  std::cout<<"Load from " << path << endl;
+  const auto start = std::chrono::steady_clock::now();
+  std::ifstream f;
+  f.open(path.c_str());
+  if (!f.good()) { 
+    return false; 
+  };
+
+  string key;
+  string val;
+  // cout << "here" << endl;
+  // while(fread(&key, sizeof(string), 1, f)){
+  //     fread(&val, sizeof(double), 1, f);
+  //   // cout << "Key: " << *key << ", val :" << *val << endl;
+  //     // tmp_map.emplace(*key, *val);
+  //     map->at(key) = val;
+  //   // cout << "3" << endl;
+  // }
+  // fclose(f);
+  while(f.good()){
+    getline(f, key, ',');
+    getline(f, val);
+    map->emplace(key, std::atof(val.c_str()) );
+  }
+  const auto end = std::chrono::steady_clock::now();
+  std::cout<<"Load time = "<< std::chrono::duration<double, std::milli> (end-start).count() << " ms" << std::endl;
+  return true;
 }

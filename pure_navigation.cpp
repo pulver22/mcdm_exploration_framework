@@ -1,4 +1,4 @@
-#include "Criteria/traveldistancecriterion.h"
+#include "Criteria/criterion.h"
 #include "PathFinding/astar.h"
 #include "map.h"
 #include "mcdmfunction.h"
@@ -42,6 +42,7 @@
 #include "rfid_grid_map/GetFakeBeliefMaps.h"
 #include "strands_navigation_msgs/TopologicalMap.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
+#include "strands_navigation_msgs/GetRouteBetween.h"
 #include "bayesian_topological_localisation/LocaliseAgent.h"
 #include "bayesian_topological_localisation/DistributionStamped.h"
 #include "bayesian_topological_localisation/UpdateLikelihoodObservation.h"
@@ -56,6 +57,7 @@ using namespace std;
 using namespace dummy;
 
 namespace fs = std::experimental::filesystem;
+
 // ROS varies
 bool move(float x, float y, float orientation, float time_travel,
           list<Pose> *tabuList,
@@ -92,7 +94,7 @@ double sensing_range, offsetY_base_rmld, FoV;
 int statusPTU, prevStatusPTU;
 double timeOfScanning = 0;
 bool btMode = false;
-nav_msgs::GetPlan path;
+// nav_msgs::GetPlan path;
 float tag_coverage_percentage = 0.0;
 GridMap belief_map;
 vector<bayesian_topological_localisation::DistributionStamped> belief_topomaps;
@@ -105,7 +107,7 @@ int belief_counter = 0;
 std::string static_map_srv_name;
 std::string belief_map_srv_name, fake_belief_map_srv_name;
 std::string make_plan_srv_name;
-std::string make_topo_plan_srv_name;
+std::string make_topo_plan_srv_name, get_topo_distances_srv_name;
 std::string move_base_goal_topic_name;
 std::string move_base_srv_name;
 std::string nav_grid_debug_topic_name;
@@ -129,7 +131,7 @@ std::string pf_topic_name;
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_;
 ros::ServiceClient path_client;
-ros::ServiceClient topo_path_client;
+ros::ServiceClient topo_path_client, topo_distances_client;
 ros::ServiceClient belief_map_client, fake_belief_map_client;
 ros::ServiceClient localization_client;
 ros::ServiceClient pf_client, pf_stateless_client;
@@ -282,6 +284,7 @@ int main(int argc, char **argv) {
       std::ostringstream oss;
       oss << std::put_time(&tm, "%d-%m-%Y-%H-%M-%S/");
       auto str = oss.str();
+      string map_path = log_dest_folder + "distances_map.csv" ;
       log_dest_folder += str;
       cout << "Creating folder: " << log_dest_folder << endl;
       fs::create_directories(log_dest_folder);
@@ -317,6 +320,39 @@ int main(int argc, char **argv) {
           &topological_map, &topoMap, initRange, initFov, &mappingWaypoints);
       prediction_tools.topoMap = topoMap;
       ROS_DEBUG("TopologicalMap created");
+
+      // NOTE: let's create a map to store distance between each node and every other node;
+      double start = ros::Time::now().toSec();
+      std::unordered_map<string, double> distances_map;
+      cout << "Loading distances matrix from disk ..." << endl;
+      bool successfull_loading = utils.loadMap(&distances_map, map_path);
+      if (successfull_loading == true){
+        cout << "   Distances map contains: " << distances_map.size() << "entries" << endl;
+      }else{
+        cout << "It doesn't exist. Create a new one ..." << endl;
+        strands_navigation_msgs::GetRouteBetween route;
+        double distance;
+        for(int i = 0; i < topological_map.nodes.size(); i++){
+          for(int j = 0; j <= i; j++){
+            route.request.origin = topological_map.nodes.at(i).name;
+            route.request.goal = topological_map.nodes.at(j).name;
+            bool route_srv_call = topo_distances_client.call(route);
+            if(route_srv_call){
+              // cout << "   Called!" << endl;
+              distance = 3 * route.response.route.source.size();
+            }else {
+              distance = 1000;
+            }
+            if (i == j) distance = 0;
+            distances_map.emplace(topological_map.nodes.at(i).name + topological_map.nodes.at(j).name, distance);
+            distances_map.emplace(topological_map.nodes.at(j).name + topological_map.nodes.at(i).name, distance);
+          }
+          
+        }
+        cout << "    Completed! [" << ros::Time::now().toSec() - start << "s]" << endl;
+        utils.saveMap(&distances_map, map_path);
+        cout << "Saving on disk completed" << endl;
+      }
 
       map.plotPathPlanningGridColor("/tmp/pathplanning_start.png");
 
@@ -389,6 +425,8 @@ int main(int argc, char **argv) {
       bool explorationCompleted = false;
 
       bool break_loop = false;
+      string closerWaypoint;
+      string robotName = "thorvald_ii";
 
       // Record the particle filters and create a subscriber
       cout << "\nCreating PF agents for " << to_string(num_tags) << " tags" << endl;
@@ -489,10 +527,10 @@ int main(int argc, char **argv) {
           gridPub.publish(map.toMessageGrid());
 
           // Update starting point in the path
-          path.request.start.header.frame_id = "map";
-          path.request.start.pose.position.x = target.getX();
-          path.request.start.pose.position.y = target.getY();
-          path.request.start.pose.orientation.w = 1;
+          // path.request.start.header.frame_id = "map";
+          // path.request.start.pose.position.x = target.getX();
+          // path.request.start.pose.position.y = target.getY();
+          // path.request.start.pose.orientation.w = 1;
 
           float x = target.getX();
           float y = target.getY();
@@ -540,6 +578,7 @@ int main(int argc, char **argv) {
             // Get an updated RFID belief map
             printf("Updating the belief...\n");
             if (belief_map_client.call(belief_map_srv)) {
+              cout << "   BeliefMap client answered" << endl;
               belief_map_msg = belief_map_srv.response.rfid_maps;
               converter.fromMessage(belief_map_msg, belief_map);
               std::vector<string> layers_name = belief_map.getLayers();
@@ -570,7 +609,7 @@ int main(int argc, char **argv) {
                   prediction_srv.request.identifying = true;
                   if (pf_likelihoodClient_list.at(index - 1).call(
                           prediction_srv)) {
-                    ROS_DEBUG("Prediction srv called successfully\n");
+                    cout << "   [" << index << "] Prediction srv called successfully" << endl;
                     // printf("[PF - Tag %d ] Prediction: %s\n", index,
                     //           prediction_srv.response.estimated_node.c_str());
                     // Store waypoint prediction coming from particle filter
@@ -588,8 +627,8 @@ int main(int argc, char **argv) {
                     }
                     
                     // Obtain ground truth position from Gazebo's engine
-                    string closerWaypoint;
-                    if (utils.getTagClosestWaypoint(*it, topological_map, closerWaypoint, gt_tag_pose))
+                    string model_name = "tag_" + index;
+                    if (utils.getModelClosestWaypoint(model_name, topological_map, closerWaypoint, gt_tag_pose))
                     {
                       // Save ground truth on log
                       content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
@@ -617,7 +656,7 @@ int main(int argc, char **argv) {
 
                       prediction_tools.prior_distributions = belief_topomaps;
                   } else
-                    ROS_ERROR("PF node did not reply!\n");               
+                    cout << "   [" << index << "][ERROR] PF node did not reply!" << endl;               
                 }
               }
             } else {
@@ -656,10 +695,10 @@ int main(int argc, char **argv) {
             actualPose = function.getEncodedKey(target, 0);
             // Add to the graph the initial positions and the candidates from
             // there (calculated inside the function)
-            utils.pushInitialPositions(
+            utils.pushInitialPositions(closerWaypoint,
                 map, x, y, orientation, range, FOV, threshold, actualPose,
                 &graph2, &topo_path_client, &mapping_time_belief,  &function, &batteryTime,
-                &belief_map, &mappingWaypoints, &prediction_tools);
+                &belief_map, &mappingWaypoints, &prediction_tools, &distances_map);
           }
 
           list<Pose> frontiers = topoMap;
@@ -691,11 +730,13 @@ int main(int argc, char **argv) {
             }
             // FIXME: this can still be useful by not every iteration
             // utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
-            // cout <<"CleanedFrontiers: " << frontiers.size() << endl;
-            mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
-            record = *function.evaluateFrontiers(
+            // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
+            // mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
+            // cout << "Obtain current robot waypoint name" << endl;
+            // utils.getModelClosestWaypoint(robotName, topological_map, closerWaypoint, gt_tag_pose);
+            record = *function.evaluateFrontiers(closerWaypoint, 
                 &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
-                &belief_map, &mappingWaypoints, &prediction_tools);
+                &belief_map, &mappingWaypoints, &prediction_tools, &distances_map);
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with
             // cleanPossibleDestination2 Clean all the possible destination from
@@ -772,9 +813,9 @@ int main(int argc, char **argv) {
                 //             &posToEsclude);
                 //   cout << "Rotation completed! Sending waypoint now." << endl;
                 // }
-
+                cout << "New destination found." << endl;
                 success = utils.showMarkerandNavigate(
-                    target, &marker_pub, &map, &path_client, &tabuList,
+                    target, &marker_pub, &map, &topo_path_client, &tabuList,
                     &posToEsclude, TRANSL_SPEED, &batteryTime,
                     &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
@@ -783,7 +824,7 @@ int main(int argc, char **argv) {
                       &map, &function, &tabuList, &posToEsclude, &history,
                       encodedKeyValue, &numConfiguration, &totalAngle,
                       &travelledDistance, &numOfTurning, scanAngle,
-                      &path_client, backTracking, robot_radius, &mappingWaypoints);
+                      &topo_path_client, backTracking, robot_radius, &mappingWaypoints);
                 }
                 scan = true;
               }
@@ -953,6 +994,7 @@ void loadROSParams(){
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("make_topo_plan_srv_name", make_topo_plan_srv_name, std::string("/get_simple_policy/get_route_to"));
+  private_node_handle.param("get_topo_distances_srv_name", get_topo_distances_srv_name, std::string("/get_simple_policy/get_route_between"));
   private_node_handle.param("move_base_goal_topic_name", move_base_goal_topic_name, std::string("move_base_simple/goal"));
   private_node_handle.param("move_base_srv_name", move_base_srv_name, std::string("move_base"));
   private_node_handle.param("nav_grid_debug_topic_name", nav_grid_debug_topic_name, std::string("nav_grid_debug"));
@@ -1004,6 +1046,7 @@ ros::NodeHandle createROSComms(){
   map_service_client_ = nh.serviceClient<nav_msgs::GetMap>(static_map_srv_name);
   path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
   topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
+  topo_distances_client = nh.serviceClient<strands_navigation_msgs::GetRouteBetween>(get_topo_distances_srv_name, true);
   belief_map_client = nh.serviceClient<rfid_grid_map::GetBeliefMaps>(belief_map_srv_name);
   fake_belief_map_client = nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(fake_belief_map_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);

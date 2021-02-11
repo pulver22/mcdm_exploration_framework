@@ -128,22 +128,23 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
 // For a candidate frontier, calculate its evaluation regarding to considered
 // criteria and put it in the evaluation record (through
 // the evaluate method provided by Criterion class)
-void MCDMFunction::evaluateFrontier(Pose &p, dummy::Map *map,
+void MCDMFunction::evaluateFrontier(string currentRobotWayPoint, Pose &p, dummy::Map *map,
                                     ros::ServiceClient *path_client,
                                     vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
                                     double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
-                                    prediction_tools *tools) {
+                                    prediction_tools *tools,
+                                    std::unordered_map<string, double> *distances_map) {
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
-    c->evaluate(p, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools);
+    c->evaluate(currentRobotWayPoint, p, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
   }
 }
 
 // Scan a list of candidate positions,then apply the Choquet fuzzy algorithm
-EvaluationRecords *MCDMFunction::evaluateFrontiers(
+EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
     const std::list<Pose> *frontiers, dummy::Map *map, double threshold,
     ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
-    prediction_tools *tools) {
+    prediction_tools *tools, std::unordered_map<string, double> *distances_map) {
 
   // Create the EvaluationRecords
   EvaluationRecords *toRet = new EvaluationRecords();
@@ -168,7 +169,7 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(
     list<Pose>::const_iterator it2;
     for (it2 = frontiers->begin(); it2 != frontiers->end(); it2++) {
       f = *it2;
-      evaluateFrontier(f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools);
+      evaluateFrontier(currentRobotWayPoint,f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
     }
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();

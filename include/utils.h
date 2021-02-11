@@ -25,6 +25,7 @@
 #include <costmap_2d/costmap_2d_ros.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/GetMap.h>
 #include <nav_msgs/GetPlan.h>
@@ -57,6 +58,8 @@ private:
     visualization_msgs::Marker goal_marker_;
     Criterion criterion_utils_;
     EvaluationRecords record_;
+    string closest_waypoint_name_;
+    geometry_msgs::Pose closest_waypoint_pose_;
 
 public:
     Utilities();
@@ -100,7 +103,7 @@ public:
    * positions
    * @param function: the MCDM function object
    */
-    void pushInitialPositions(
+    void pushInitialPositions(string currentRobotWayPoint, 
         dummy::Map map, float x, float y, float orientation, int range, int FOV,
         double threshold, string actualPose,
         vector<pair<string, list<Pose>>> *graph2, ros::ServiceClient *path_client,
@@ -109,7 +112,8 @@ public:
                                                    DistributionStamped>>>
             *mapping_time_belief,
         MCDMFunction *function, double *batteryTime, GridMap *belief_map,
-        unordered_map<string, string> *mappingWaypoints, prediction_tools *tools);
+        unordered_map<string, string> *mappingWaypoints, prediction_tools *tools,
+        std::unordered_map<string, double> *distances_map);
     /**
    * Calculate the time required for performing a scan with the TDLAS sensor
    *
@@ -178,9 +182,15 @@ public:
 
     bool getGazeboModelPose(string model_name, string relative_entity_name, geometry_msgs::Pose &model_pose);
 
-    bool getTagClosestWaypoint(
-        string tag_id, strands_navigation_msgs::TopologicalMap topological_map,
+    bool getModelClosestWaypoint(
+        string model_name, strands_navigation_msgs::TopologicalMap topological_map,
         string &closest_waypoint_name, geometry_msgs::Pose &closest_waypoint_pose);
+
+    bool updateDestinationWaypoint(std::vector<string> tag_ids, 
+            strands_navigation_msgs::TopologicalMap topological_map, string waypointName,
+            Pose *target, ros::Publisher *marker_pub,
+            topological_navigation::GotoNodeActionGoal *topoGoal,
+            bool *success);
 
     bool moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
                          std::list<std::pair<float, float>> *posToEsclude,
@@ -194,7 +204,7 @@ public:
     double getPathLen(std::vector<geometry_msgs::PoseStamped> poses,
                       double robot_radius);
 
-    Pose selectFreePoseInLocalCostmap(
+    Pose selectFreePoseInLocalCostmap(string currentRobotWayPoint, 
         Pose target, list<Pose> *nearCandidates, dummy::Map *map,
         MCDMFunction *function, double threshold, ros::ServiceClient *path_client,
         vector<unordered_map<float,
@@ -204,7 +214,7 @@ public:
         std::list<std::pair<float, float>> *posToEsclude,
         EvaluationRecords *record, std::string move_base_local_costmap_topic_name,
         double *batteryTime, GridMap *belief_map,
-        unordered_map<string, string> *mappingWaypoints, prediction_tools *tools);
+        unordered_map<string, string> *mappingWaypoints, prediction_tools *tools, std::unordered_map<string, double> *distances_map);
 
     void filePutContents(const std::string &name, const std::string &content,
                          bool append);
@@ -260,6 +270,9 @@ public:
     getStatelessRFIDBelief(
         double secs_from_now, bool return_history,
         vector<ros::ServiceClient> *pf_stateless_likelihoodClient_list);
+
+    void saveMap(const std::unordered_map<string, double> *map, string path);
+    bool loadMap(std::unordered_map<string, double> *map, string path);
 };
 
 #endif // UTILITIES_H

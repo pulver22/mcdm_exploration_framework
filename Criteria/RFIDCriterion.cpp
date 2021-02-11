@@ -25,20 +25,22 @@ RFIDCriterion::RFIDCriterion(double weight)
 
 RFIDCriterion::~RFIDCriterion() {}
 
-double RFIDCriterion::evaluate(
+double RFIDCriterion::evaluate(string currentRobotWayPoint,
     Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
     vector<unordered_map<float,
                          std::pair<string, bayesian_topological_localisation::
                                                DistributionStamped>>>
         *mapping_time_belief,
     double *batteryTime, GridMap *belief_map,
-    unordered_map<string, string> *mappingWaypoints, prediction_tools *tools) {
+    unordered_map<string, string> *mappingWaypoints, prediction_tools *tools,
+    std::unordered_map<string, double> *distances_map) {
 
   this->RFIDInfoGain = 0;
-
+  double start = ros::Time::now().toSec();
   // Compute how long it takes to go to the destination waypoint and retrieve
   // the corresponding posterior belief maps
-  double path_len = Criterion::computeTopologicalDistance( p, path_client, mappingWaypoints);
+  // double path_len = Criterion::computeTopologicalDistance( p, path_client, mappingWaypoints);
+  double path_len = Criterion::getPathLenFromMatrix(currentRobotWayPoint, p, distances_map, mappingWaypoints);
   double time = path_len / TRANSL_SPEED;
   // fesetround(FE_DOWNWARD);
   time = std::nearbyint(time);
