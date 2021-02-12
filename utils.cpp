@@ -561,7 +561,7 @@ bool Utilities::showMarkerandNavigate(
   // cout << "   PathLen: " << path_len << endl;
 
   float time_travel = 2 * path_len / min_robot_speed;
-  time_travel = std::max(time_travel, (float)120.0);
+  time_travel = std::max(time_travel, (float)180.0);
   *batteryTime -= time_travel;
   // cout << "   New batteryTime: " << *batteryTime << endl;
   *travelledDistance += path_len;
@@ -925,7 +925,7 @@ bool Utilities::moveTopological(
       actionlib::SimpleClientGoalState::PENDING;
   float total_wait_time = 0.0;
   float sleep_time = 2.0;
-  if (time_travel < 120.0) time_travel = 120.0;
+  if (time_travel < 180.0) time_travel = 180.0;  // This should be useless
   while (!curr_state.isDone()) {
     total_wait_time += sleep_time;
     this->topoAC->waitForResult(ros::Duration(sleep_time));

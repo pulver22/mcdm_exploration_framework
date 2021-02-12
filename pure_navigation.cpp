@@ -636,7 +636,7 @@ int main(int argc, char **argv) {
                     
                     // Obtain ground truth position from Gazebo's engine
                     string model_name = "tag_" + to_string(index);
-                    cout << "Model_name: " << model_name << endl;
+                    // cout << "Model_name: " << model_name << endl;
                     if (utils.getModelClosestWaypoint(model_name, topological_map, &closerWaypoint, &gt_tag_pose))
                     {
                       // Save ground truth on log
