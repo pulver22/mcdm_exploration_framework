@@ -180,14 +180,14 @@ public:
     
     void setGazeboModelStateClient(ros::ServiceClient &gazebo_model_state_client);
 
-    bool getGazeboModelPose(string model_name, string relative_entity_name, geometry_msgs::Pose &model_pose);
+    bool getGazeboModelPose(string model_name, string relative_entity_name, geometry_msgs::Pose *model_pose);
 
     bool getModelClosestWaypoint(
         string model_name, strands_navigation_msgs::TopologicalMap topological_map,
-        string &closest_waypoint_name, geometry_msgs::Pose &closest_waypoint_pose);
+        string *closest_waypoint_name, geometry_msgs::Pose *closest_waypoint_pose);
 
     bool updateDestinationWaypoint(std::vector<string> tag_ids, 
-            strands_navigation_msgs::TopologicalMap topological_map, string waypointName,
+            strands_navigation_msgs::TopologicalMap topological_map, string *waypointName,
             Pose *target, ros::Publisher *marker_pub,
             topological_navigation::GotoNodeActionGoal *topoGoal,
             bool *success);

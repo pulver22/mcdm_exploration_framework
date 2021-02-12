@@ -635,8 +635,9 @@ int main(int argc, char **argv) {
                     }
                     
                     // Obtain ground truth position from Gazebo's engine
-                    string model_name = "tag_" + index;
-                    if (utils.getModelClosestWaypoint(model_name, topological_map, closerWaypoint, gt_tag_pose))
+                    string model_name = "tag_" + to_string(index);
+                    cout << "Model_name: " << model_name << endl;
+                    if (utils.getModelClosestWaypoint(model_name, topological_map, &closerWaypoint, &gt_tag_pose))
                     {
                       // Save ground truth on log
                       content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
@@ -741,7 +742,7 @@ int main(int argc, char **argv) {
             // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
             mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
             cout << "Obtain current robot waypoint name" << endl;
-            utils.getModelClosestWaypoint(robotName, topological_map, closerWaypoint, gt_tag_pose);
+            utils.getModelClosestWaypoint(robotName, topological_map, &closerWaypoint, &gt_tag_pose);
             cout << "Evaluating nodes..." << endl;
             start = ros::Time::now().toSec();
             record = *function.evaluateFrontiers(closerWaypoint, 
