@@ -278,13 +278,14 @@ int main(int argc, char **argv) {
       bool use_mcdm = bool(atoi(argv[11]));
       int num_tags = atoi(argv[12]);
       int max_iterations = atoi(argv[13]);
-      std::string log_dest_folder = (argv[14]);
+      std::string path_distances_map = (argv[14]);
+      std::string log_dest_folder = (argv[15]);
       auto t = std::time(nullptr);
       auto tm = *std::localtime(&t);
       std::ostringstream oss;
       oss << std::put_time(&tm, "%d-%m-%Y-%H-%M-%S/");
       auto str = oss.str();
-      string map_path = log_dest_folder + "distances_map.csv" ;
+      string map_path = log_dest_folder + path_distances_map ;
       log_dest_folder += str;
       cout << "Creating folder: " << log_dest_folder << endl;
       fs::create_directories(log_dest_folder);
@@ -731,12 +732,15 @@ int main(int argc, char **argv) {
             // FIXME: this can still be useful by not every iteration
             // utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
-            // mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
-            // cout << "Obtain current robot waypoint name" << endl;
-            // utils.getModelClosestWaypoint(robotName, topological_map, closerWaypoint, gt_tag_pose);
+            mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
+            cout << "Obtain current robot waypoint name" << endl;
+            utils.getModelClosestWaypoint(robotName, topological_map, closerWaypoint, gt_tag_pose);
+            cout << "Evaluating nodes..." << endl;
+            start = ros::Time::now().toSec();
             record = *function.evaluateFrontiers(closerWaypoint, 
                 &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
                 &belief_map, &mappingWaypoints, &prediction_tools, &distances_map);
+            cout << "   Evaluation: " << ros::Time::now().toSec() - start << endl;
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with
             // cleanPossibleDestination2 Clean all the possible destination from

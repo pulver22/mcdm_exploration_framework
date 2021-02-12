@@ -558,10 +558,12 @@ bool Utilities::showMarkerandNavigate(
   // double path_len = criterion_utils_.computeMetricDistance(target, map, path_len);
   // Get distance from topological map
   double path_len = criterion_utils_.computeTopologicalDistance(target, path_client, mappingWaypoints);
+  // cout << "   PathLen: " << path_len << endl;
 
   float time_travel = 2 * path_len / min_robot_speed;
   time_travel = std::min(time_travel, (float)120.0);
   *batteryTime -= time_travel;
+  // cout << "   New batteryTime: " << *batteryTime << endl;
   *travelledDistance += path_len;
 
   return moveTopological(target, time_travel, tabuList, posToEsclude,

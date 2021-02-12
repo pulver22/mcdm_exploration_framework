@@ -75,7 +75,7 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
   // prior and posterior distribution this->RFIDInfoGain =
   // computeKLTopologicalMap(&(tools->prior_distributions), &posterior_distributions);
   // cout << "   Entropy: " << this->RFIDInfoGain << endl;
-
+  // cout << "RFIDCriterion: " << ros::Time::now().toSec() - start << endl;
   Criterion::insertEvaluation(p, this->RFIDInfoGain);
   return this->RFIDInfoGain;
 }

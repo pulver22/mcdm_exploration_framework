@@ -41,7 +41,7 @@ double SensingTimeCriterion::evaluate(string currentRobotWayPoint,
   float startingPhi = (float)orientation - (p.getFOV()) / 2;
   float endingPhi = (float)orientation + (p.getFOV()) / 2;
   int add2pi = 0;
-
+  double start = ros::Time::now().toSec();
   //  startingPhi = fmod(startingPhi, p.getFOV());
   //  if (isnan(angle) or angle < 0) angle = 0;
   if (startingPhi <= 0.0001) {
@@ -95,6 +95,8 @@ double SensingTimeCriterion::evaluate(string currentRobotWayPoint,
     }
 
     */
+  // cout << "STCriterion: " << ros::Time::now().toSec() - start << endl;
+
   Criterion::insertEvaluation(p, angle);
   return angle;
 }

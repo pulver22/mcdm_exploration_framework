@@ -22,6 +22,7 @@
   <arg name="use_mcdm"            default="1"/>
   <arg name="num_tags"            default="1"/>
   <arg name="max_iterations"      default="10"/>
+  <arg name="distances_map"       default="riseholme_map.csv"/>
   <arg name="pure_args"  	        default="$(arg fov) 
                                            $(arg radius) 
                                            $(arg coverage_percentage) 
@@ -35,6 +36,7 @@
                                            $(arg use_mcdm) 
                                            $(arg num_tags)
                                            $(arg max_iterations)
+                                           $(arg distances_map)
                                            $(arg dest_folder)"/>
 
   <arg name="bag_descriptor" default="$(arg scenario_name)_$(arg w_info_gain)_$(arg w_travel_distance)_$(arg w_sensing_time)_$(arg w_battery_status)_$(arg w_rfid_gain)_date_"/>

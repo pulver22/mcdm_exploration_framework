@@ -28,6 +28,11 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "nav_msgs/GetPlan.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
+#include <boost/numeric/ublas/symmetric.hpp>
+#include <boost/numeric/ublas/io.hpp>
+#include "evaluationrecords.h"
+
+namespace bnu = boost::numeric::ublas;
 
 // using namespace import_map;
 using namespace std;
@@ -40,7 +45,7 @@ public:
   ~Criterion();
 
   // Other methods
-  virtual double evaluate(
+  virtual double evaluate(string currentRobotWayPoint, 
       Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
       vector<unordered_map<float,
                            std::pair<string, bayesian_topological_localisation::
@@ -48,7 +53,8 @@ public:
           *mapping_time_belief,
       double *batteryTime, GridMap *belief_map,
       unordered_map<string, string> *mappingWaypoints,
-      prediction_tools *tools){};
+      prediction_tools *tools,
+      std::unordered_map<string, double> *distances_map){};
   double getEvaluation(Pose &p) const;
   void insertEvaluation(Pose &p, double value);
   void clean();
@@ -57,6 +63,10 @@ public:
   double computeTopologicalDistance(Pose &p, ros::ServiceClient *path_client,
       unordered_map<string, string> *mappingWaypoints);
   double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
+
+  double getPathLenFromMatrix(string currentRobotWayPoint, 
+    Pose &p, std::unordered_map<string, double> *distances_map,
+    unordered_map<string, string> *mappingWaypoints);
 
   // Setters and getters
   string getName();
@@ -74,6 +84,7 @@ protected:
   double weight = 0.0;
   bool highGood;
   double maxValue, minValue;
+  EvaluationRecords record_;
 
 private:
   unordered_map<string, double> evaluation;

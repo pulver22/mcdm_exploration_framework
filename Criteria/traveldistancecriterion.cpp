@@ -41,7 +41,7 @@ double TravelDistanceCriterion::evaluate(string currentRobotWayPoint,
   double start = ros::Time::now().toSec();
   double path_len = Criterion::getPathLenFromMatrix(currentRobotWayPoint, p, distances_map, mappingWaypoints);
     //   Criterion::computeTopologicalDistance(p, path_client, mappingWaypoints);
-  //   // path.request.start.header.frame_id = "map";
+  // cout << "TDCriterion: " << ros::Time::now().toSec() - start << endl;
   Criterion::insertEvaluation(p, path_len);
   return path_len;
 }

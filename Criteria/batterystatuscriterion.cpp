@@ -43,7 +43,7 @@ double BatteryStatusCriterion::evaluate(string currentRobotWayPoint,
   translTime = path_len / TRANSL_SPEED;
   remainingBattery = *batteryTime - translTime;
   remainingBattery = max(remainingBattery, 0.0);
-
+  // cout << "BSCriterion: " << ros::Time::now().toSec() - start << endl;
   Criterion::insertEvaluation(p, remainingBattery);
   return remainingBattery;
 }
