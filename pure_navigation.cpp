@@ -487,15 +487,6 @@ int main(int argc, char **argv) {
 
       do {
 
-        // Recently visit cells shouldn't be visited soon again
-        if (tabuListCount >= 0) {
-          tabuListCount--;
-        } else {
-          tabuList.clear();
-          posToEsclude.clear();
-          tabuListCount = MAX_TABULIST_COUNT;
-        }
-
         record.clear();
         // if (btMode == false) {
         while (record.size() == 0) {
@@ -738,7 +729,7 @@ int main(int argc, char **argv) {
               utils.cleanPossibleDestination2(&frontiers, *it_tabuList);
             }
             // FIXME: this can still be useful by not every iteration
-            // utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
+            utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
             mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
             cout << "Obtain current robot waypoint name" << endl;
@@ -831,6 +822,17 @@ int main(int argc, char **argv) {
                     &posToEsclude, TRANSL_SPEED, &batteryTime,
                     &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
+                  // Recently visited cells shouldn't be visited soon again
+                  if (tabuListCount > 0) {
+                    tabuListCount--;
+                  } else {
+                    // cout << "----> RESET TABULIST!! <----" << endl;
+                    tabuList.clear();
+                    posToEsclude.clear();
+                    tabuListCount = MAX_TABULIST_COUNT;
+                  }
+                  // We empty the lists before pushing the new target inside, 
+                  // so it can't be selected at the next NBS iteration
                   utils.updatePathMetrics(
                       &count, &target, &previous, actualPose, &frontiers, &graph2,
                       &map, &function, &tabuList, &posToEsclude, &history,

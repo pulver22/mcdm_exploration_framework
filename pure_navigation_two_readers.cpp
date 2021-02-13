@@ -496,16 +496,6 @@ int main(int argc, char **argv) {
       utils.setGazeboModelStateClient(gazebo_model_state_client);
       
       do {
-
-        // Recently visit cells shouldn't be visited soon again
-        if (tabuListCount >= 0) {
-          tabuListCount--;
-        } else {
-          tabuList.clear();
-          posToEsclude.clear();
-          tabuListCount = MAX_TABULIST_COUNT;
-        }
-
         record.clear();
         // if (btMode == false) {
         while (record.size() == 0) {
@@ -845,6 +835,17 @@ int main(int argc, char **argv) {
                     &posToEsclude, TRANSL_SPEED, &batteryTime,
                     &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
+                  // Recently visited cells shouldn't be visited soon again
+                  if (tabuListCount > 0) {
+                    tabuListCount--;
+                  } else {
+                    cout << "----> RESET TABULIST!! <----" << endl;
+                    tabuList.clear();
+                    posToEsclude.clear();
+                    tabuListCount = MAX_TABULIST_COUNT;
+                  }
+                  // We empty the lists before pushing the new target inside, 
+                  // so it can't be selected at the next NBS iteration
                   utils.updatePathMetrics(
                       &count, &target, &previous, actualPose, &frontiers, &graph2,
                       &map, &function, &tabuList, &posToEsclude, &history,
