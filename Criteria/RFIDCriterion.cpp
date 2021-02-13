@@ -41,11 +41,18 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
   // the corresponding posterior belief maps
   // double path_len = Criterion::computeTopologicalDistance( p, path_client, mappingWaypoints);
   double path_len = Criterion::getPathLenFromMatrix(currentRobotWayPoint, p, distances_map, mappingWaypoints);
-  double time = path_len / TRANSL_SPEED;
+  double time = (path_len / 3) / TRANSL_SPEED; /// FRA: here (path_len/3) because the path_len is artifically 3 times bigger in the saved map 
   time += EVALUATION_TIME;  // we will end up there after travelling time + time taken for evaluating all the nodes
   // fesetround(FE_DOWNWARD);
   time = std::nearbyint(time);
   time = std::min(time, 100.0);
+  // EvaluationRecords record;
+  // string encoding = record.getEncodedKey(p);
+  // auto search = mappingWaypoints->find(encoding);
+  // string waypointName;
+  // if (search != mappingWaypoints->end())
+  //   waypointName = search->second;
+  // cout << waypointName << " time," << time << "path_len, " << path_len << endl;
   // Obtain prior distribution at the correct time
   vector<
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
@@ -271,14 +278,36 @@ RFIDCriterion::findDistributionFromTime(
   vector<
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
       posterior_distributions;
+  
   for (int tag_index = 0; tag_index < mapping_time_belief->size();
        tag_index++) {
-    auto search = mapping_time_belief->at(tag_index).find(time);
-    if (search != mapping_time_belief->at(tag_index).end()) {
-      // Save the pair (estimated_node, distribution)
-      posterior_distributions.push_back(
-          std::make_pair(search->second.first, search->second.second));
+        
+    unordered_map<float,std::pair<string, bayesian_topological_localisation::
+                                               DistributionStamped>>::iterator map_it;
+    map_it = mapping_time_belief->at(tag_index).begin();
+    int distance = (int)abs(time - map_it->first);
+    std::pair<string, bayesian_topological_localisation::
+                                               DistributionStamped> candidate = std::make_pair(map_it->second.first, map_it->second.second);
+    int f_time = (int)map_it->first;
+    for (; map_it != mapping_time_belief->at(tag_index).end(); map_it++)
+    {
+      int _distance = (int)abs(time - map_it->first);
+      if (_distance < distance){
+        distance = _distance;
+        candidate = std::make_pair(map_it->second.first, map_it->second.second);
+        f_time = map_it->first;
+        // cout << "smaller " << f_time << ", " << distance << endl;
+      }
     }
+    posterior_distributions.push_back(candidate);
+    // cout << "Found time = " << f_time << endl;
+
+    // auto search = mapping_time_belief->at(tag_index).find(time);
+    // if (search != mapping_time_belief->at(tag_index).end()) {
+    //   // Save the pair (estimated_node, distribution)
+    //   posterior_distributions.push_back(
+    //       std::make_pair(search->second.first, search->second.second));
+    // }
     // else cout << "Not found time = " << time << endl;
   }
 

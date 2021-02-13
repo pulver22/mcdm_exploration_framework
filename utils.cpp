@@ -1114,11 +1114,11 @@ Utilities::getStatelessRFIDBelief(
   bayesian_topological_localisation::Predict prediction_stateless_srv;
   prediction_stateless_srv.request.secs_from_now = secs_from_now;
   prediction_stateless_srv.request.return_history = return_history;
+  prediction_stateless_srv.request.prediction_rate = 0.1; // a prediction every 10 seconds....to approximate
   for (int tag_index = 0;
        tag_index < pf_stateless_likelihoodClient_list->size(); tag_index++) {
     if (pf_stateless_likelihoodClient_list->at(tag_index).call(
             prediction_stateless_srv)) {
-      // cout << "Stateless Srv replied" << endl;
       vector<double> timestamp =
           prediction_stateless_srv.response.secs_from_now;
       vector<string> estimated_node =

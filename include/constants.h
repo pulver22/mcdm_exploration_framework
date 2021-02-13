@@ -9,8 +9,8 @@
 #define BATTERY_ONE_PERCENT MAX_BATTERY/100
 
 //Velocity constants
-#define TRANSL_SPEED 0.1
-#define ROT_SPEED 0.1
+#define TRANSL_SPEED 1.0
+#define ROT_SPEED 1.0
 
 #define EVALUATION_TIME 35.0
 
