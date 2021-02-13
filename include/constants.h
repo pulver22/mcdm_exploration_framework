@@ -5,12 +5,14 @@
 // #include "RadarModel.hpp"
 
 //Battery constants
-#define MAX_BATTERY 10000.0
+#define MAX_BATTERY 100000.0
 #define BATTERY_ONE_PERCENT MAX_BATTERY/100
 
 //Velocity constants
 #define TRANSL_SPEED 0.1
 #define ROT_SPEED 0.1
+
+#define EVALUATION_TIME 35.0
 
 const int MAX_TABULIST_COUNT = 0;
 

@@ -42,9 +42,10 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
   // double path_len = Criterion::computeTopologicalDistance( p, path_client, mappingWaypoints);
   double path_len = Criterion::getPathLenFromMatrix(currentRobotWayPoint, p, distances_map, mappingWaypoints);
   double time = path_len / TRANSL_SPEED;
+  time += EVALUATION_TIME;  // we will end up there after travelling time + time taken for evaluating all the nodes
   // fesetround(FE_DOWNWARD);
   time = std::nearbyint(time);
-  time = std::min(time, 50.0);
+  time = std::min(time, 100.0);
   // Obtain prior distribution at the correct time
   vector<
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>

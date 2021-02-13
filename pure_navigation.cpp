@@ -576,7 +576,8 @@ int main(int argc, char **argv) {
           if (norm_w_rfid_gain > 0) {
             // Get an updated RFID belief map
             printf("Updating the belief...\n");
-            if (belief_map_client.call(belief_map_srv)) {
+            if(belief_map_client.waitForExistence(ros::Duration(5.0))){
+              if (belief_map_client.call(belief_map_srv)) {
               cout << "   BeliefMap client answered" << endl;
               belief_map_msg = belief_map_srv.response.rfid_maps;
               converter.fromMessage(belief_map_msg, belief_map);
@@ -659,11 +660,15 @@ int main(int argc, char **argv) {
                     cout << "   [" << index << "][ERROR] PF node did not reply!" << endl;               
                 }
               }
+              cout << "Belief updated!" << endl;
             } else {
-              printf("ATTENTION! Failed to get the RFID belief map\n");
-            }
+                printf("ATTENTION! Failed to get the RFID belief map\n");
+              }
+              
+            } else cout << "[ERROR] RFID service didn't reply on time. " << endl;
+            
           }
-          cout << "Belief updated!" << endl;
+          
 
           // If the exploration just started
           if (count == 0) {
@@ -731,7 +736,7 @@ int main(int argc, char **argv) {
             // FIXME: this can still be useful by not every iteration
             utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
-            mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
+            mapping_time_belief = utils.getStatelessRFIDBelief(100.0, true, &pf_stateless_likelihoodClient_list);
             cout << "Obtain current robot waypoint name" << endl;
             utils.getModelClosestWaypoint(robotName, topological_map, &closerWaypoint, &gt_tag_pose);
             cout << "Evaluating nodes..." << endl;
@@ -883,7 +888,7 @@ int main(int argc, char **argv) {
 
       }
       // Perform exploration until a certain stopping criterion is achieved
-      while (batteryPercentage > 10.0 and count < max_iterations);
+      while (batteryPercentage > 1.0 and count < max_iterations);
       // Plotting utilities
       map.drawVisitedCells();
       map.printVisitedCells(history);

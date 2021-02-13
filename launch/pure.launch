@@ -21,7 +21,7 @@
   <arg name="scenario_name"  	    default="INB"/>
   <arg name="use_mcdm"            default="1"/>
   <arg name="num_tags"            default="1"/>
-  <arg name="max_iterations"      default="10"/>
+  <arg name="max_iterations"      default="20"/>
   <arg name="distances_map"       default="riseholme_map.csv"/>
   <arg name="pure_args"  	        default="$(arg fov) 
                                            $(arg radius) 
