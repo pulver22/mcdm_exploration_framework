@@ -58,26 +58,32 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
       pf_update_distributions = this->findDistributionFromTime(time, mapping_time_belief);
 
+  // Let's get rid of time
+  vector<bayesian_topological_localisation::DistributionStamped> posterior_distributions;
+  for (auto it = pf_update_distributions.begin(); it != pf_update_distributions.end(); it++){
+    posterior_distributions.push_back(it->second);
+  }
+
   // Obtain the fake likelihood distribution
-  vector<vector<bayesian_topological_localisation::DistributionStamped>>
-      rfid_reading_likelihoods = this->getRFIDLikelihood(
-          p, tools, mappingWaypoints, &pf_update_distributions);
+  // vector<vector<bayesian_topological_localisation::DistributionStamped>>
+  //     rfid_reading_likelihoods = this->getRFIDLikelihood(
+  //         p, tools, mappingWaypoints, &pf_update_distributions);
 
   // Compute posterior belief integrating update and correction step of the
   // particle filter
   // cout << "Pf prior: " << pf_update_distributions.size() << endl;
   // cout << "RFID Likelihood: " << rfid_reading_likelihoods.size() << endl;
-  assert(pf_update_distributions.size() == rfid_reading_likelihoods.size());
-  vector<bayesian_topological_localisation::DistributionStamped>
-      posterior_distributions = this->mergePriorLikelihood(
-          tools, &pf_update_distributions, &rfid_reading_likelihoods);
+  // assert(pf_update_distributions.size() == rfid_reading_likelihoods.size());
+  // vector<bayesian_topological_localisation::DistributionStamped>
+  //     posterior_distributions = this->mergePriorLikelihood(
+  //         tools, &pf_update_distributions, &rfid_reading_likelihoods);
 
   // 1) Compute entropy on a single waypoint
-  // this->RFIDInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,
-                                                      // &posterior_distributions);
+  this->RFIDInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,
+                                                      &posterior_distributions);
   // 2) Compute entropy on the entire map
-  this->RFIDInfoGain =
-  evaluateEntropyTopologicalMap(&posterior_distributions); 
+  // this->RFIDInfoGain =
+  // evaluateEntropyTopologicalMap(&posterior_distributions); 
   // cout << "Entropy
   // node: " << this->RFIDInfoGain << endl; 3) Compute KL-divergence between
   // prior and posterior distribution this->RFIDInfoGain =
