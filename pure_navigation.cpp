@@ -845,6 +845,10 @@ int main(int argc, char **argv) {
                       &travelledDistance, &numOfTurning, scanAngle,
                       &topo_path_client, backTracking, robot_radius, &mappingWaypoints);
                 }
+                // Update the number of configurations of the robot along the task
+                numConfiguration++;
+                // Update counter of iterations
+                count++;
                 scan = true;
               }
               // ...otherwise, if the selected cell has already been visited

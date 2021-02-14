@@ -278,10 +278,10 @@ void Utilities::updatePathMetrics(
   //  *numOfTurning = *numOfTurning + astar->getNumberOfTurning(path);
   // Update the scanning angle
   *totalAngle += scanAngle;
-  // Update the number of configurations of the robot along the task
-  (*numConfiguration)++;
-  // Update counter of iterations
-  (*count)++;
+  // // Update the number of configurations of the robot along the task
+  // (*numConfiguration)++;
+  // // Update counter of iterations
+  // (*count)++;
 }
 
 list<Pose> Utilities::cleanHistory(vector<string> *history,
