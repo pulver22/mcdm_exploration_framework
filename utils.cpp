@@ -1115,6 +1115,7 @@ Utilities::getStatelessRFIDBelief(
   prediction_stateless_srv.request.secs_from_now = secs_from_now;
   prediction_stateless_srv.request.return_history = return_history;
   prediction_stateless_srv.request.prediction_rate = 0.1; // a prediction every 10 seconds....to approximate
+  mapping_time_belief.clear(); // Remove old belief
   for (int tag_index = 0;
        tag_index < pf_stateless_likelihoodClient_list->size(); tag_index++) {
     if (pf_stateless_likelihoodClient_list->at(tag_index).call(
@@ -1125,7 +1126,6 @@ Utilities::getStatelessRFIDBelief(
           prediction_stateless_srv.response.estimated_node;
       vector<bayesian_topological_localisation::DistributionStamped> prob_dist =
           prediction_stateless_srv.response.prob_dist;
-      mapping_time_belief.clear(); // Remove old belief
       unordered_map<float, std::pair<string, bayesian_topological_localisation::
                                                  DistributionStamped>>
           map;
