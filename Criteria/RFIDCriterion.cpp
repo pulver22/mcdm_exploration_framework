@@ -58,10 +58,15 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
       pf_update_distributions = this->findDistributionFromTime(time, mapping_time_belief);
 
+  cout << "mapping_time_belief " << mapping_time_belief->size() << endl;
+  cout << "pf_update_distributions " << pf_update_distributions.size() << endl;
+
   // Obtain the fake likelihood distribution
   vector<vector<bayesian_topological_localisation::DistributionStamped>>
       rfid_reading_likelihoods = this->getRFIDLikelihood(
           p, tools, mappingWaypoints, &pf_update_distributions);
+
+  cout << "rfid_reading_likelihoods " << rfid_reading_likelihoods.size() << endl;
 
   // Compute posterior belief integrating update and correction step of the
   // particle filter

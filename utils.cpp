@@ -1129,8 +1129,8 @@ Utilities::getStatelessRFIDBelief(
       unordered_map<float, std::pair<string, bayesian_topological_localisation::
                                                  DistributionStamped>>
           map;
+      cout << "Got stateless prediction for tag " << tag_index << endl;
       for (int ts_counter = 0; ts_counter < timestamp.size(); ts_counter++) {
-        // cout << ts_counter << endl;
         map.emplace(std::make_pair(
             timestamp[ts_counter],
             std::make_pair(estimated_node[ts_counter], prob_dist[ts_counter])));
