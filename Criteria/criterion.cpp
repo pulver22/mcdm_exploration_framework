@@ -224,8 +224,14 @@ double Criterion::getPathLenFromMatrix(string currentRobotWayPoint,
     found = true;
   } else {
     found = false;
+    cout << "getPathLenFromMatrix node not found " << encoding << endl;
   }
   string key = currentRobotWayPoint + goal_wp;
+  auto _search = distances_map->find(key);
+  if (_search == distances_map->end()) {
+    cout << "ERROR IN getPathLenFromMatrix, handle key not existent " << key <<  endl;
+    return 1000.0;
+  }
   //TODO: convert current waypoint and destination one into index and then retrieve distance
   return distances_map->at(key);
 }

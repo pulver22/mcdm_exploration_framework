@@ -184,13 +184,14 @@ public:
 
     bool getModelClosestWaypoint(
         string model_name, strands_navigation_msgs::TopologicalMap topological_map,
-        string *closest_waypoint_name, geometry_msgs::Pose *closest_waypoint_pose);
+        string &closest_waypoint_name, geometry_msgs::Pose &closest_waypoint_pose);
 
     bool updateDestinationWaypoint(std::vector<string> tag_ids, 
-            strands_navigation_msgs::TopologicalMap topological_map, string *waypointName,
-            Pose *target, ros::Publisher *marker_pub,
-            topological_navigation::GotoNodeActionGoal *topoGoal,
-            bool *success);
+            strands_navigation_msgs::TopologicalMap topological_map, string &waypointName,
+            Pose &target, ros::Publisher &marker_pub,
+            topological_navigation::GotoNodeActionGoal &topoGoal,
+            bool &success);
+    void checkOnNode(strands_navigation_msgs::TopologicalMap topological_map);
 
     bool moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
                          std::list<std::pair<float, float>> *posToEsclude,
@@ -249,8 +250,8 @@ public:
     //                           scanAngle, bool* btMode, double* threshold,
     //                           double *batteryTime, bool *explorationCompleted);
 
-    string getCloserWaypoint(geometry_msgs::Pose *pose,
-                             strands_navigation_msgs::TopologicalMap *topoMap);
+    string getCloserWaypoint(geometry_msgs::Pose &pose,
+                             strands_navigation_msgs::TopologicalMap topoMap);
 
     tuple<string, geometry_msgs::Pose> getCloserConnectedWaypoint(string node_name, Pose pose,
                                                                   strands_navigation_msgs::TopologicalMap *topoMap);

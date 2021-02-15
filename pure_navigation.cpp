@@ -293,16 +293,14 @@ int main(int argc, char **argv) {
       oss << std::put_time(&tm, "%d-%m-%Y-%H-%M-%S/");
       auto str = oss.str();
       string map_path = log_dest_folder + path_distances_map ;
-      log_dest_folder += str;
-      cout << "Creating folder: " << log_dest_folder << endl;
-      fs::create_directories(log_dest_folder);
-      cout << "Creation completed! " << endl;
-      std::string pf_log = log_dest_folder + "pf_tag_pose_";
-      std::string gt_log = log_dest_folder + "gt_tag_pose_";
-      std::string gps_log = log_dest_folder + "gps_tag_pose_";
-      std::string pf_vs_gt_log = log_dest_folder + "pf_vs_gt_";
-      std::string coverage_log = log_dest_folder + "coverage_mcdm.csv";
-      std::string out_log = log_dest_folder + "mcdm_result.csv";
+      std::vector<std::string> pf_log;
+      std::vector<std::string> gt_log;
+      std::vector<std::string> gps_log;
+      std::vector<std::string> pf_vs_gt_log;
+      std::string coverage_log;
+      std::string out_log;
+      coverage_log = log_dest_folder + "coverage_mcdm.csv";
+      out_log = log_dest_folder + "mcdm_result.csv";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -433,7 +431,6 @@ int main(int argc, char **argv) {
       bool explorationCompleted = false;
 
       bool break_loop = false;
-      string closerWaypoint;
       string robotName = "thorvald_ii";
 
       // Record the particle filters and create a subscriber
@@ -474,6 +471,16 @@ int main(int argc, char **argv) {
           prediction_tools.pf_stateless_update_srv_list.push_back(pf_client);
           gps_client_list.push_back(gps_client);
           pf_stateless_likelihoodClient_list.push_back(pf_stateless_client);
+
+          // create folders for each tag
+          std::string _log_dest_folder = log_dest_folder + "/" + str + "/" + "/tag_" + to_string(tag_id);
+          cout << "Creating folder: " << _log_dest_folder << endl;
+          fs::create_directories(_log_dest_folder);
+          cout << "Creation completed! " << endl;
+          pf_log.push_back(_log_dest_folder + "pf_tag_pose_");
+          gt_log.push_back(_log_dest_folder + "gt_tag_pose_");
+          gps_log.push_back(_log_dest_folder + "gps_tag_pose_");
+          pf_vs_gt_log.push_back(_log_dest_folder + "pf_vs_gt_");
         }else
             ROS_ERROR("[ParticleFilter] Error while initializing for "
                       "tag %d\n", tag_id);
@@ -578,90 +585,94 @@ int main(int argc, char **argv) {
             printf("Updating the belief...\n");
             if(belief_map_client.waitForExistence(ros::Duration(5.0))){
               if (belief_map_client.call(belief_map_srv)) {
-              cout << "   BeliefMap client answered" << endl;
-              belief_map_msg = belief_map_srv.response.rfid_maps;
-              converter.fromMessage(belief_map_msg, belief_map);
-              std::vector<string> layers_name = belief_map.getLayers();
-              // The layers_name vector contains "ref_map, X, Y, 0" which are
-              // for not for finding the tags. So we can remove their name to
-              // avoid checking this layers.
-              layers_name.erase(layers_name.begin(), layers_name.begin() + 4);
-              // If there are any tags discovered...
-              if (layers_name.size() != 0) {
-                // We now instantiate the Particle Filter for each tag
-                // discovered
-                for (auto it = layers_name.begin(); it != layers_name.end();
-                     it++) {
-                  // If the laters name contains more than 2 character,
-                  // skip it because it can be some debug layer (e.g.,
-                  // obst_losses)
-                  if (it->size() > 2)
-                    continue;
+                cout << "   BeliefMap client answered" << endl;
+                belief_map_msg = belief_map_srv.response.rfid_maps;
+                converter.fromMessage(belief_map_msg, belief_map);
+                std::vector<string> layers_name = belief_map.getLayers();
+                // The layers_name vector contains "ref_map, X, Y, 0" which are
+                // for not for finding the tags. So we can remove their name to
+                // avoid checking this layers.
+                layers_name.erase(layers_name.begin(), layers_name.begin() + 3);
+                // If there are any tags discovered...
+                if (layers_name.size() != 0) {
+                  // We now instantiate the Particle Filter for each tag
+                  // discovered
+                  for (auto it = layers_name.begin(); it != layers_name.end();
+                      it++) {
+                    // cout << "----- layer " << *it << endl; 
+                    // If the laters name contains more than 2 character,
+                    // skip it because it can be some debug layer (e.g.,
+                    // obst_losses)
+                    if (it->size() > 2)
+                      continue;
 
-                  // Publish to the PF the sensor reading
-                  bayesian_topological_localisation::DistributionStamped
-                      tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
-                          &belief_map, &topoMap, &mappingWaypoints, *it, 0.5);
-                  tmp_belief_topo.header.stamp = ros::Time::now();
+                    // Publish to the PF the sensor reading
+                    bayesian_topological_localisation::DistributionStamped
+                        tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
+                            &belief_map, &topoMap, &mappingWaypoints, *it, 0.5);
+                    tmp_belief_topo.header.stamp = ros::Time::now();
 
-                  int index = std::stoi(*it);
-                  prediction_srv.request.likelihood = tmp_belief_topo;
-                  prediction_srv.request.identifying = true;
-                  if (pf_likelihoodClient_list.at(index - 1).call(
-                          prediction_srv)) {
-                    cout << "   [" << index << "] Prediction srv called successfully" << endl;
-                    // printf("[PF - Tag %d ] Prediction: %s\n", index,
-                    //           prediction_srv.response.estimated_node.c_str());
-                    // Store waypoint prediction coming from particle filter
-                    if (current_tag_waypoint_prediction.size() < index ){
-                      current_tag_waypoint_prediction.push_back(prediction_srv.response.estimated_node);
-                    } else current_tag_waypoint_prediction.at(index - 1) = prediction_srv.response.estimated_node;
-                    pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index - 1), &topological_map);
-                    // Save pf prediction (expressed as metric position) on log
-                    content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
-                    utils.filePutContents(pf_log + to_string(index) + ".csv", content, true);
-                    // Save noisy gps location on log
-                    if (gps_client_list.at(index - 1).call(gps_srv)){
-                      content = to_string(gps_srv.response.p.x) + "," + to_string(gps_srv.response.p.y) + "\n";
-                      utils.filePutContents(gps_log + to_string(index) + ".csv", content, true);
-                    }
-                    
-                    // Obtain ground truth position from Gazebo's engine
-                    string model_name = "tag_" + to_string(index);
-                    // cout << "Model_name: " << model_name << endl;
-                    if (utils.getModelClosestWaypoint(model_name, topological_map, &closerWaypoint, &gt_tag_pose))
-                    {
-                      // Save ground truth on log
-                      content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
-                      utils.filePutContents(gt_log + to_string(index) + ".csv", content, true);
-                      // Look for closer waypoint to current pose
-                      // and compare it to the PF prediction
-                      distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x,2) + 
-                                  pow(pf_tag_pose.position.y - gt_tag_pose.position.y,2));
-                      // Save to log prediction and ground truth
-                      content =
-                          current_tag_waypoint_prediction.at(index - 1) + "," +
-                          closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
-                      // cout << "Prediction VS GT: " << content << endl;
-                      utils.filePutContents(pf_vs_gt_log + to_string(index) + ".csv", content, true);
-                      // save closest waypoint for this tag
-                      closest_waypoints.push_back(closerWaypoint);
-                    }
-                    tag_ids.push_back(*it);
-                    if (belief_topomaps.size() < index) {
-                      belief_topomaps.push_back(
-                          prediction_srv.response.current_prob_dist);
+                    int index = std::stoi(*it);
+                    prediction_srv.request.likelihood = tmp_belief_topo;
+                    prediction_srv.request.identifying = true;
+                    if (pf_likelihoodClient_list.at(index).call(
+                            prediction_srv)) {
+                      cout << "   [" << index << "] Prediction srv called successfully" << endl;
+                      // printf("[PF - Tag %d ] Prediction: %s\n", index,
+                      //           prediction_srv.response.estimated_node.c_str());
+                      // Store waypoint prediction coming from particle filter
+                      if (current_tag_waypoint_prediction.size() <= index )
+                        current_tag_waypoint_prediction.push_back(prediction_srv.response.estimated_node);
+                      else 
+                        current_tag_waypoint_prediction.at(index) = prediction_srv.response.estimated_node;
+                      pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index), &topological_map);
+                      // Save pf prediction (expressed as metric position) on log
+                      content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
+                      utils.filePutContents(pf_log.at(index) + to_string(index) + ".csv", content, true);
+                      // Save noisy gps location on log
+                      if (gps_client_list.at(index).call(gps_srv)){
+                        content = to_string(gps_srv.response.p.x) + "," + to_string(gps_srv.response.p.y) + "\n";
+                        utils.filePutContents(gps_log.at(index) + to_string(index) + ".csv", content, true);
+                      }
+                      
+                      // Obtain ground truth position from Gazebo's engine
+                      string model_name = "tag_" + to_string(index + 1);
+                      string closerWaypoint;
+                      // cout << "Model_name: " << model_name << endl;
+                      if (utils.getModelClosestWaypoint(model_name, topological_map, closerWaypoint, gt_tag_pose))
+                      {
+                        // Save ground truth on log
+                        content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
+                        utils.filePutContents(gt_log.at(index) + to_string(index) + ".csv", content, true);
+                        // Look for closer waypoint to current pose
+                        // and compare it to the PF prediction
+                        distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x,2) + 
+                                    pow(pf_tag_pose.position.y - gt_tag_pose.position.y,2));
+                        // Save to log prediction and ground truth
+                        content =
+                            current_tag_waypoint_prediction.at(index) + "," +
+                            closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
+                        // cout << "Prediction VS GT: " << content << endl;
+                        utils.filePutContents(pf_vs_gt_log.at(index) + to_string(index) + ".csv", content, true);
+                        // save closest waypoint for this tag
+                        cout << "adding wayponit to remove: " << closerWaypoint << endl;
+                        closest_waypoints.push_back(closerWaypoint);
+                      }
+                      tag_ids.push_back(std::to_string(index + 1));
+                      if (belief_topomaps.size() <= index) {
+                        belief_topomaps.push_back(
+                            prediction_srv.response.current_prob_dist);
+                      } else
+                        belief_topomaps.at(index) =
+                            prediction_srv.response.current_prob_dist;
+
+                        prediction_tools.prior_distributions = belief_topomaps;
                     } else
-                      belief_topomaps.at(index - 1) =
-                          prediction_srv.response.current_prob_dist;
-
-                      prediction_tools.prior_distributions = belief_topomaps;
-                  } else
-                    cout << "   [" << index << "][ERROR] PF node did not reply!" << endl;               
+                      cout << "   [" << index << "][ERROR] PF node did not reply!" << endl;               
+                  }
                 }
-              }
-              cout << "Belief updated!" << endl;
-            } else {
+                cout << "Belief updated!" << endl;
+              } else {
                 printf("ATTENTION! Failed to get the RFID belief map\n");
               }
               
@@ -700,10 +711,12 @@ int main(int argc, char **argv) {
             actualPose = function.getEncodedKey(target, 0);
             // Add to the graph the initial positions and the candidates from
             // there (calculated inside the function)
-            utils.pushInitialPositions(closerWaypoint,
-                map, x, y, orientation, range, FOV, threshold, actualPose,
-                &graph2, &topo_path_client, &mapping_time_belief,  &function, &batteryTime,
-                &belief_map, &mappingWaypoints, &prediction_tools, &distances_map);
+            for (auto cw_it = closest_waypoints.begin(); cw_it != closest_waypoints.end(); cw_it++){
+              utils.pushInitialPositions(*cw_it,
+                                         map, x, y, orientation, range, FOV, threshold, actualPose,
+                                         &graph2, &topo_path_client, &mapping_time_belief, &function, &batteryTime,
+                                         &belief_map, &mappingWaypoints, &prediction_tools, &distances_map);
+            }
           }
 
           list<Pose> frontiers = topoMap;
@@ -717,12 +730,12 @@ int main(int argc, char **argv) {
           // current pose of the robot
           else {
             // Remove the closest cells to every tag, to avoind investing the agent!
-            unordered_map<string, string>::iterator it = mappingWaypoints.begin(); // this contains (encoding, waypoint name)
+            // unordered_map<string, string>::iterator it = mappingWaypoints.begin(); // this contains (encoding, waypoint name)
             for (std::pair<string,string> element : mappingWaypoints){
               if (std::find(closest_waypoints.begin(), closest_waypoints.end(), element.second) != closest_waypoints.end()){
                 Pose rm_pose = record.getPoseFromEncoding(element.first);
                 frontiers.remove(rm_pose);
-                // std::cout << "Removed node because the picker is on it: " << element.second << std::endl;
+                std::cout << "\tRemoved node because the picker is on it: " << element.second << std::endl;
               }
             }
 
@@ -738,10 +751,11 @@ int main(int argc, char **argv) {
             // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
             mapping_time_belief = utils.getStatelessRFIDBelief(100.0, true, &pf_stateless_likelihoodClient_list);
             cout << "Obtain current robot waypoint name" << endl;
-            utils.getModelClosestWaypoint(robotName, topological_map, &closerWaypoint, &gt_tag_pose);
+            string rob_closerWaypoint;
+            utils.getModelClosestWaypoint(robotName, topological_map, rob_closerWaypoint, gt_tag_pose);
             cout << "Evaluating nodes..." << endl;
             start = ros::Time::now().toSec();
-            record = *function.evaluateFrontiers(closerWaypoint, 
+            record = *function.evaluateFrontiers(rob_closerWaypoint, 
                 &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
                 &belief_map, &mappingWaypoints, &prediction_tools, &distances_map);
             cout << "   Evaluation: " << ros::Time::now().toSec() - start << endl;

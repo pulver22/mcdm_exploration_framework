@@ -5,7 +5,7 @@
 #include "include/utils.h"
 #include "bayesian_topological_localisation/Predict.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
-
+#include "std_msgs/String.h"
 
 Utilities::Utilities(){
   goal_marker_.header.frame_id = "/map";
@@ -853,6 +853,7 @@ bool Utilities::getGazeboModelPose(string model_name, string relative_entity_nam
   if (this->gazebo_model_state_client->call(model_state_srv))
   {
     *model_pose = model_state_srv.response.pose;
+    // cout << "Got model pose for " << model_name << endl;
     return true;
   }
   return false;
@@ -860,19 +861,52 @@ bool Utilities::getGazeboModelPose(string model_name, string relative_entity_nam
 
 bool Utilities::getModelClosestWaypoint(
     string model_name, strands_navigation_msgs::TopologicalMap topological_map,
-    string *closest_waypoint_name, geometry_msgs::Pose *closest_waypoint_pose)
+    string &closest_waypoint_name, geometry_msgs::Pose &closest_waypoint_pose)
 {
   // string model_name = "tag_" + tag_id;
   string relative_entity_name = "map";
 
-  if (getGazeboModelPose(model_name, relative_entity_name, closest_waypoint_pose))
+  if (getGazeboModelPose(model_name, relative_entity_name, &closest_waypoint_pose))
   {
     // Look for closer waypoint to current pose
     // and compare it to the PF prediction
-    *closest_waypoint_name = getCloserWaypoint(closest_waypoint_pose, &topological_map);
+    closest_waypoint_name = getCloserWaypoint(closest_waypoint_pose, topological_map);
+    // cout << "closest_wp_name " << closest_waypoint_name << endl;
     return true;
   }
   return false;
+}
+
+void Utilities::checkOnNode(strands_navigation_msgs::TopologicalMap topological_map)
+{
+  actionlib::SimpleClientGoalState curr_state = actionlib::SimpleClientGoalState::PENDING;
+  topological_navigation::GotoNodeActionGoal topoGoal;
+  float total_wait_time = 0.0;
+  float sleep_time = 2.0;
+  std_msgs::StringConstPtr current_node = ros::topic::waitForMessage<std_msgs::String>("/current_node", ros::Duration(5));
+  if (current_node && current_node->data == "none")
+  {
+    string closest_wp;
+    geometry_msgs::Pose closest_waypoint_pose;
+    if (getModelClosestWaypoint("thorvald_ii", topological_map, closest_wp, closest_waypoint_pose))
+    {
+      topoGoal.goal.target = closest_wp;
+      topoGoal.goal.no_orientation = true;
+      cout << "[utils.cpp@moveTopological] Going temporarily to the closest node: "
+           << topoGoal.goal.target << endl;
+      this->topoAC->sendGoal(topoGoal.goal);
+      while (!curr_state.isDone() && total_wait_time < 10.0)
+      {
+        total_wait_time += sleep_time;
+        this->topoAC->waitForResult(ros::Duration(sleep_time));
+        curr_state = this->topoAC->getState();
+      }
+    }
+    else
+    {
+      cout << "[utils.cpp@moveTopological] No closest node found for thorvald_ii" << endl;
+    }
+  }
 }
 
 bool Utilities::moveTopological(
@@ -900,6 +934,9 @@ bool Utilities::moveTopological(
   topoGoal.header.frame_id = "map";
   topoGoal.header.stamp = ros::Time::now();
 
+  // check if the robot is outside nodes influence  
+  checkOnNode(topological_map); // this is blocking; goes to the closest node if not on it
+
   auto search = mappingWaypoints->find(encoding);
   string waypointName;
   if (search != mappingWaypoints->end()) {
@@ -915,14 +952,13 @@ bool Utilities::moveTopological(
   // that the target is now occupied by the tag. We need then to select a
   // connected node to the one we would like to go.
   bool change_destination = updateDestinationWaypoint(
-      tag_ids, topological_map, &waypointName, &target, marker_pub, &topoGoal, &success);
+      tag_ids, topological_map, waypointName, target, *marker_pub, topoGoal, success);
 
   cout << "[utils.cpp@moveTopological] New robot destination: "
              << topoGoal.goal.target << endl;
   this->topoAC->sendGoal(topoGoal.goal);
 
-  actionlib::SimpleClientGoalState curr_state =
-      actionlib::SimpleClientGoalState::PENDING;
+  actionlib::SimpleClientGoalState curr_state = actionlib::SimpleClientGoalState::PENDING;
   float total_wait_time = 0.0;
   float sleep_time = 2.0;
   if (time_travel < 180.0) time_travel = 180.0;  // This should be useless
@@ -946,9 +982,11 @@ bool Utilities::moveTopological(
       // check that the goal is still reachable, i.e. that no tag is on it
       // cout << "   ... checking robot and tag positions..." << endl;
       change_destination = updateDestinationWaypoint(
-        tag_ids, topological_map, &waypointName, &target, marker_pub, &topoGoal, &success);
+        tag_ids, topological_map, waypointName, target, *marker_pub, topoGoal, success);
       if (change_destination == true){
         this->topoAC->cancelAllGoals();
+        // check if the robot is outside nodes influence
+        checkOnNode(topological_map); // this is blocking; goes to the closest node if not on it
         // Send the updated goal
         this->topoAC->sendGoal(topoGoal.goal);
         curr_state = actionlib::SimpleClientGoalState::PENDING;
@@ -1029,16 +1067,16 @@ Utilities::convertGridBeliefMapToTopoMap(
 }
 
 string
-Utilities::getCloserWaypoint(geometry_msgs::Pose *pose,
-                             strands_navigation_msgs::TopologicalMap *topoMap) {
+Utilities::getCloserWaypoint(geometry_msgs::Pose &pose,
+                             strands_navigation_msgs::TopologicalMap topoMap) {
   float minDistance = 100;
   float tmpDistance = 0;
   string closerWaypoint;
 
-  for (auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end();
+  for (auto nodesIt = topoMap.nodes.begin(); nodesIt != topoMap.nodes.end();
        nodesIt++) {
-    tmpDistance = sqrt(pow(pose->position.x - nodesIt->pose.position.x, 2) +
-                       pow(pose->position.y - nodesIt->pose.position.y, 2));
+    tmpDistance = sqrt(pow(pose.position.x - nodesIt->pose.position.x, 2) +
+                       pow(pose.position.y - nodesIt->pose.position.y, 2));
     if (tmpDistance < minDistance) {
       minDistance = tmpDistance;
       closerWaypoint = nodesIt->name;
@@ -1115,6 +1153,7 @@ Utilities::getStatelessRFIDBelief(
   prediction_stateless_srv.request.secs_from_now = secs_from_now;
   prediction_stateless_srv.request.return_history = return_history;
   prediction_stateless_srv.request.prediction_rate = 0.1; // a prediction every 10 seconds....to approximate
+  mapping_time_belief.clear(); // Remove old belief
   for (int tag_index = 0;
        tag_index < pf_stateless_likelihoodClient_list->size(); tag_index++) {
     if (pf_stateless_likelihoodClient_list->at(tag_index).call(
@@ -1125,12 +1164,11 @@ Utilities::getStatelessRFIDBelief(
           prediction_stateless_srv.response.estimated_node;
       vector<bayesian_topological_localisation::DistributionStamped> prob_dist =
           prediction_stateless_srv.response.prob_dist;
-      mapping_time_belief.clear(); // Remove old belief
       unordered_map<float, std::pair<string, bayesian_topological_localisation::
                                                  DistributionStamped>>
           map;
+      cout << "Got stateless prediction for tag " << tag_index << endl;
       for (int ts_counter = 0; ts_counter < timestamp.size(); ts_counter++) {
-        // cout << ts_counter << endl;
         map.emplace(std::make_pair(
             timestamp[ts_counter],
             std::make_pair(estimated_node[ts_counter], prob_dist[ts_counter])));
@@ -1145,33 +1183,35 @@ Utilities::getStatelessRFIDBelief(
 
 
 bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids, 
-            strands_navigation_msgs::TopologicalMap topological_map, string *waypointName,
-            Pose *target, ros::Publisher *marker_pub,
-            topological_navigation::GotoNodeActionGoal *topoGoal,
-            bool *success){
+            strands_navigation_msgs::TopologicalMap topological_map, string &waypointName,
+            Pose &target, ros::Publisher &marker_pub,
+            topological_navigation::GotoNodeActionGoal &topoGoal,
+            bool &success){
   bool change_destination = false;
   for (auto tag_id : tag_ids) {
     string model_name = "tag_" + tag_id;
     // cout << "Model: " << model_name << endl;
-    if (getModelClosestWaypoint(model_name, topological_map, &closest_waypoint_name_,
-                              &closest_waypoint_pose_)) {
+    string closest_waypoint_name_;
+    geometry_msgs::Pose closest_waypoint_pose_;
+    if (getModelClosestWaypoint(model_name, topological_map, closest_waypoint_name_,
+                              closest_waypoint_pose_)) {
       // cout << "     closest_waypoint_name_: " << closest_waypoint_name_ << endl;
-      // cout << "     wayPointName: " << *waypointName << endl;
-      if (closest_waypoint_name_ == *waypointName) {
+      // cout << "     wayPointName: " << waypointName << endl;
+      if (closest_waypoint_name_ == waypointName) {
         cout << "[utils.cpp@updateDestinationWaypoint] An agent is "
                 "on the goal node. Changing destination to neighbour node."
              << endl;
         auto [new_waypointName, new_waypointPose] =
-            getCloserConnectedWaypoint(*waypointName, *target, &topological_map);
-        topoGoal->goal.target = new_waypointName;
-        topoGoal->goal.no_orientation = false;
+            getCloserConnectedWaypoint(waypointName, target, &topological_map);
+        topoGoal.goal.target = new_waypointName;
+        topoGoal.goal.no_orientation = false;
         goal_marker_.header.stamp = ros::Time::now();
         goal_marker_.pose.position.x = new_waypointPose.position.x;
         goal_marker_.pose.position.y = new_waypointPose.position.y;
-        marker_pub->publish(goal_marker_);
-        *waypointName = new_waypointName;
+        marker_pub.publish(goal_marker_);
+        waypointName = new_waypointName;
         change_destination = true;
-        *success = false;
+        success = false;
       }
     }
   }
