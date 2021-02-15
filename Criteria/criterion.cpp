@@ -230,6 +230,7 @@ double Criterion::getPathLenFromMatrix(string currentRobotWayPoint,
   auto _search = distances_map->find(key);
   if (_search == distances_map->end()) {
     cout << "ERROR IN getPathLenFromMatrix, handle key not existent " << key <<  endl;
+    return 1000.0;
   }
   //TODO: convert current waypoint and destination one into index and then retrieve distance
   return distances_map->at(key);
