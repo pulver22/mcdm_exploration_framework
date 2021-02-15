@@ -169,7 +169,7 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
     // Evaluate the frontiers
     ////MULTI THREAD
     // Pre loop
-    const size_t nthreads = std::thread::hardware_concurrency();
+    const size_t nthreads = std::thread::hardware_concurrency() / 2;
     int nloop = frontiers->size();
     std::cout << "parallel (" << nthreads << " threads):" << std::endl;
     std::vector<std::thread> threads(nthreads);
