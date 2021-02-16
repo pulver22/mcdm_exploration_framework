@@ -15,14 +15,14 @@ public:
   RFIDCriterion(double weight);
   virtual ~RFIDCriterion();
   double evaluate(string currentRobotWayPoint,
-      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+      Pose &p, dummy::Map map, ros::ServiceClient path_client,
       vector<unordered_map<float,
                            std::pair<string, bayesian_topological_localisation::
                                                  DistributionStamped>>>
-          *mapping_time_belief,
-      double *batteryTime, GridMap *belief_map,
-      unordered_map<string, string> *mappingWaypoints, prediction_tools *tools,
-      std::unordered_map<string, double> *distances_map);
+          mapping_time_belief,
+      double batteryTime, GridMap belief_map,
+      unordered_map<string, string> mappingWaypoints, prediction_tools tools,
+      std::unordered_map<string, double> distances_map);
 
 private:
   void normalize(long minSensedX, int number);
@@ -62,17 +62,17 @@ private:
   std::string getTagLayerName(int tag_num);
 
   double evaluateEntropyTopologicalNode(
-      Pose p, unordered_map<string, string> *mappingWaypoints,
+      Pose p, unordered_map<string, string> mappingWaypoints,
       vector<bayesian_topological_localisation::DistributionStamped>
-          *belief_topomaps);
+          belief_topomaps);
   double evaluateEntropyTopologicalMap(
       vector<bayesian_topological_localisation::DistributionStamped>
-          *belief_topomaps);
+          belief_topomaps);
   double computeKLTopologicalMap(
       vector<bayesian_topological_localisation::DistributionStamped>
-          *prior_distributions,
+          prior_distributions,
       vector<bayesian_topological_localisation::DistributionStamped>
-          *posterior_distributions);
+          posterior_distributions);
   double computeEntropy(double likelihood);
   vector<
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
@@ -80,16 +80,16 @@ private:
                 vector<unordered_map<
                     float, std::pair<string, bayesian_topological_localisation::
                                                  DistributionStamped>>>
-                    *mapping_time_belief);
+                    mapping_time_belief);
 
   vector<vector<bayesian_topological_localisation::DistributionStamped>>
-  getRFIDLikelihood(Pose p, prediction_tools *tools, unordered_map<string, string> *mappingWaypoints,
-      vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> *pf_update_distributions);
+  getRFIDLikelihood(Pose p, prediction_tools tools, unordered_map<string, string> mappingWaypoints,
+      vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> pf_update_distributions);
 
   vector<bayesian_topological_localisation::DistributionStamped>
-      mergePriorLikelihood(prediction_tools *tools, 
-          vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> *pf_update_distributions,
-          vector<vector<bayesian_topological_localisation::DistributionStamped>> *rfid_reading_likelihoods);
+      mergePriorLikelihood(prediction_tools tools, 
+          vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> pf_update_distributions,
+          vector<vector<bayesian_topological_localisation::DistributionStamped>> rfid_reading_likelihoods);
 
 protected:
   double RFIDInfoGain = 0.0;

@@ -129,12 +129,12 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
 // For a candidate frontier, calculate its evaluation regarding to considered
 // criteria and put it in the evaluation record (through
 // the evaluate method provided by Criterion class)
-void MCDMFunction::evaluateFrontier(string currentRobotWayPoint, Pose &p, dummy::Map *map,
-                                    ros::ServiceClient *path_client,
-                                    vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
-                                    double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
-                                    prediction_tools *tools,
-                                    std::unordered_map<string, double> *distances_map) {
+void MCDMFunction::evaluateFrontier(string currentRobotWayPoint, Pose &p, dummy::Map map,
+                                    ros::ServiceClient path_client,
+                                    vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief,
+                                    double batteryTime, GridMap belief_map, unordered_map<string,string> mappingWaypoints,
+                                    prediction_tools tools,
+                                    std::unordered_map<string, double> distances_map) {
   for (int i = 0; i < activeCriteria.size(); i++) {
     Criterion *c = activeCriteria.at(i);
     c->evaluate(currentRobotWayPoint, p, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
@@ -143,13 +143,13 @@ void MCDMFunction::evaluateFrontier(string currentRobotWayPoint, Pose &p, dummy:
 
 // Scan a list of candidate positions,then apply the Choquet fuzzy algorithm
 EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
-    const std::list<Pose> *frontiers, dummy::Map *map, double threshold,
-    ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime, GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
-    prediction_tools *tools, std::unordered_map<string, double> *distances_map) {
+    const std::list<Pose> frontiers, dummy::Map map, double threshold,
+    ros::ServiceClient path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief, double batteryTime, GridMap belief_map, unordered_map<string,string> mappingWaypoints, 
+    prediction_tools tools, std::unordered_map<string, double> distances_map) {
 
   // Create the EvaluationRecords
   EvaluationRecords *toRet = new EvaluationRecords();
-  if (frontiers->size() > 0) {
+  if (frontiers.size() > 0) {
     Pose f;
     // Clean the last evaluation
     // NOTE: probably working
@@ -170,11 +170,12 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
     ////MULTI THREAD
     // Pre loop
     const size_t nthreads = std::thread::hardware_concurrency() / 2;
-    int nloop = frontiers->size();
+    int nloop = frontiers.size();
     std::cout << "parallel (" << nthreads << " threads):" << std::endl;
+    std::cout << "\t num frontiers: " << nloop << std::endl;
     std::vector<std::thread> threads(nthreads);
     list<Pose>::const_iterator it2;
-    it2 = frontiers->begin();
+    it2 = frontiers.begin();
     // std::mutex critical;
     for (int t = 0; t < nthreads; t++)
     {
@@ -190,7 +191,7 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
                 // std::lock_guard<std::mutex> lock(critical);
                 _f = *std::next(it2, i);
                 evaluateFrontier(currentRobotWayPoint, _f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
-                // std::cout << j << std::endl;
+                std::cout << "\t  -" << i << std::endl;
               }
             }
           },
@@ -202,7 +203,7 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
 
     ////SINGLE THREAD
     // list<Pose>::const_iterator it2;
-    // for (it2 = frontiers->begin(); it2 != frontiers->end(); it2++) {
+    // for (it2 = frontiers.begin(); it2 != frontiers.end(); it2++) {
     //   f = *it2;
     //   evaluateFrontier(currentRobotWayPoint,f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
     // }
@@ -214,8 +215,8 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
     }
     // analyze every single frontier f, and add in the evaluationRecords
     // <frontier, evaluation>
-    for (list<Pose>::const_iterator i = frontiers->begin();
-         i != frontiers->end(); i++) {
+    for (list<Pose>::const_iterator i = frontiers.begin();
+         i != frontiers.end(); i++) {
 
       // cout <<"---------------------NEW FRONTIER -------------------"<<endl;
       f = *i;

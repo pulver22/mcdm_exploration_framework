@@ -27,14 +27,14 @@ public:
   BatteryStatusCriterion(double weight);
   ~BatteryStatusCriterion();
   double evaluate(string currentRobotWayPoint, 
-      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+      Pose &p, dummy::Map map, ros::ServiceClient path_client,
       vector<unordered_map<float,
                            std::pair<string, bayesian_topological_localisation::
                                                  DistributionStamped>>>
-          *mapping_time_belief,
-      double *batteryTime, GridMap *belief_map,
-      unordered_map<string, string> *mappingWaypoints, prediction_tools *tools,
-      std::unordered_map<string, double> *distances_map);
+          mapping_time_belief,
+      double batteryTime, GridMap belief_map,
+      unordered_map<string, string> mappingWaypoints, prediction_tools tools,
+      std::unordered_map<string, double> distances_map);
   double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
   // only for testing purpose
   // void insertEvaluation(Pose &p, double value);

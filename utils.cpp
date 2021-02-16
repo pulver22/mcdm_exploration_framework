@@ -135,8 +135,8 @@ void Utilities::pushInitialPositions(string currentRobotWayPoint,
     frontiers.push_back(p4);
   }
   EvaluationRecords *record = function->evaluateFrontiers(currentRobotWayPoint,
-      &frontiers, &map, threshold, path_client, mapping_time_belief,
-      batteryTime, belief_map, mappingWaypoints, tools, distances_map);
+      frontiers, map, threshold, *path_client, *mapping_time_belief,
+      *batteryTime, *belief_map, *mappingWaypoints, *tools, *distances_map);
   list<Pose> nearCandidates = record->getFrontiers();
   cout << "Number of candidates:" << nearCandidates.size() << endl;
   std::pair<string, list<Pose>> pair = make_pair(actualPose, nearCandidates);
@@ -670,8 +670,8 @@ Pose Utilities::selectFreePoseInLocalCostmap(string currentRobotWayPoint,
     // cout << "nearCandidate after: " << nearCandidates->size() << endl;
     // Get the list of new candidate position with  associated evaluation
     record = function->evaluateFrontiers(currentRobotWayPoint,
-        nearCandidates, map, threshold, path_client, mapping_time_belief,
-        batteryTime, belief_map, mappingWaypoints, tools, distances_map);
+        *nearCandidates, *map, threshold, *path_client, *mapping_time_belief,
+        *batteryTime, *belief_map, *mappingWaypoints, *tools, *distances_map);
     // Get a new target
     std::pair<Pose, double> result = function->selectNewPose(record);
     //    cout << "     record size: " << record->size() << endl;
@@ -1029,8 +1029,8 @@ bool Utilities::moveTopological(
 
 bayesian_topological_localisation::DistributionStamped
 Utilities::convertGridBeliefMapToTopoMap(
-    GridMap *belief_map, list<Pose> *topoMap,
-    unordered_map<string, string> *mappingWaypoints, string tag_id, double radius) {
+    GridMap belief_map, list<Pose> topoMap,
+    unordered_map<string, string> mappingWaypoints, string tag_id, double radius) {
   // Retrieve node waypoint name from the mapping and return waypoint and summed
   // belief inside the message
 
@@ -1039,11 +1039,11 @@ Utilities::convertGridBeliefMapToTopoMap(
   bayesian_topological_localisation::DistributionStamped topo_belief;
   // grid_map::Matrix& data = (*belief_map)[tag_id];
 
-  for (auto it = topoMap->begin(); it != topoMap->end(); it++) {
+  for (auto it = topoMap.begin(); it != topoMap.end(); it++) {
     probability = 0.0;
     encoding = record_.getEncodedKey(*it);
-    auto search = mappingWaypoints->find(encoding);
-    if (search != mappingWaypoints->end()) {
+    auto search = mappingWaypoints.find(encoding);
+    if (search != mappingWaypoints.end()) {
       waypointName = search->second;
     } else {
       std::cout
@@ -1052,12 +1052,12 @@ Utilities::convertGridBeliefMapToTopoMap(
 
     Position center(it->getX(), it->getY());
     Position point;
-    for (grid_map::CircleIterator iterator(*belief_map, center, radius);
+    for (grid_map::CircleIterator iterator(belief_map, center, radius);
          !iterator.isPastEnd(); ++iterator) {
       // const grid_map::Index index(*iterator);
       // probability = probability + data((index(0), index(1)));
-      belief_map->getPosition(*iterator, point);
-      probability += belief_map->atPosition(tag_id, point);
+      belief_map.getPosition(*iterator, point);
+      probability += belief_map.atPosition(tag_id, point);
     }
     // Add the information to the returned object
     topo_belief.nodes.push_back(waypointName);

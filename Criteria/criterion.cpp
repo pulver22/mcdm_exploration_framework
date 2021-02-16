@@ -213,13 +213,13 @@ double Criterion::getPathLen(std::vector<geometry_msgs::PoseStamped> poses) {
 }
 
 double Criterion::getPathLenFromMatrix(string currentRobotWayPoint, 
-    Pose &p, std::unordered_map<string, double> *distances_map, 
-    unordered_map<string, string> *mappingWaypoints){
+    Pose &p, std::unordered_map<string, double> distances_map, 
+    unordered_map<string, string> mappingWaypoints){
   string encoding = Criterion::record_.getEncodedKey(p);
-  auto search = mappingWaypoints->find(encoding);
+  auto search = mappingWaypoints.find(encoding);
   string goal_wp;
   bool found = false;
-  if (search != mappingWaypoints->end()) {
+  if (search != mappingWaypoints.end()) {
     goal_wp = search->second;
     found = true;
   } else {
@@ -227,11 +227,11 @@ double Criterion::getPathLenFromMatrix(string currentRobotWayPoint,
     cout << "getPathLenFromMatrix node not found " << encoding << endl;
   }
   string key = currentRobotWayPoint + goal_wp;
-  auto _search = distances_map->find(key);
-  if (_search == distances_map->end()) {
+  auto _search = distances_map.find(key);
+  if (_search == distances_map.end()) {
     cout << "ERROR IN getPathLenFromMatrix, handle key not existent " << key <<  endl;
     return 1000.0;
   }
   //TODO: convert current waypoint and destination one into index and then retrieve distance
-  return distances_map->at(key);
+  return distances_map.at(key);
 }

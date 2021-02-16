@@ -21,21 +21,21 @@ public:
   MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3, float w_criterion_4, bool use_mcdm);
   MCDMFunction(float w_criterion_1, float w_criterion_2, float w_criterion_3, float w_criterion_4, float w_criterion_5, bool use_mcdm);
   ~MCDMFunction();
-  void evaluateFrontier(string currentRobotWayPoint, Pose &p, dummy::Map *map,
-                        ros::ServiceClient *path_client,
-                        vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
-                        double *batteryTime,
-                        GridMap *belief_map, unordered_map<string,string> *mappingWaypoints,
-                        prediction_tools *tools,
-                        std::unordered_map<string, double> *distances_map);
-  EvaluationRecords *evaluateFrontiers(string currentRobotWayPoint, const std::list<Pose> *frontiers,
-                                       dummy::Map *map, double threshold,
-                                       ros::ServiceClient *path_client,
-                                       vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief,
-                                       double *batteryTime,
-                                       GridMap *belief_map, unordered_map<string,string> *mappingWaypoints, 
-                                       prediction_tools *tools,
-                                       std::unordered_map<string, double> *distances_map);
+  void evaluateFrontier(string currentRobotWayPoint, Pose &p, dummy::Map map,
+                        ros::ServiceClient path_client,
+                        vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief,
+                        double batteryTime,
+                        GridMap belief_map, unordered_map<string,string> mappingWaypoints,
+                        prediction_tools tools,
+                        std::unordered_map<string, double> distances_map);
+  EvaluationRecords *evaluateFrontiers(string currentRobotWayPoint, const std::list<Pose> frontiers,
+                                       dummy::Map map, double threshold,
+                                       ros::ServiceClient path_client,
+                                       vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief,
+                                       double batteryTime,
+                                       GridMap belief_map, unordered_map<string,string> mappingWaypoints, 
+                                       prediction_tools tools,
+                                       std::unordered_map<string, double> distances_map);
   pair<Pose, double> selectNewPose(EvaluationRecords *evaluationRecords);
   string getEncodedKey(Pose &p, int value);
 
