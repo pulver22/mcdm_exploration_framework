@@ -1201,8 +1201,12 @@ bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids,
         cout << "[utils.cpp@updateDestinationWaypoint] An agent is "
                 "on the goal node. Changing destination to neighbour node."
              << endl;
+        // Go to the connected node which is closest to the robot (to avoid robot navigating too much)
+        geometry_msgs::Pose robot_pose;
+        getGazeboModelPose("thorvald_ii", "map", &robot_pose);
+        Pose robot_target = Pose(robot_pose.position.x, robot_pose.position.y, 0, 0, 0);
         auto [new_waypointName, new_waypointPose] =
-            getCloserConnectedWaypoint(waypointName, target, &topological_map);
+            getCloserConnectedWaypoint(waypointName, robot_target, &topological_map);
         topoGoal.goal.target = new_waypointName;
         topoGoal.goal.no_orientation = false;
         goal_marker_.header.stamp = ros::Time::now();
