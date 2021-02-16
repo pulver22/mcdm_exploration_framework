@@ -191,7 +191,7 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
                 // std::lock_guard<std::mutex> lock(critical);
                 _f = *std::next(it2, i);
                 evaluateFrontier(currentRobotWayPoint, _f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
-                std::cout << "\t  -" << i << std::endl;
+                // std::cout << "\t  -" << i << std::endl;
               }
             }
           },
