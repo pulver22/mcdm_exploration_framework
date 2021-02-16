@@ -473,7 +473,7 @@ int main(int argc, char **argv) {
           pf_stateless_likelihoodClient_list.push_back(pf_stateless_client);
 
           // create folders for each tag
-          std::string _log_dest_folder = log_dest_folder + "/" + str + "/" + "/tag_" + to_string(tag_id);
+          std::string _log_dest_folder = log_dest_folder + "/" + str + "/"; // + "/tag_" + to_string(tag_id);
           cout << "Creating folder: " << _log_dest_folder << endl;
           fs::create_directories(_log_dest_folder);
           cout << "Creation completed! " << endl;
