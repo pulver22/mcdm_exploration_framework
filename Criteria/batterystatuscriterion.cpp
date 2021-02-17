@@ -40,10 +40,11 @@ double BatteryStatusCriterion::evaluate(string currentRobotWayPoint,
   //   double path_len =
   //       Criterion::computeTopologicalDistance(p, path_client, mappingWaypoints);
   double path_len = Criterion::getPathLenFromMatrix(currentRobotWayPoint, p, distances_map, mappingWaypoints);
-  translTime = path_len / TRANSL_SPEED;
-  remainingBattery = batteryTime - translTime;
-  remainingBattery = max(remainingBattery, 0.0);
+  translTime_ = path_len / TRANSL_SPEED;
+  remainingBattery_ = *batteryTime - translTime_;
+  remainingBattery_ = max(remainingBattery_, 0.0);
   // cout << "BSCriterion: " << ros::Time::now().toSec() - start << endl;
-  Criterion::insertEvaluation(p, remainingBattery);
-  return remainingBattery;
+  Criterion::insertEvaluation(p, remainingBattery_);
+  // Criterion::insertEvaluation(p, path_len);
+  return remainingBattery_;
 }

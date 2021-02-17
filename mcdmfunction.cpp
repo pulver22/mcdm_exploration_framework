@@ -207,7 +207,7 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
     //   f = *it2;
     //   evaluateFrontier(currentRobotWayPoint,f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
     // }
-
+    
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();
          it != activeCriteria.end(); ++it) {

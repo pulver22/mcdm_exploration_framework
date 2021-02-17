@@ -1039,8 +1039,9 @@ Utilities::convertGridBeliefMapToTopoMap(
   bayesian_topological_localisation::DistributionStamped topo_belief;
   // grid_map::Matrix& data = (*belief_map)[tag_id];
 
+
   for (auto it = topoMap.begin(); it != topoMap.end(); it++) {
-    probability = 0.0;
+    probability = 0.5;
     encoding = record_.getEncodedKey(*it);
     auto search = mappingWaypoints.find(encoding);
     if (search != mappingWaypoints.end()) {
@@ -1050,15 +1051,15 @@ Utilities::convertGridBeliefMapToTopoMap(
           << "[convertGridBeliefMapToTopoMap@utils.cpp] Encoding not found\n";
     }
 
-    Position center(it->getX(), it->getY());
-    Position point;
-    for (grid_map::CircleIterator iterator(belief_map, center, radius);
-         !iterator.isPastEnd(); ++iterator) {
-      // const grid_map::Index index(*iterator);
-      // probability = probability + data((index(0), index(1)));
-      belief_map.getPosition(*iterator, point);
-      probability += belief_map.atPosition(tag_id, point);
-    }
+    //Position center(it->getX(), it->getY());
+    //Position point;
+    //for (grid_map::CircleIterator iterator(belief_map, center, radius);
+    //     !iterator.isPastEnd(); ++iterator) {
+    //  // const grid_map::Index index(*iterator);
+    //  // probability = probability + data((index(0), index(1)));
+    //  belief_map.getPosition(*iterator, point);
+    //  probability += belief_map.atPosition(tag_id, point);
+    //}
     // Add the information to the returned object
     topo_belief.nodes.push_back(waypointName);
     topo_belief.values.push_back(probability);
