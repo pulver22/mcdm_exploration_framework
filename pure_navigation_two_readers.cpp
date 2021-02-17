@@ -640,7 +640,7 @@ int main(int argc, char **argv) {
                       // Obtain ground truth position from Gazebo's engine
                       string closerWaypoint;
                       string model_name = "tag_" + index;
-                      if (utils.getModelClosestWaypoint(model_name, topological_map, &closerWaypoint, &gt_tag_pose))
+                      if (utils.getModelClosestWaypoint(model_name, topological_map, closerWaypoint, gt_tag_pose))
                       {
                         // Save ground truth on log
                         content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y) + "\n";
@@ -659,7 +659,7 @@ int main(int argc, char **argv) {
                         // save closest waypoint for this tag
                         closest_waypoints.push_back(closerWaypoint);
                       }
-                      tag_ids.push_back(*it);
+                      tag_ids.push_back(std::to_string(index + 1));
                       if (belief_topomaps.size() < index) {
                         belief_topomaps.push_back(
                             prediction_srv.response.current_prob_dist);
@@ -747,7 +747,7 @@ int main(int argc, char **argv) {
             mapping_time_belief = utils.getStatelessRFIDBelief(50.0, true, &pf_stateless_likelihoodClient_list);
             // cout << "Stateless update obtained" << endl;
             cout << "Obtain current robot waypoint name" << endl;
-            utils.getModelClosestWaypoint(robotName, topological_map, &closerWaypoint, &gt_tag_pose);
+            utils.getModelClosestWaypoint(robotName, topological_map, closerWaypoint, gt_tag_pose);
             cout << "Evaluating nodes..." << endl;
             record = *function.evaluateFrontiers(closerWaypoint, 
                 &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,

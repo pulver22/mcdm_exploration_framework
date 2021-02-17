@@ -27,31 +27,32 @@ Criterion::Criterion(string name, double weight, bool highGood)
 Criterion::~Criterion() {}
 
 void Criterion::insertEvaluation(Pose &p, double value) {
-  //    if(evaluation.contains(point))
+  //    if(evaluation_.contains(point))
   //        lprint << "#repeated frontier!!!" << endl;
 
   // string pose = getEncodedKey(p);
-  EvaluationRecords *record = new EvaluationRecords();
-  string pose = record->getEncodedKey(p);
-  evaluation.emplace(pose, value);
+  EvaluationRecords record = EvaluationRecords();
+  string pose = record.getEncodedKey(p);
   if (isnan(value)) {
     value = 0;
   }
+  evaluation_.emplace(pose, value);
+  
   if (value >= maxValue)
     maxValue = value;
   if (value <= minValue)
     minValue = value;
 
-  delete record;
+  // delete record;
   // pose.clear();
 }
 
 void Criterion::clean() {
   //    for(QHash<SLAM::Geometry::Frontier *, double>::iterator it =
-  //    evaluation.begin(); it!=evaluation.end(); it++){
+  //    evaluation_.begin(); it!=evaluation_.end(); it++){
   //        delete it.key();
   //    }
-  evaluation.clear();
+  evaluation_.clear();
 }
 
 void Criterion::normalize() {
@@ -63,26 +64,26 @@ void Criterion::normalize() {
 
 void Criterion::normalizeHighGood() {
   unordered_map<string, double> temp;
-  for (unordered_map<string, double>::iterator it = evaluation.begin();
-       it != evaluation.end(); it++) {
+  for (unordered_map<string, double>::iterator it = evaluation_.begin();
+       it != evaluation_.end(); it++) {
     pair<string, double> p = *it;
     double value = p.second;
     value = (value - minValue) / (maxValue - minValue);
     temp.emplace(p.first, value);
   }
-  evaluation = temp;
+  evaluation_ = temp;
 }
 
 void Criterion::normalizeLowGood() {
   unordered_map<string, double> temp;
-  for (unordered_map<string, double>::iterator it = evaluation.begin();
-       it != evaluation.end(); it++) {
+  for (unordered_map<string, double>::iterator it = evaluation_.begin();
+       it != evaluation_.end(); it++) {
     pair<string, double> p = *it;
     double value = p.second;
     value = (maxValue - value) / (maxValue - minValue);
     temp.emplace(p.first, value);
   }
-  evaluation = temp;
+  evaluation_ = temp;
 }
 
 double Criterion::getEvaluation(Pose &p) const {
@@ -90,7 +91,7 @@ double Criterion::getEvaluation(Pose &p) const {
   // string pose = getEncodedKey(p);
   EvaluationRecords *record = new EvaluationRecords();
   string pose = record->getEncodedKey(p);
-  double value = evaluation.at(pose);
+  double value = evaluation_.at(pose);
   delete record;
   if (isnan(value)) {
     value = 0.0;
@@ -224,8 +225,14 @@ double Criterion::getPathLenFromMatrix(string currentRobotWayPoint,
     found = true;
   } else {
     found = false;
+    cout << "getPathLenFromMatrix node not found " << encoding << endl;
   }
   string key = currentRobotWayPoint + goal_wp;
+  auto _search = distances_map->find(key);
+  if (_search == distances_map->end()) {
+    cout << "ERROR IN getPathLenFromMatrix, handle key not existent " << key <<  endl;
+    return 1000.0;
+  }
   //TODO: convert current waypoint and destination one into index and then retrieve distance
   return distances_map->at(key);
 }

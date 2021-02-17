@@ -39,12 +39,12 @@ public:
   // only for testing purpose
   // void insertEvaluation(Pose &p, double value);
 protected:
-  double distance = 0.0;
-  double numOfTurning = 0.0;
-  double translTime = 0.0;
-  double rotTime = 0.0;
-  double timeRequired = 0.0;
-  double remainingBattery = 0.0;
+  double distance_ = 0.0;
+  double numOfTurning_ = 0.0;
+  double translTime_ = 0.0;
+  double rotTime_ = 0.0;
+  double timeRequired_ = 0.0;
+  double remainingBattery_ = 0.0;
 };
 
 #endif // BATTERYSTATUSCRITERION_H

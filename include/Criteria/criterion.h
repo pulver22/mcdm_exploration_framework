@@ -87,7 +87,7 @@ protected:
   EvaluationRecords record_;
 
 private:
-  unordered_map<string, double> evaluation;
+  unordered_map<string, double> evaluation_;
 };
 
 #endif // CRITERION_H

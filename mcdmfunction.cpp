@@ -167,8 +167,9 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
     }
 
     // Evaluate the frontiers
+    ////MULTI THREAD
     // Pre loop
-    const size_t nthreads = std::thread::hardware_concurrency();
+    const size_t nthreads = std::thread::hardware_concurrency() / 2;
     int nloop = frontiers->size();
     std::cout << "parallel (" << nthreads << " threads):" << std::endl;
     std::vector<std::thread> threads(nthreads);
@@ -198,11 +199,14 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
     std::for_each(threads.begin(), threads.end(), [](std::thread &x) { x.join(); });
     // Post loop
     std::cout << std::endl;
+
+    ////SINGLE THREAD
     // list<Pose>::const_iterator it2;
     // for (it2 = frontiers->begin(); it2 != frontiers->end(); it2++) {
     //   f = *it2;
     //   evaluateFrontier(currentRobotWayPoint,f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
     // }
+    
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();
          it != activeCriteria.end(); ++it) {
