@@ -234,8 +234,8 @@ public:
         int range, double FoV, unordered_map<string, string> *mappingWaypoints);
 
     bayesian_topological_localisation::DistributionStamped
-    convertGridBeliefMapToTopoMap(GridMap *belief_map, list<Pose> *topoMap,
-                                  unordered_map<string, string> *mappingWaypoints,
+    convertGridBeliefMapToTopoMap(GridMap belief_map, list<Pose> topoMap,
+                                  unordered_map<string, string> mappingWaypoints,
                                   string tag_id, double radius);
 
     // bool recordContainsCandidates(EvaluationRecords* record,
