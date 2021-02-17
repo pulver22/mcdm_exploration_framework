@@ -484,6 +484,10 @@ int main(int argc, char **argv) {
         }else
             ROS_ERROR("[ParticleFilter] Error while initializing for "
                       "tag %d\n", tag_id);
+        // initialize lists
+        current_tag_waypoint_prediction.push_back("");
+        belief_topomaps.push_back(
+                            bayesian_topological_localisation::DistributionStamped());
       }
 
 
@@ -621,10 +625,7 @@ int main(int argc, char **argv) {
                       // printf("[PF - Tag %d ] Prediction: %s\n", index,
                       //           prediction_srv.response.estimated_node.c_str());
                       // Store waypoint prediction coming from particle filter
-                      if (current_tag_waypoint_prediction.size() <= index )
-                        current_tag_waypoint_prediction.push_back(prediction_srv.response.estimated_node);
-                      else 
-                        current_tag_waypoint_prediction.at(index) = prediction_srv.response.estimated_node;
+                      current_tag_waypoint_prediction.at(index) = prediction_srv.response.estimated_node;
                       pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index), &topological_map);
                       // Save pf prediction (expressed as metric position) on log
                       content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
@@ -659,14 +660,9 @@ int main(int argc, char **argv) {
                         closest_waypoints.push_back(closerWaypoint);
                       }
                       tag_ids.push_back(std::to_string(index + 1));
-                      if (belief_topomaps.size() <= index) {
-                        belief_topomaps.push_back(
-                            prediction_srv.response.current_prob_dist);
-                      } else
-                        belief_topomaps.at(index) =
-                            prediction_srv.response.current_prob_dist;
-
-                        prediction_tools.prior_distributions = belief_topomaps;
+                      belief_topomaps.at(index) =
+                          prediction_srv.response.current_prob_dist;
+                      prediction_tools.prior_distributions = belief_topomaps;
                     } else
                       cout << "   [" << index << "][ERROR] PF node did not reply!" << endl;               
                   }
