@@ -30,9 +30,9 @@ SensingTimeCriterion::SensingTimeCriterion(double weight)
 SensingTimeCriterion::~SensingTimeCriterion() {}
 
 double SensingTimeCriterion::evaluate(string currentRobotWayPoint, 
-    Pose &p, dummy::Map *map, ros::ServiceClient *path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> *mapping_time_belief, double *batteryTime,
-    GridMap *belief_map, unordered_map<string, string> *mappingWaypoints,
-    prediction_tools *tools, std::unordered_map<string, double> *distances_map) {
+    Pose &p, dummy::Map map, ros::ServiceClient path_client, vector<unordered_map<float,  std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief, double batteryTime,
+    GridMap belief_map, unordered_map<string, string> mappingWaypoints,
+    prediction_tools tools, std::unordered_map<string, double> distances_map) {
   NewRay ray;
   double sensingTime;
   double angle = 0;
@@ -58,7 +58,7 @@ double SensingTimeCriterion::evaluate(string currentRobotWayPoint,
   //    x_meter << "," << y_meter << "]" << endl;
   // sensingTime =
   // ray.getSensingTime(map,p.getX(),p.getY(),p.getOrientation(),p.getFOV(),p.getRange());
-  p.setScanAngles(map->getSensingTime(p.getX(), p.getY(), p.getOrientation(),
+  p.setScanAngles(map.getSensingTime(p.getX(), p.getY(), p.getOrientation(),
                                       p.getFOV(), p.getRange()));
   float minPhi = (float)p.getScanAngles().first;
   float maxPhi = (float)p.getScanAngles().second;
