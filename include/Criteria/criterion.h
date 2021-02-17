@@ -46,15 +46,15 @@ public:
 
   // Other methods
   virtual double evaluate(string currentRobotWayPoint, 
-      Pose &p, dummy::Map *map, ros::ServiceClient *path_client,
+      Pose &p, dummy::Map map, ros::ServiceClient path_client,
       vector<unordered_map<float,
                            std::pair<string, bayesian_topological_localisation::
                                                  DistributionStamped>>>
-          *mapping_time_belief,
-      double *batteryTime, GridMap *belief_map,
-      unordered_map<string, string> *mappingWaypoints,
-      prediction_tools *tools,
-      std::unordered_map<string, double> *distances_map){};
+          mapping_time_belief,
+      double batteryTime, GridMap belief_map,
+      unordered_map<string, string> mappingWaypoints,
+      prediction_tools tools,
+      std::unordered_map<string, double> distances_map){};
   double getEvaluation(Pose &p) const;
   void insertEvaluation(Pose &p, double value);
   void clean();
@@ -65,8 +65,8 @@ public:
   double getPathLen(std::vector<geometry_msgs::PoseStamped> poses);
 
   double getPathLenFromMatrix(string currentRobotWayPoint, 
-    Pose &p, std::unordered_map<string, double> *distances_map,
-    unordered_map<string, string> *mappingWaypoints);
+    Pose &p, std::unordered_map<string, double> distances_map,
+    unordered_map<string, string> mappingWaypoints);
 
   // Setters and getters
   string getName();
@@ -87,7 +87,7 @@ protected:
   EvaluationRecords record_;
 
 private:
-  unordered_map<string, double> evaluation;
+  unordered_map<string, double> evaluation_;
 };
 
 #endif // CRITERION_H

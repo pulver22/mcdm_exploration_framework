@@ -613,7 +613,7 @@ int main(int argc, char **argv) {
                     // Publish to the PF the sensor reading
                     bayesian_topological_localisation::DistributionStamped
                         tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
-                            &belief_map, &topoMap, &mappingWaypoints, *it, 0.5);
+                            belief_map, topoMap, mappingWaypoints, *it, 0.5);
                     tmp_belief_topo.header.stamp = ros::Time::now();
 
                     int index = std::stoi(*it);
@@ -750,8 +750,8 @@ int main(int argc, char **argv) {
             utils.getModelClosestWaypoint(robotName, topological_map, closerWaypoint, gt_tag_pose);
             cout << "Evaluating nodes..." << endl;
             record = *function.evaluateFrontiers(closerWaypoint, 
-                &frontiers, &map, threshold, &topo_path_client, &mapping_time_belief, &batteryTime,
-                &belief_map, &mappingWaypoints, &prediction_tools, &distances_map);
+                frontiers, map, threshold, topo_path_client, mapping_time_belief, batteryTime,
+                belief_map, mappingWaypoints, prediction_tools, distances_map);
             cout << "   Evaluation: " << ros::Time::now().toSec() - start << endl;
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with
