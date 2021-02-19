@@ -190,7 +190,7 @@ public:
             strands_navigation_msgs::TopologicalMap topological_map, string &waypointName,
             Pose &target, ros::Publisher &marker_pub,
             topological_navigation::GotoNodeActionGoal &topoGoal,
-            bool &success);
+            bool &success, std::list<std::pair<float, float>> *posToEsclude);
     void checkOnNode(strands_navigation_msgs::TopologicalMap topological_map);
 
     bool moveTopological(Pose target, float time_travel, list<Pose> *tabuList,
@@ -254,7 +254,8 @@ public:
                              strands_navigation_msgs::TopologicalMap topoMap);
 
     tuple<string, geometry_msgs::Pose> getCloserConnectedWaypoint(string node_name, Pose pose,
-                                                                  strands_navigation_msgs::TopologicalMap *topoMap);
+                                                                  strands_navigation_msgs::TopologicalMap *topoMap,
+                                                                  std::list<std::pair<float, float>> *posToEsclude);
 
     geometry_msgs::Pose
     getWaypointPoseFromName(string name,
