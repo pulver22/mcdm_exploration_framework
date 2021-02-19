@@ -19,7 +19,7 @@ using namespace dummy;
 using namespace grid_map;
 
 RFIDCriterion::RFIDCriterion(double weight)
-    : Criterion(RFID_READING, weight, true) { // true maximises
+    : Criterion(RFID_READING, weight, false) { // true maximises
   // minValue = 0.0;
 }
 
@@ -58,16 +58,11 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
       std::pair<string, bayesian_topological_localisation::DistributionStamped>>
       pf_update_distributions = this->findDistributionFromTime(time, mapping_time_belief);
 
-  // Let's get rid of estimated_node
-  vector<bayesian_topological_localisation::DistributionStamped> posterior_distributions;
-  for (auto it = pf_update_distributions.begin(); it != pf_update_distributions.end(); it++){
-    posterior_distributions.push_back(it->second);
-  }
 
   // Obtain the fake likelihood distribution
-  // vector<vector<bayesian_topological_localisation::DistributionStamped>>
-  //     rfid_reading_likelihoods = this->getRFIDLikelihood(
-  //         p, tools, mappingWaypoints, &pf_update_distributions);
+  vector<vector<bayesian_topological_localisation::DistributionStamped>>
+      rfid_reading_likelihoods = this->getRFIDLikelihood(
+          p, tools, mappingWaypoints, pf_update_distributions);
 
   // cout << "rfid_reading_likelihoods " << rfid_reading_likelihoods.size() << endl;
 
@@ -75,10 +70,10 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
   // particle filter
   // cout << "Pf prior: " << pf_update_distributions.size() << endl;
   // cout << "RFID Likelihood: " << rfid_reading_likelihoods.size() << endl;
-  // assert(pf_update_distributions.size() == rfid_reading_likelihoods.size());
-  // vector<bayesian_topological_localisation::DistributionStamped>
-  //     posterior_distributions = this->mergePriorLikelihood(
-  //         tools, &pf_update_distributions, &rfid_reading_likelihoods);
+  assert(pf_update_distributions.size() == rfid_reading_likelihoods.size());
+  vector<bayesian_topological_localisation::DistributionStamped>
+      posterior_distributions = this->mergePriorLikelihood(
+          tools, pf_update_distributions, rfid_reading_likelihoods);
 
   // 1) Compute entropy on a single waypoint
   this->RFIDInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,

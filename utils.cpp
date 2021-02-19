@@ -952,7 +952,7 @@ bool Utilities::moveTopological(
   // that the target is now occupied by the tag. We need then to select a
   // connected node to the one we would like to go.
   bool change_destination = updateDestinationWaypoint(
-      tag_ids, topological_map, waypointName, target, *marker_pub, topoGoal, success);
+      tag_ids, topological_map, waypointName, target, *marker_pub, topoGoal, success, posToEsclude);
 
   cout << "[utils.cpp@moveTopological] New robot destination: "
              << topoGoal.goal.target << endl;
@@ -982,7 +982,7 @@ bool Utilities::moveTopological(
       // check that the goal is still reachable, i.e. that no tag is on it
       // cout << "   ... checking robot and tag positions..." << endl;
       change_destination = updateDestinationWaypoint(
-        tag_ids, topological_map, waypointName, target, *marker_pub, topoGoal, success);
+        tag_ids, topological_map, waypointName, target, *marker_pub, topoGoal, success, posToEsclude);
       if (change_destination == true){
         this->topoAC->cancelAllGoals();
         // check if the robot is outside nodes influence
@@ -1041,7 +1041,7 @@ Utilities::convertGridBeliefMapToTopoMap(
 
 
   for (auto it = topoMap.begin(); it != topoMap.end(); it++) {
-    probability = 0.5;
+    probability = 0.0;
     encoding = record_.getEncodedKey(*it);
     auto search = mappingWaypoints.find(encoding);
     if (search != mappingWaypoints.end()) {
@@ -1051,15 +1051,15 @@ Utilities::convertGridBeliefMapToTopoMap(
           << "[convertGridBeliefMapToTopoMap@utils.cpp] Encoding not found\n";
     }
 
-    //Position center(it->getX(), it->getY());
-    //Position point;
-    //for (grid_map::CircleIterator iterator(belief_map, center, radius);
-    //     !iterator.isPastEnd(); ++iterator) {
-    //  // const grid_map::Index index(*iterator);
-    //  // probability = probability + data((index(0), index(1)));
-    //  belief_map.getPosition(*iterator, point);
-    //  probability += belief_map.atPosition(tag_id, point);
-    //}
+    Position center(it->getX(), it->getY());
+    Position point;
+    for (grid_map::CircleIterator iterator(belief_map, center, radius);
+        !iterator.isPastEnd(); ++iterator) {
+     // const grid_map::Index index(*iterator);
+     // probability = probability + data((index(0), index(1)));
+     belief_map.getPosition(*iterator, point);
+     probability += belief_map.atPosition(tag_id, point);
+    }
     // Add the information to the returned object
     topo_belief.nodes.push_back(waypointName);
     topo_belief.values.push_back(probability);
@@ -1088,13 +1088,17 @@ Utilities::getCloserWaypoint(geometry_msgs::Pose &pose,
 
 tuple <string, geometry_msgs::Pose>
 Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
-        strands_navigation_msgs::TopologicalMap *topoMap)
+        strands_navigation_msgs::TopologicalMap *topoMap, std::list<std::pair<float, float>> *posToEsclude)
 {
   float minDistance = 100;
   float tmpDistance = 0;
+  // hardcoded, sigh :(
+  int range = 5;
+  double FOV = 180;
   string closerWaypoint;
   geometry_msgs::Pose closerPose;
   std::vector<strands_navigation_msgs::Edge> edges;
+  std::pair<float, float> tmp_pose;
 
   for (auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end();
        nodesIt++)
@@ -1105,7 +1109,7 @@ Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
     }
 
   }
-
+  
   do{
     for (auto edgesIt = edges.begin(); edgesIt != edges.end();
           edgesIt++)
@@ -1191,7 +1195,7 @@ bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids,
             strands_navigation_msgs::TopologicalMap topological_map, string &waypointName,
             Pose &target, ros::Publisher &marker_pub,
             topological_navigation::GotoNodeActionGoal &topoGoal,
-            bool &success){
+            bool &success, std::list<std::pair<float, float>> *posToEsclude){
   bool change_destination = false;
   for (auto tag_id : tag_ids) {
     string model_name = "tag_" + tag_id;
@@ -1211,7 +1215,7 @@ bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids,
         getGazeboModelPose("thorvald_ii", "map", &robot_pose);
         Pose robot_target = Pose(robot_pose.position.x, robot_pose.position.y, 0, 0, 0);
         auto [new_waypointName, new_waypointPose] =
-            getCloserConnectedWaypoint(waypointName, robot_target, &topological_map);
+            getCloserConnectedWaypoint(waypointName, robot_target, &topological_map, posToEsclude);
         topoGoal.goal.target = new_waypointName;
         topoGoal.goal.no_orientation = false;
         goal_marker_.header.stamp = ros::Time::now();
