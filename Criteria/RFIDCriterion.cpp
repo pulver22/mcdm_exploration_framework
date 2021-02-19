@@ -19,7 +19,7 @@ using namespace dummy;
 using namespace grid_map;
 
 RFIDCriterion::RFIDCriterion(double weight)
-    : Criterion(RFID_READING, weight, false) { // true maximises
+    : Criterion(RFID_READING, weight, true) { // true maximises
   // minValue = 0.0;
 }
 
