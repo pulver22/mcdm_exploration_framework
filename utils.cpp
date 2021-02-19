@@ -1106,27 +1106,31 @@ Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
 
   }
 
-  for (auto edgesIt = edges.begin(); edgesIt != edges.end();
-        edgesIt++)
-  {
-    for (auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end();
-          nodesIt++)
+  do{
+    for (auto edgesIt = edges.begin(); edgesIt != edges.end();
+          edgesIt++)
     {
-      if (nodesIt->name.compare(edgesIt->node) == 0) 
+      for (auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end();
+            nodesIt++)
       {
-        tmpDistance = sqrt(pow(pose.getX() - nodesIt->pose.position.x, 2) +
-                              pow(pose.getY() - nodesIt->pose.position.y, 2));
-        if (tmpDistance < minDistance)
+        if (nodesIt->name.compare(edgesIt->node) == 0) 
         {
-          minDistance = tmpDistance;
-          closerWaypoint = nodesIt->name;
-          closerPose.position.x = nodesIt->pose.position.x;
-          closerPose.position.y = nodesIt->pose.position.y;
-          closerPose.orientation.w = 1.0;
-        }
+          tmpDistance = sqrt(pow(pose.getX() - nodesIt->pose.position.x, 2) +
+                                pow(pose.getY() - nodesIt->pose.position.y, 2));
+          if (tmpDistance < minDistance)
+          {
+            minDistance = tmpDistance;
+            closerWaypoint = nodesIt->name;
+            closerPose.position.x = nodesIt->pose.position.x;
+            closerPose.position.y = nodesIt->pose.position.y;
+            closerPose.orientation.w = 1.0;
+          }
+        }  
       }
     }
-  }
+    tmp_pose.first = closerPose.position.x;
+    tmp_pose.second = closerPose.position.y;
+  }while (!this->containsPos(posToEsclude, tmp_pose));
   return {closerWaypoint, closerPose};
 }
 
