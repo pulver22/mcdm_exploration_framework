@@ -1110,7 +1110,7 @@ Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
 
   }
   
-  do{
+  // do{
     for (auto edgesIt = edges.begin(); edgesIt != edges.end();
           edgesIt++)
     {
@@ -1134,7 +1134,7 @@ Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
     }
     tmp_pose.first = closerPose.position.x;
     tmp_pose.second = closerPose.position.y;
-  }while (!this->containsPos(posToEsclude, tmp_pose));
+  // }while (!this->containsPos(posToEsclude, tmp_pose));
   return {closerWaypoint, closerPose};
 }
 
