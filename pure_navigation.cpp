@@ -761,7 +761,7 @@ int main(int argc, char **argv) {
 
       }
       // Perform exploration until a certain stopping criterion is achieved
-      while (batteryPercentage > 1.0 and count < 20);
+      while (batteryPercentage > 1.0 and count < max_iterations);
       // Plotting utilities
       map.drawVisitedCells();
       map.printVisitedCells(history);
