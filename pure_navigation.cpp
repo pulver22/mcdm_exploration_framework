@@ -169,6 +169,7 @@ ros::Publisher stats_pub;
 ros::Publisher experiment_finished_pub;
 
 vector<string> current_tag_waypoint_prediction;
+vector<Pose> estimated_nodes;
 geometry_msgs::Pose pf_tag_pose, gt_tag_pose, gps_tag_pose;
 double distance_pf_gt;
 
@@ -488,6 +489,7 @@ int main(int argc, char **argv) {
         current_tag_waypoint_prediction.push_back("");
         belief_topomaps.push_back(
                             bayesian_topological_localisation::DistributionStamped());
+        estimated_nodes.push_back(target);
       }
 
 
@@ -622,11 +624,12 @@ int main(int argc, char **argv) {
                     if (pf_likelihoodClient_list.at(index).call(
                             prediction_srv)) {
                       cout << "   [" << index << "] Prediction srv called successfully" << endl;
-                      // printf("[PF - Tag %d ] Prediction: %s\n", index,
-                      //           prediction_srv.response.estimated_node.c_str());
+                      printf("[PF - Tag %d ] Prediction: %s\n", index,
+                                prediction_srv.response.estimated_node.c_str());
                       // Store waypoint prediction coming from particle filter
                       current_tag_waypoint_prediction.at(index) = prediction_srv.response.estimated_node;
                       pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index), &topological_map);
+                      estimated_nodes.at(index) = Pose(pf_tag_pose.position.x, pf_tag_pose.position.y, 0, range, FOV);
                       // Save pf prediction (expressed as metric position) on log
                       content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
                       utils.filePutContents(pf_log.at(index) + to_string(index) + ".csv", content, true);
@@ -676,45 +679,6 @@ int main(int argc, char **argv) {
             
           }
           
-
-          // If the exploration just started
-          if (count == 0) {
-            // Calculate other three pose given the starting one
-            string invertedPose = function.getEncodedKey(invertedInitial, 0);
-            string eastPose = function.getEncodedKey(eastInitial, 0);
-            string westPose = function.getEncodedKey(westInitial, 0);
-            list<Pose> empty;
-            std::pair<string, list<Pose>> pair1 =
-                make_pair(invertedPose, empty);
-            std::pair<string, list<Pose>> pair2 = make_pair(eastPose, empty);
-            std::pair<string, list<Pose>> pair3 = make_pair(westPose, empty);
-            // And add them (with empty candidates) to the graph structure
-            graph2.push_back(pair1);
-            graph2.push_back(pair2);
-            graph2.push_back(pair3);
-          }
-
-          // If it's not the first step but we are in one of the initial
-          // position (we come back here with backtracking)
-          if (count != 0 &&
-              (target.isEqual(invertedInitial) || target.isEqual(eastInitial) ||
-               target.isEqual(westInitial))) {
-            // If there are no more destination in the graph, terminates the
-            // navigation
-            if (graph2.size() == 0)
-              break;
-            graph2.pop_back();
-            actualPose = function.getEncodedKey(target, 0);
-            // Add to the graph the initial positions and the candidates from
-            // there (calculated inside the function)
-            for (auto cw_it = closest_waypoints.begin(); cw_it != closest_waypoints.end(); cw_it++){
-              utils.pushInitialPositions(*cw_it,
-                                         map, x, y, orientation, range, FOV, threshold, actualPose,
-                                         &graph2, &topo_path_client, &mapping_time_belief, &function, &batteryTime,
-                                         &belief_map, &mappingWaypoints, &prediction_tools, &distances_map);
-            }
-          }
-
           list<Pose> frontiers = topoMap;
           // If there are no new candidate positions from the current pose of
           // the robot
@@ -744,93 +708,22 @@ int main(int argc, char **argv) {
             }
             // FIXME: this can still be useful by not every iteration
             utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
-            // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
             mapping_time_belief = utils.getStatelessRFIDBelief(100.0, true, &pf_stateless_likelihoodClient_list);
             cout << "Obtain current robot waypoint name" << endl;
             string rob_closerWaypoint;
             utils.getModelClosestWaypoint(robotName, topological_map, rob_closerWaypoint, gt_tag_pose);
-            cout << "Evaluating nodes..." << endl;
-            start = ros::Time::now().toSec();
-            record = *function.evaluateFrontiers(rob_closerWaypoint, 
-                frontiers, map, threshold, topo_path_client, mapping_time_belief, batteryTime,
-                belief_map, mappingWaypoints, prediction_tools, distances_map);
-            cout << "   Evaluation: " << ros::Time::now().toSec() - start << endl;
-            // FIXME: this shouldn't be necessary but I cannot remove it because
-            // some cells in the tabulist are not removed with
-            // cleanPossibleDestination2 Clean all the possible destination from
-            // cells recently visited
-            for (list<Pose>::iterator it = tabuList.begin();
-                 it != tabuList.end(); it++) {
-              record.removeFrontier(*it);
-            }
-            // If there are candidate positions
-            if (record.size() > 0) {
-              frontiers = record.getFrontiers();
-              // Set the previous pose equal to the current one (represented by
-              // target)
               previous = target;
-              // Select the new robot destination from the list of candidates
-              std::pair<Pose, double> result = function.selectNewPose(&record);
-              target = result.first;
-              // target = utils.selectFreePoseInLocalCostmap(
-              //     target, &frontiers, &map, &function, threshold,
-              //     &topo_path_client, &posToEsclude, &record,
-              //     move_base_local_costmap_topic_name, &batteryTime, &belief_map,
-              //     &mappingWaypoints, &belief_topomaps);
+              // At every iteration, robot destination is one of the PF estimated nodes
+              target = estimated_nodes.at(count%estimated_nodes.size()); 
               targetPos =
                   std::make_pair(int(target.getX()), int(target.getY()));
-              // Select a new position until it is not explored recently
-              int iter = 0;
-              while (utils.containsPos(&posToEsclude, targetPos)) {
-                iter++;
-                // cout << iter << endl;
-                if (record.size() > 0) {
-                  record.removeFrontier(target);
-                  result = function.selectNewPose(&record);
-                  target = result.first;
-                  // target = utils.selectFreePoseInLocalCostmap(
-                  //     target, &frontiers, &map, &function, threshold,
-                  //     &topo_path_client, &posToEsclude, &record,
-                  //     move_base_local_costmap_topic_name, &batteryTime,
-                  //     &belief_map, &mappingWaypoints, &belief_topomaps);
-                  targetPos =
-                      std::make_pair(int(target.getX()), int(target.getY()));
-                  posToEsclude.push_back(targetPos);
-                } else {
-                  cout << "Record is empty and cannot find new candidate pose. Navigation should be terminated." << endl;
-                  break_loop = true;
-                  break;
-                }
-              }
-
-              if (break_loop == true)
-                break;
 
               // If the selected destination does not appear among the cells
               // already visited
               if ((!utils.containsPos(&posToEsclude, targetPos))) {
-
-                // i switch x and y to allow debugging graphically looking the image
-                // cout << "New target : x = " << targetPos.first << ", y = " << targetPos.second 
-                //     << ", orientation = " << target.getOrientation() * 180 / M_PI << endl;
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 backTracking = false;
-
-                // If the target has a different orientation from the current one,
-                // let's rotate the robot first
-                // cout << "Current Orientation: " << previous.getOrientation() << 
-                //   ", target Orientation: " << target.getOrientation() << endl;
-                // if (fmod(M_PI, std::abs(previous.getOrientation() - target.getOrientation())) > M_PI/6 ){
-                //   cout << "Let's rotate the robot." << endl;
-                //   utils.move(previous.getX(), 
-                //             previous.getY(), 
-                //             target.getOrientation(), 
-                //             20,
-                //             &tabuList,
-                //             &posToEsclude);
-                //   cout << "Rotation completed! Sending waypoint now." << endl;
-                // }
                 cout << "New destination found." << endl;
                 success = utils.showMarkerandNavigate(
                     target, &marker_pub, &map, &topo_path_client, &tabuList,
@@ -869,14 +762,6 @@ int main(int argc, char **argv) {
                 cout << "We shouldn't be here" << endl;
                 exit(0);
               }
-            }
-            // ... otherwise, if there are no candidate positions
-            else {
-              cout << "There are no more waypoints significant to explore. End "
-                      "the exploration task."
-                   << endl;
-              break;
-            }
 
             // If the record is empty, we didn't find a new position so we must finish
             if (break_loop == true)
