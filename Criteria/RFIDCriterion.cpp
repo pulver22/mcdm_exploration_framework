@@ -45,7 +45,7 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
   time += EVALUATION_TIME;  // we will end up there after travelling time + time taken for evaluating all the nodes
   // fesetround(FE_DOWNWARD);
   time = std::nearbyint(time);
-  time = std::min(time, 100.0);
+  time = std::min(time, 180.0);
   // EvaluationRecords record;
   // string encoding = record.getEncodedKey(p);
   // auto search = mappingWaypoints->find(encoding);

@@ -745,7 +745,7 @@ int main(int argc, char **argv) {
             // FIXME: this can still be useful by not every iteration
             utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
-            mapping_time_belief = utils.getStatelessRFIDBelief(100.0, true, &pf_stateless_likelihoodClient_list);
+            mapping_time_belief = utils.getStatelessRFIDBelief(180.0, true, &pf_stateless_likelihoodClient_list);
             cout << "Obtain current robot waypoint name" << endl;
             string rob_closerWaypoint;
             utils.getModelClosestWaypoint(robotName, topological_map, rob_closerWaypoint, gt_tag_pose);
