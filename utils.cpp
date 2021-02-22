@@ -562,7 +562,7 @@ bool Utilities::showMarkerandNavigate(
 
   float time_travel = 2 * path_len / min_robot_speed;
   time_travel = std::max(time_travel, (float)180.0);
-  *batteryTime -= time_travel;
+  // *batteryTime -= time_travel;
   // cout << "   New batteryTime: " << *batteryTime << endl;
   *travelledDistance += path_len;
 
@@ -1086,9 +1086,24 @@ Utilities::getCloserWaypoint(geometry_msgs::Pose &pose,
   return closerWaypoint;
 }
 
+vector<string> Utilities::getListWaypoints(std::list<std::pair<float, float>> *position_pairs, strands_navigation_msgs::TopologicalMap topoMap ){
+  vector<string> listWaypoints;
+  geometry_msgs::Pose tmp_pose;
+  string tmp_waypoint_name;
+  // cout << "WAYPOINTS TO REMOVE: " << endl;
+  for (auto it=position_pairs->begin(); it!= position_pairs->end(); it++){
+    tmp_pose.position.x = it->first;
+    tmp_pose.position.y = it->second;
+    tmp_waypoint_name = getCloserWaypoint(tmp_pose, topoMap);
+    listWaypoints.push_back(tmp_waypoint_name);
+    // cout << "   " << tmp_waypoint_name << endl;
+  }
+  return listWaypoints;
+}
+
 tuple <string, geometry_msgs::Pose>
 Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
-        strands_navigation_msgs::TopologicalMap *topoMap, std::list<std::pair<float, float>> *posToEsclude)
+        strands_navigation_msgs::TopologicalMap *topoMap, vector<string> listWaypointsToEsclude)
 {
   float minDistance = 100;
   float tmpDistance = 0;
@@ -1099,6 +1114,7 @@ Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
   geometry_msgs::Pose closerPose;
   std::vector<strands_navigation_msgs::Edge> edges;
   std::pair<float, float> tmp_pose;
+  bool isPresent;
 
   for (auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end();
        nodesIt++)
@@ -1117,7 +1133,10 @@ Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
       for (auto nodesIt = topoMap->nodes.begin(); nodesIt != topoMap->nodes.end();
             nodesIt++)
       {
-        if (nodesIt->name.compare(edgesIt->node) == 0) 
+
+        // The node doesn't need to appear in the list of node to esclude
+        isPresent = (std::find(listWaypointsToEsclude.begin(), listWaypointsToEsclude.end(), nodesIt->name) != listWaypointsToEsclude.end());
+        if (!isPresent and nodesIt->name.compare(edgesIt->node) == 0) 
         {
           tmpDistance = sqrt(pow(pose.getX() - nodesIt->pose.position.x, 2) +
                                 pow(pose.getY() - nodesIt->pose.position.y, 2));
@@ -1134,7 +1153,8 @@ Utilities::getCloserConnectedWaypoint(string node_name, Pose pose,
     }
     tmp_pose.first = closerPose.position.x;
     tmp_pose.second = closerPose.position.y;
-  // }while (!this->containsPos(posToEsclude, tmp_pose));
+  // }while (this->containsPos(posToEsclude, tmp_pose));
+  cout << "Candidate: " << tmp_pose.first << "," << tmp_pose.second << endl;
   return {closerWaypoint, closerPose};
 }
 
@@ -1199,6 +1219,7 @@ bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids,
   bool change_destination = false;
   for (auto tag_id : tag_ids) {
     string model_name = "tag_" + tag_id;
+    vector<string> wayPointsToEsclude = getListWaypoints(posToEsclude, topological_map);
     // cout << "Model: " << model_name << endl;
     string closest_waypoint_name_;
     geometry_msgs::Pose closest_waypoint_pose_;
@@ -1215,7 +1236,8 @@ bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids,
         getGazeboModelPose("thorvald_ii", "map", &robot_pose);
         Pose robot_target = Pose(robot_pose.position.x, robot_pose.position.y, 0, 0, 0);
         auto [new_waypointName, new_waypointPose] =
-            getCloserConnectedWaypoint(waypointName, robot_target, &topological_map, posToEsclude);
+            getCloserConnectedWaypoint(waypointName, robot_target, &topological_map, wayPointsToEsclude);
+        posToEsclude->push_back(std::make_pair(new_waypointPose.position.x, new_waypointPose.position.y));
         topoGoal.goal.target = new_waypointName;
         topoGoal.goal.no_orientation = false;
         goal_marker_.header.stamp = ros::Time::now();

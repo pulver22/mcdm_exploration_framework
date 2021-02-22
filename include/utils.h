@@ -252,10 +252,11 @@ public:
 
     string getCloserWaypoint(geometry_msgs::Pose &pose,
                              strands_navigation_msgs::TopologicalMap topoMap);
+                             
+    vector<string> getListWaypoints(std::list<std::pair<float, float>> *position_pairs, strands_navigation_msgs::TopologicalMap topoMap );
 
-    tuple<string, geometry_msgs::Pose> getCloserConnectedWaypoint(string node_name, Pose pose,
-                                                                  strands_navigation_msgs::TopologicalMap *topoMap,
-                                                                  std::list<std::pair<float, float>> *posToEsclude);
+    tuple <string, geometry_msgs::Pose> getCloserConnectedWaypoint(string node_name, Pose pose,
+            strands_navigation_msgs::TopologicalMap *topoMap, vector<string> listWaypointsToEsclude);
 
     geometry_msgs::Pose
     getWaypointPoseFromName(string name,
