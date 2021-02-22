@@ -502,11 +502,10 @@ int main(int argc, char **argv) {
 
         record.clear();
         // if (btMode == false) {
-        while (record.size() == 0) {
           // At every iteration, the current pose of the robot is taken from the
           // TF-tree
-          target = utils.getCurrentPose(resolution, costresolution, &map,
-                                        initFov, initRange);
+          // target = utils.getCurrentPose(resolution, costresolution, &map,
+          //                               initFov, initRange);
           cout << "\n============================================" << endl;
           cout << "New iteration[" << count + 1 
                << "], position: " << target.getX() << "," << target.getY() 
@@ -699,80 +698,55 @@ int main(int argc, char **argv) {
               }
             }
 
-
-            // Remove the cells which are recently visited (part of tabuList)
-            list<Pose>::iterator it_tabuList;
-            for (it_tabuList = tabuList.begin(); it_tabuList != tabuList.end();
-                 it_tabuList++) {
-              utils.cleanPossibleDestination2(&frontiers, *it_tabuList);
-            }
-            // FIXME: this can still be useful by not every iteration
-            utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
             mapping_time_belief = utils.getStatelessRFIDBelief(100.0, true, &pf_stateless_likelihoodClient_list);
             cout << "Obtain current robot waypoint name" << endl;
             string rob_closerWaypoint;
             utils.getModelClosestWaypoint(robotName, topological_map, rob_closerWaypoint, gt_tag_pose);
               previous = target;
-              // At every iteration, robot destination is one of the PF estimated nodes
-              target = estimated_nodes.at(count%estimated_nodes.size()); 
-              targetPos =
-                  std::make_pair(int(target.getX()), int(target.getY()));
+            // At every iteration, robot destination is one of the PF estimated nodes
+            target = estimated_nodes.at(count%estimated_nodes.size()); 
+            targetPos =
+                std::make_pair(int(target.getX()), int(target.getY()));
+            posToEsclude.push_back(targetPos);
 
-              // If the selected destination does not appear among the cells
-              // already visited
-              if ((!utils.containsPos(&posToEsclude, targetPos))) {
-                // Add it to the list of visited cells as first-view
-                encodedKeyValue = 1;
-                backTracking = false;
-                cout << "New destination found." << endl;
-                success = utils.showMarkerandNavigate(
-                    target, &marker_pub, &map, &topo_path_client, &tabuList,
-                    &posToEsclude, TRANSL_SPEED, &batteryTime,
-                    &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
-                if (success == true) {
-                  // Recently visited cells shouldn't be visited soon again
-                  if (tabuListCount > 0) {
-                    tabuListCount--;
-                  } else {
-                    // cout << "----> RESET TABULIST!! <----" << endl;
-                    tabuList.clear();
-                    posToEsclude.clear();
-                    tabuListCount = MAX_TABULIST_COUNT;
-                  }
-                  // We empty the lists before pushing the new target inside, 
-                  // so it can't be selected at the next NBS iteration
-                  utils.updatePathMetrics(
-                      &count, &target, &previous, actualPose, &frontiers, &graph2,
-                      &map, &function, &tabuList, &posToEsclude, &history,
-                      encodedKeyValue, &numConfiguration, &totalAngle,
-                      &travelledDistance, &numOfTurning, scanAngle,
-                      &topo_path_client, backTracking, robot_radius, &mappingWaypoints);
-                }
-                // Update the number of configurations of the robot along the task
-                numConfiguration++;
-                // Update counter of iterations
-                count++;
-                scan = true;
+          
+            // Add it to the list of visited cells as first-view
+            encodedKeyValue = 1;
+            backTracking = false;
+            cout << "New destination found." << endl;
+            success = utils.showMarkerandNavigate(
+                target, &marker_pub, &map, &topo_path_client, &tabuList,
+                &posToEsclude, TRANSL_SPEED, &batteryTime,
+                &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
+            if (success == true) {
+              // Recently visited cells shouldn't be visited soon again
+              if (tabuListCount > 0) {
+                tabuListCount--;
+              } else {
+                // cout << "----> RESET TABULIST!! <----" << endl;
+                tabuList.clear();
+                posToEsclude.clear();
+                tabuListCount = MAX_TABULIST_COUNT;
               }
-              // ...otherwise, if the selected cell has already been visited
-              else {
-                // NOTE: Technically, it shouldn't enter here due to the
-                // previous while loop
-                //                                cout << "3" << endl;
-                cout << "We shouldn't be here" << endl;
-                exit(0);
-              }
-
-            // If the record is empty, we didn't find a new position so we must finish
-            if (break_loop == true)
-              break;
-            // NOTE: not requested for testing purpose
-            // usleep(microseconds);
+              // We empty the lists before pushing the new target inside, 
+              // so it can't be selected at the next NBS iteration
+              utils.updatePathMetrics(
+                  &count, &target, &previous, actualPose, &frontiers, &graph2,
+                  &map, &function, &tabuList, &posToEsclude, &history,
+                  encodedKeyValue, &numConfiguration, &totalAngle,
+                  &travelledDistance, &numOfTurning, scanAngle,
+                  &topo_path_client, backTracking, robot_radius, &mappingWaypoints);
+            }
+            // Update the number of configurations of the robot along the task
+            numConfiguration++;
+            // Update counter of iterations
+            count++;
+            scan = true;
+              
             sensedCells = newSensedCells;
             frontiers.clear();
-            // delete record;
           }
-        }
+        
 
         // after 1 loop is complete, publish some stats
         // IF YOU CHANGE WHAT'S PUBLISHED HERE CHANGE HEADER PUBLISHING ABOVE!!!
@@ -787,7 +761,7 @@ int main(int argc, char **argv) {
 
       }
       // Perform exploration until a certain stopping criterion is achieved
-      while (batteryPercentage > 1.0 and count < max_iterations);
+      while (batteryPercentage > 1.0 and count < 20);
       // Plotting utilities
       map.drawVisitedCells();
       map.printVisitedCells(history);
@@ -810,6 +784,7 @@ int main(int argc, char **argv) {
       cout << "------------------- ending experiment ---------------" << endl;
       std_msgs::Bool finished;
       finished.data = true;
+      cout << "Notifying sentor.." << endl;
       experiment_finished_pub.publish(finished);
 
       utils.printResult(newSensedCells, totalFreeCells, precision,

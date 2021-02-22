@@ -14,7 +14,7 @@
 
 #define EVALUATION_TIME 25.0
 
-const int MAX_TABULIST_COUNT = 0;
+const int MAX_TABULIST_COUNT = 1;
 
 struct prediction_tools {
   vector<ros::ServiceClient> pf_stateless_update_srv_list;
