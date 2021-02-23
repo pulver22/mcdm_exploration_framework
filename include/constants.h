@@ -12,7 +12,7 @@
 #define TRANSL_SPEED 1.0
 #define ROT_SPEED 1.0
 
-#define EVALUATION_TIME 25.0
+#define EVALUATION_TIME 70.0
 
 const int MAX_TABULIST_COUNT = 1;
 

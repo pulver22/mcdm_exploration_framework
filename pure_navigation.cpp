@@ -759,6 +759,9 @@ int main(int argc, char **argv) {
 
         stats_pub.publish(stats_msg);
 
+        // Put the node to sleep to make comparison fair with NBS
+        sleep(EVALUATION_TIME);
+
       }
       // Perform exploration until a certain stopping criterion is achieved
       while (batteryPercentage > 1.0 and count < max_iterations);
