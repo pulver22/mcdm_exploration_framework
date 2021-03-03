@@ -9,7 +9,7 @@ A video of the working principle of topoNBS combined with a topological particle
 [![topoNBS and TPF](https://i.imgur.com/B5cf7Eq.png)](https://www.youtube.com/watch?v=gLYIWcQfXHA&feature=youtu.be)
 
 ## Quick setup
-This is a short description on how to install and run the components used for the topological localization work as above.
+This is a short description on how to install and run the components used for the topological localization presented above.
 
 ### Topological Navigation
  1. Install the LCAS ROS software packages: https://github.com/LCAS/rosdistro/wiki
