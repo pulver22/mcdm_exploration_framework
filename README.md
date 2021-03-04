@@ -7,6 +7,9 @@ A video of the working principle of topoNBS combined with a topological particle
 
 
 [![topoNBS and TPF](https://i.imgur.com/B5cf7Eq.png)](https://www.youtube.com/watch?v=gLYIWcQfXHA&feature=youtu.be)
+## DISCLAIMER
+
+This repository depends on the [RASberry](https://github.com/LCAS/RASberry) package which is not released yet. You are required therefore set up your own simulation before being able to use topoNBS.
 
 ## Quick setup
 
