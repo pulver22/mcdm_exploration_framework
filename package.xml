@@ -52,6 +52,7 @@
   <build_depend>rasberry_people_perception</build_depend>
   <build_depend>topological_navigation</build_depend>
   <build_depend>bayesian_topological_localisation</build_depend>
+  <build_depend>ncnr_logging</build_depend>
   <!-- mfc: we will record using stats_pub
   <build_depend>record_ros</build_depend> -->
   <run_depend>geometry_msgs</run_depend>
@@ -64,6 +65,7 @@
   <run_depend>rasberry_people_perception</run_depend>
   <run_depend>topological_navigation</run_depend>
   <run_depend>bayesian_topological_localisation</run_depend>
+  <run_depend>ncnr_logging</run_depend>
   <!-- <run_depend>record_ros</run_depend> -->
 
 

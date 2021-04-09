@@ -3,9 +3,10 @@
 //
 
 #include "include/utils.h"
-#include "bayesian_topological_localisation/Predict.h"
+// #include "bayesian_topological_localisation/Predict.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
 #include "std_msgs/String.h"
+#include <Eigen/Dense>
 
 Utilities::Utilities(){
   goal_marker_.header.frame_id = "/map";
@@ -549,6 +550,7 @@ bool Utilities::showMarkerandNavigate(
   goal_marker_.header.stamp = ros::Time::now();
   goal_marker_.pose.position.x = target.getX();
   goal_marker_.pose.position.y = target.getY();
+  goal_marker_.pose.position.z = 0.5;
 
   marker_pub->publish(goal_marker_);
   //----------------------------------------------
@@ -1039,6 +1041,20 @@ Utilities::convertGridBeliefMapToTopoMap(
   bayesian_topological_localisation::DistributionStamped topo_belief;
   // grid_map::Matrix& data = (*belief_map)[tag_id];
 
+  // Let's first normalise the radiation map in [0,1]
+  for (int i = 0; i < belief_map["radiation"].size(); i++){
+    if( isnan(*(belief_map["radiation"].data() + i))){
+      *(belief_map["radiation"].data() + i) = 0;
+    }
+  }
+  belief_map["radiation"] = (belief_map["radiation"].array() + abs(belief_map["radiation"].minCoeff())).matrix();
+  float total_w = belief_map["radiation"].sum();
+  if (total_w > 0){
+    belief_map["radiation"] = belief_map["radiation"] / total_w;
+  }
+  // cout << "min: " << belief_map["radiation"].minCoeff() << endl;
+  // cout << "max: " << belief_map["radiation"].maxCoeff() << endl;
+  // cout << "total: " << belief_map["radiation"].sum() << endl;
 
   for (auto it = topoMap.begin(); it != topoMap.end(); it++) {
     probability = 0.0;
@@ -1148,47 +1164,47 @@ geometry_msgs::Pose Utilities::getWaypointPoseFromName(
   cout << "[utils.cpp@getWaypointPoseFromName] Waypoint NOT FOUND!" << endl;
 }
 
-vector<unordered_map<
-    float,
-    std::pair<string, bayesian_topological_localisation::DistributionStamped>>>
-Utilities::getStatelessRFIDBelief(
-    double secs_from_now, bool return_history,
-    vector<ros::ServiceClient> *pf_stateless_likelihoodClient_list) {
-  vector<unordered_map<
-      float, std::pair<string,
-                       bayesian_topological_localisation::DistributionStamped>>>
-      mapping_time_belief;
-  bayesian_topological_localisation::Predict prediction_stateless_srv;
-  prediction_stateless_srv.request.secs_from_now = secs_from_now;
-  prediction_stateless_srv.request.return_history = return_history;
-  prediction_stateless_srv.request.prediction_rate = 0.1; // a prediction every 10 seconds....to approximate
-  mapping_time_belief.clear(); // Remove old belief
-  for (int tag_index = 0;
-       tag_index < pf_stateless_likelihoodClient_list->size(); tag_index++) {
-    if (pf_stateless_likelihoodClient_list->at(tag_index).call(
-            prediction_stateless_srv)) {
-      vector<double> timestamp =
-          prediction_stateless_srv.response.secs_from_now;
-      vector<string> estimated_node =
-          prediction_stateless_srv.response.estimated_node;
-      vector<bayesian_topological_localisation::DistributionStamped> prob_dist =
-          prediction_stateless_srv.response.prob_dist;
-      unordered_map<float, std::pair<string, bayesian_topological_localisation::
-                                                 DistributionStamped>>
-          map;
-      cout << "Got stateless prediction for tag " << tag_index << endl;
-      for (int ts_counter = 0; ts_counter < timestamp.size(); ts_counter++) {
-        map.emplace(std::make_pair(
-            timestamp[ts_counter],
-            std::make_pair(estimated_node[ts_counter], prob_dist[ts_counter])));
-      }
-      mapping_time_belief.push_back(map);
+// vector<unordered_map<
+//     float,
+//     std::pair<string, bayesian_topological_localisation::DistributionStamped>>>
+// Utilities::getStatelessRFIDBelief(
+//     double secs_from_now, bool return_history,
+//     vector<ros::ServiceClient> *pf_stateless_likelihoodClient_list) {
+//   vector<unordered_map<
+//       float, std::pair<string,
+//                        bayesian_topological_localisation::DistributionStamped>>>
+//       mapping_time_belief;
+//   bayesian_topological_localisation::Predict prediction_stateless_srv;
+//   prediction_stateless_srv.request.secs_from_now = secs_from_now;
+//   prediction_stateless_srv.request.return_history = return_history;
+//   prediction_stateless_srv.request.prediction_rate = 0.1; // a prediction every 10 seconds....to approximate
+//   mapping_time_belief.clear(); // Remove old belief
+//   for (int tag_index = 0;
+//        tag_index < pf_stateless_likelihoodClient_list->size(); tag_index++) {
+//     if (pf_stateless_likelihoodClient_list->at(tag_index).call(
+//             prediction_stateless_srv)) {
+//       vector<double> timestamp =
+//           prediction_stateless_srv.response.secs_from_now;
+//       vector<string> estimated_node =
+//           prediction_stateless_srv.response.estimated_node;
+//       vector<bayesian_topological_localisation::DistributionStamped> prob_dist =
+//           prediction_stateless_srv.response.prob_dist;
+//       unordered_map<float, std::pair<string, bayesian_topological_localisation::
+//                                                  DistributionStamped>>
+//           map;
+//       cout << "Got stateless prediction for tag " << tag_index << endl;
+//       for (int ts_counter = 0; ts_counter < timestamp.size(); ts_counter++) {
+//         map.emplace(std::make_pair(
+//             timestamp[ts_counter],
+//             std::make_pair(estimated_node[ts_counter], prob_dist[ts_counter])));
+//       }
+//       mapping_time_belief.push_back(map);
 
-    } else
-      cout << "Stateless Srv No answer" << endl;
-  }
-  return mapping_time_belief;
-}
+//     } else
+//       cout << "Stateless Srv No answer" << endl;
+//   }
+//   return mapping_time_belief;
+// }
 
 
 bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids, 
@@ -1221,6 +1237,7 @@ bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids,
         goal_marker_.header.stamp = ros::Time::now();
         goal_marker_.pose.position.x = new_waypointPose.position.x;
         goal_marker_.pose.position.y = new_waypointPose.position.y;
+        goal_marker_.pose.position.z = 0.5;
         marker_pub.publish(goal_marker_);
         waypointName = new_waypointName;
         change_destination = true;

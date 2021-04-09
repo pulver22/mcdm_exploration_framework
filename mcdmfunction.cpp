@@ -169,44 +169,44 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
     // Evaluate the frontiers
     ////MULTI THREAD
     // Pre loop
-    const size_t nthreads = std::thread::hardware_concurrency();
-    int nloop = frontiers.size();
-    std::cout << "parallel (" << nthreads << " threads):" << std::endl;
-    std::cout << "\t num frontiers: " << nloop << std::endl;
-    std::vector<std::thread> threads(nthreads);
-    list<Pose>::const_iterator it2;
-    it2 = frontiers.begin();
-    // std::mutex critical;
-    for (int t = 0; t < nthreads; t++)
-    {
-      threads[t] = std::thread(std::bind(
-          [&](const int bi, const int ei, const int t) {
-            // loop over all items
-            for (int i = bi; i < ei; i++)
-            {
-              // inner loop
-              {
-                Pose _f;
-                // (optional) make output critical
-                // std::lock_guard<std::mutex> lock(critical);
-                _f = *std::next(it2, i);
-                evaluateFrontier(currentRobotWayPoint, _f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
-                // std::cout << "\t  -" << i << std::endl;
-              }
-            }
-          },
-          t * nloop / nthreads, (t + 1) == nthreads ? nloop : (t + 1) * nloop / nthreads, t));
-    }
-    std::for_each(threads.begin(), threads.end(), [](std::thread &x) { x.join(); });
-    // Post loop
-    std::cout << std::endl;
+    // const size_t nthreads = std::thread::hardware_concurrency();
+    // int nloop = frontiers.size();
+    // std::cout << "parallel (" << nthreads << " threads):" << std::endl;
+    // std::cout << "\t num frontiers: " << nloop << std::endl;
+    // std::vector<std::thread> threads(nthreads);
+    // list<Pose>::const_iterator it2;
+    // it2 = frontiers.begin();
+    // // std::mutex critical;
+    // for (int t = 0; t < nthreads; t++)
+    // {
+    //   threads[t] = std::thread(std::bind(
+    //       [&](const int bi, const int ei, const int t) {
+    //         // loop over all items
+    //         for (int i = bi; i < ei; i++)
+    //         {
+    //           // inner loop
+    //           {
+    //             Pose _f;
+    //             // (optional) make output critical
+    //             // std::lock_guard<std::mutex> lock(critical);
+    //             _f = *std::next(it2, i);
+    //             evaluateFrontier(currentRobotWayPoint, _f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
+    //             // std::cout << "\t  -" << i << std::endl;
+    //           }
+    //         }
+    //       },
+    //       t * nloop / nthreads, (t + 1) == nthreads ? nloop : (t + 1) * nloop / nthreads, t));
+    // }
+    // std::for_each(threads.begin(), threads.end(), [](std::thread &x) { x.join(); });
+    // // Post loop
+    // std::cout << std::endl;
 
     ////SINGLE THREAD
-    // list<Pose>::const_iterator it2;
-    // for (it2 = frontiers.begin(); it2 != frontiers.end(); it2++) {
-    //   f = *it2;
-    //   evaluateFrontier(currentRobotWayPoint,f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
-    // }
+    list<Pose>::const_iterator it2;
+    for (it2 = frontiers.begin(); it2 != frontiers.end(); it2++) {
+      f = *it2;
+      evaluateFrontier(currentRobotWayPoint,f, map, path_client, mapping_time_belief, batteryTime, belief_map, mappingWaypoints, tools, distances_map);
+    }
     
     // Normalize the values
     for (vector<Criterion *>::iterator it = activeCriteria.begin();
@@ -240,11 +240,6 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
           // Get the weight of the single criterion
           weight = matrix->getWeight(names);
           finalValue += (*k)->getWeight() * (*k)->getEvaluation(f);
-          // if ((*k)->getName().compare("informationGain") == 0) {
-          //   if ((*k)->getEvaluation(f) == 0) {
-          //     no_info_gain = true;
-          //   }
-          // }
         }
       } else {
         // MCDM
@@ -271,18 +266,12 @@ EvaluationRecords *MCDMFunction::evaluateFrontiers(string currentRobotWayPoint,
             finalValue += tmpValue * weight;
           }
           lastCrit = c;
-          // if (c->getName().compare("informationGain") == 0) {
-          //   if (c->getEvaluation(f) == 0) {
-          //     no_info_gain = true;
-          //   }
-          // }
         }
       }
       if (finalValue > threshold){// and no_info_gain == false) {
         toRet->putEvaluation(f, finalValue);
       }
     }
-
     activeCriteria.clear();
   }
 

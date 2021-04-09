@@ -1,9 +1,7 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.0.2)
 project(next_best_sense)
 
 find_package(catkin REQUIRED COMPONENTS
-  # mfc: we will record using stats_pub
-  #record_ros
   actionlib
   nav_msgs
   geometry_msgs
@@ -22,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   topological_navigation
   bayesian_topological_localisation
   rasberry_people_perception
+  ncnr_logging
 
 )
 
@@ -59,8 +58,8 @@ PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp utils.cpp)
 add_executable(pure_navigation pure_navigation.cpp)
 target_link_libraries(pure_navigation next_best_sense ${catkin_LIBRARIES} stdc++fs)
 
-add_executable(pure_navigation_two_readers pure_navigation_two_readers.cpp)
-target_link_libraries(pure_navigation_two_readers next_best_sense ${catkin_LIBRARIES} stdc++fs)
+# add_executable(pure_navigation_two_readers pure_navigation_two_readers.cpp)
+# target_link_libraries(pure_navigation_two_readers next_best_sense ${catkin_LIBRARIES} stdc++fs)
 
 #add_executable(mcdm_slim mcdm_slim.cpp)
 #target_link_libraries(mcdm_slim next_best_sense ${catkin_LIBRARIES})
