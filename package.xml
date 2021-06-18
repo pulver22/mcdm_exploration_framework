@@ -49,7 +49,7 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>rfid_node</build_depend>
   <build_depend>rfid_grid_map</build_depend>
-  <build_depend>rasberry_people_perception</build_depend>
+  <!-- <build_depend>rasberry_people_perception</build_depend> -->
   <build_depend>topological_navigation</build_depend>
   <build_depend>bayesian_topological_localisation</build_depend>
   <build_depend>ncnr_logging</build_depend>
@@ -62,7 +62,7 @@
   <run_depend>move_base_msgs</run_depend>
   <run_depend>rfid_node</run_depend>
   <run_depend>rfid_grid_map</run_depend>
-  <run_depend>rasberry_people_perception</run_depend>
+  <!-- <run_depend>rasberry_people_perception</run_depend> -->
   <run_depend>topological_navigation</run_depend>
   <run_depend>bayesian_topological_localisation</run_depend>
   <run_depend>ncnr_logging</run_depend>

@@ -53,7 +53,7 @@
 #include <ctime>
 #include <iomanip>
 #include <experimental/filesystem> // or #include <filesystem> for C++17 and up
-#include "rasberry_people_perception/NoisyGPS.h"
+// #include "rasberry_people_perception/NoisyGPS.h"
 #include "ncnr_logging/GetRadiationMaps.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "grid_map_msgs/GridMap.h"
@@ -131,7 +131,7 @@ std::string stats_topic_name;
 std::string topological_map_topic_name;
 std::string localization_srv_name;
 std::string pf_srv_name, pf_stateless_srv_name;
-std::string gps_srv_name;
+// std::string gps_srv_name;
 std::string pf_topic_name;
 
 
@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
   bayesian_topological_localisation::LocaliseAgent localization_srv;
   bayesian_topological_localisation::UpdateLikelihoodObservation prediction_srv;
   // bayesian_topological_localisation::Predict prediction_stateless_srv;
-  rasberry_people_perception::NoisyGPS gps_srv;
+  // rasberry_people_perception::NoisyGPS gps_srv;
 
 
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
