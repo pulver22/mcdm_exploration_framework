@@ -7,18 +7,18 @@
 <launch>
   <!-- PARAMS .............................................................. -->
   <arg name="two_readers"         default="false"/>
-  <arg name="w_info_gain"  	      default="0.00"/>
-  <arg name="w_travel_distance"  	default="0.35"/>
+  <arg name="w_info_gain"  	      default="0.3"/>
+  <arg name="w_travel_distance"  	default="0.2"/>
   <arg name="w_sensing_time"  	  default="0.1"/>
-  <arg name="w_battery_status"  	default="0.25"/>
-  <arg name="w_rfid_gain"  	      default="0.3"/>
-  <arg name="fov"                 default="180"/>
-  <arg name="radius"              default="5"/>
+  <arg name="w_battery_status"  	default="0.1"/>
+  <arg name="w_rfid_gain"  	      default="0.2"/>
+  <arg name="fov"                 default="360"/>
+  <arg name="radius"              default="3.5"/>
   <arg name="coverage_percentage" default="0.95"/>
   <arg name="frontier_threshold"  default="0.001"/>
   <arg name="map_resolution"      default="0.25"/>
   <arg name="dest_folder"  	      default="/home/pulver/Desktop/ncnr_topoNBS/nbs/"/>
-  <arg name="scenario_name"  	    default="INB"/>
+  <arg name="scenario_name"  	    default="nuclear"/>
   <arg name="use_mcdm"            default="1"/>
   <arg name="num_tags"            default="1"/>
   <arg name="max_iterations"      default="20"/>

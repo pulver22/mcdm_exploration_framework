@@ -565,7 +565,8 @@ int main(int argc, char **argv) {
               map.getSensingTime(x, y, orientation, FOV, range));
           // Perform a scanning operation
           double X_max = range;
-          double X_min = 1;
+          // double X_min = 1;
+          double X_min = X_max;  // scanning a circle
           double focal_length = (X_max - X_min) / 2.0; // (X_max - X_min)/2
           double major_axis = focal_length + X_min;    // (focal_length + X_min)
           double minor_axis = sqrt(pow(major_axis, 2) - pow(focal_length, 2));
@@ -853,9 +854,14 @@ int main(int argc, char **argv) {
                     tabuListCount--;
                   } else {
                     // cout << "----> RESET TABULIST!! <----" << endl;
-                    tabuList.clear();
+                    // tabuList.clear();
+                    // posToEsclude.clear();
+                    // tabuListCount = MAX_TABULIST_COUNT;
+                    
+                    // NOTE: instead of emptying the list allowing to sample a cell 
+                    // visited only two steps ago, only remove the oldest waypoint
+                    tabuList.pop_front();
                     posToEsclude.clear();
-                    tabuListCount = MAX_TABULIST_COUNT;
                   }
                   // We empty the lists before pushing the new target inside, 
                   // so it can't be selected at the next NBS iteration
