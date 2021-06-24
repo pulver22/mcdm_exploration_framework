@@ -1249,7 +1249,7 @@ bool Utilities::updateDestinationWaypoint(std::vector<string> tag_ids,
 }
 
 void Utilities::saveMap(const std::unordered_map<string, double> *map, string path){
-  std::cout<<"Save in " << path << endl;
+  std::cout<<"    Save in " << path << endl;
   const auto start = std::chrono::steady_clock::now();
   std::ofstream f;
   f.open(path.c_str());
@@ -1260,7 +1260,7 @@ void Utilities::saveMap(const std::unordered_map<string, double> *map, string pa
   }
   f.close();
   const auto end = std::chrono::steady_clock::now();
-  std::cout<<"Save time = "<< std::chrono::duration<double, std::milli> (end-start).count() << " ms" << std::endl;
+  std::cout<<"    Save time = "<< std::chrono::duration<double, std::milli> (end-start).count() << " ms" << std::endl;
 }
 
 bool Utilities::loadMap(std::unordered_map<string, double> *map, string path){

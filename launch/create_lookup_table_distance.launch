@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+ <!--
+
+      Spawns a rfid equipped thorvald in ncfm facilities.
+-->
+
+<launch>
+  <!-- PARAMS .............................................................. -->
+  <arg name="fov"                 default="360"/>
+  <arg name="radius"              default="3.5"/>
+  <arg name="distances_map"       default="reactor_map.csv"/>
+  <arg name="dest_folder"  	      default="/home/pulver/Desktop/ncnr_topoNBS/nbs/"/>
+  <arg name="pure_args"  	        default="$(arg fov) 
+                                           $(arg radius) 
+                                           $(arg distances_map)
+                                           $(arg dest_folder)"/>
+
+  
+  <env name="ROSCONSOLE_CONFIG_FILE"
+    value="$(find next_best_sense)/config/custom_rosconsole.conf"/>
+  
+  <node pkg="next_best_sense" type="create_lookup_table" name="create_lookup_table" output="screen"  args="$(arg pure_args)" >
+  </node>
+
+</launch>
