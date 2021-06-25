@@ -2,7 +2,7 @@
 // Created by pulver on 29/07/2019.
 //
 
-#include "Criteria/RFIDCriterion.h"
+#include "Criteria/radmeancriterion.h"
 #include "Criteria/criteriaName.h"
 #include "Eigen/Eigen"
 #include "newray.h"
@@ -18,14 +18,14 @@
 using namespace dummy;
 using namespace grid_map;
 
-RFIDCriterion::RFIDCriterion(double weight)
-    : Criterion(RFID_READING, weight, true) { // true maximises
+RadMeanCriterion::RadMeanCriterion(double weight)
+    : Criterion(RAD_MEAN, weight, false) { // true maximises
   // minValue = 0.0;
 }
 
-RFIDCriterion::~RFIDCriterion() {}
+RadMeanCriterion::~RadMeanCriterion() {}
 
-double RFIDCriterion::evaluate(string currentRobotWayPoint,
+double RadMeanCriterion::evaluate(string currentRobotWayPoint,
     Pose &p, dummy::Map map, ros::ServiceClient path_client,
     vector<unordered_map<float,
                          std::pair<string, bayesian_topological_localisation::
@@ -35,17 +35,17 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
     unordered_map<string, string> mappingWaypoints, prediction_tools tools,
     std::unordered_map<string, double> distances_map) {
 
-  this->RFIDInfoGain = 0;
-  double start = ros::Time::now().toSec();
+  this->RadMeanInfoGain = 0;
+  // double start = ros::Time::now().toSec();
   // Compute how long it takes to go to the destination waypoint and retrieve
   // the corresponding posterior belief maps
   // double path_len = Criterion::computeTopologicalDistance( p, path_client, mappingWaypoints);
-  double path_len = Criterion::getPathLenFromMatrix(currentRobotWayPoint, p, distances_map, mappingWaypoints);
-  double time = (path_len / 3) / TRANSL_SPEED; /// FRA: here (path_len/3) because the path_len is artifically 3 times bigger in the saved map 
-  time += EVALUATION_TIME;  // we will end up there after travelling time + time taken for evaluating all the nodes
-  // fesetround(FE_DOWNWARD);
-  time = std::nearbyint(time);
-  time = std::min(time, 180.0);
+  // double path_len = Criterion::getPathLenFromMatrix(currentRobotWayPoint, p, distances_map, mappingWaypoints);
+  // double time = (path_len / 3) / TRANSL_SPEED; /// FRA: here (path_len/3) because the path_len is artifically 3 times bigger in the saved map 
+  // time += EVALUATION_TIME;  // we will end up there after travelling time + time taken for evaluating all the nodes
+  // // fesetround(FE_DOWNWARD);
+  // time = std::nearbyint(time);
+  // time = std::min(time, 180.0);
   // EvaluationRecords record;
   // string encoding = record.getEncodedKey(p);
   // auto search = mappingWaypoints->find(encoding);
@@ -73,29 +73,49 @@ double RFIDCriterion::evaluate(string currentRobotWayPoint,
   // assert(pf_update_distributions.size() == rfid_reading_likelihoods.size());
   // vector<bayesian_topological_localisation::DistributionStamped>
   //     posterior_distributions = this->mergePriorLikelihood(
-  //         tools, pf_update_distributions, rfid_reading_likelihoods);
+  //         toolys, pf_update_distributions, rfid_reading_likelihoods);
   vector<bayesian_topological_localisation::DistributionStamped>
-      posterior_distributions = tools.prior_distributions;
+      values = tools.mean_values_distribution;
 
   // 1) Compute entropy on a single waypoint
-  this->RFIDInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,
-                                                      posterior_distributions);
+  // this->RadMeanInfoGain = evaluateEntropyTopologicalNode(p, mappingWaypoints,
+  //                                                     posterior_distributions);
+  this->RadMeanInfoGain = getTopoNodeValue(p, mappingWaypoints, values);
+
+  // ORI) Read values from GP-prediction
+  // pair<float,float> current_pose = make_pair(p.getX(), p.getY());
+  // int index = 0;
+  // // for (int i = 0; i < tools.coordinates.size(); i++){
+  // //   pair<float, float> tmp_pair = tools.coordinates.at(i);
+  // //   if (current_pose.first == tmp_pair.first and current_pose.second == tmp_pair.second)
+  // //     index = i;
+  // // }
+  // auto it = find(tools.coordinates.begin(), tools.coordinates.end(), current_pose);
+  // if (it != tools.coordinates.end() )
+  // {
+  //   index = it - tools.coordinates.begin();
+  //   this->RadMeanInfoGain = tools.mean_values[index];
+  // }else{
+  //   this->RadMeanInfoGain = 0;
+  // }
+  
+
   // 2) Compute entropy on the entire map
-  // this->RFIDInfoGain =
+  // this->RadMeanInfoGain =
   // evaluateEntropyTopologicalMap(posterior_distributions); 
 
   // cout << "Entropy
-  // node: " << this->RFIDInfoGain << endl; 3) Compute KL-divergence between
-  // prior and posterior distribution this->RFIDInfoGain =
+  // node: " << this->RadMeanInfoGain << endl; 3) Compute KL-divergence between
+  // prior and posterior distribution this->RadMeanInfoGain =
   // computeKLTopologicalMap(&(tools->prior_distributions), &posterior_distributions);
-  // cout << "   Entropy: " << this->RFIDInfoGain << endl;
-  // cout << "RFIDCriterion: " << ros::Time::now().toSec() - start << endl;
-  Criterion::insertEvaluation(p, this->RFIDInfoGain);
-  return this->RFIDInfoGain;
+  // cout << "   Entropy: " << this->RadMeanInfoGain << endl;
+  // cout << "RadMeanCriterion: " << ros::Time::now().toSec() - start << endl;
+  Criterion::insertEvaluation(p, this->RadMeanInfoGain);
+  return this->RadMeanInfoGain;
 }
 
-double RFIDCriterion::evaluateEntropyOverBelief(Pose &p, GridMap *belief_map) {
-  float RFIDInfoGain = 0.0;
+double RadMeanCriterion::evaluateEntropyOverBelief(Pose &p, GridMap *belief_map) {
+  float RadMeanInfoGain = 0.0;
   double entropy_cell = 0.0;
   int buffer_size = 2;
   std::vector<string> layers_name = belief_map->getLayers();
@@ -106,18 +126,18 @@ double RFIDCriterion::evaluateEntropyOverBelief(Pose &p, GridMap *belief_map) {
   // If there are no belief maps built (no signal received up to now),
   // the entropy is maximum
   if (layers_name.size() == 0) {
-    RFIDInfoGain = 1.0; // default: max entropy
+    RadMeanInfoGain = 1.0; // default: max entropy
   }
   for (auto it = layers_name.begin(); it != layers_name.end(); it++) {
     int tag_id = std::stoi(*it); // convert string to int
     entropy_cell =
         getTotalEntropyEllipse(p, p.getRange(), -1.0, tag_id, belief_map);
-    RFIDInfoGain += entropy_cell;
+    RadMeanInfoGain += entropy_cell;
   }
-  return RFIDInfoGain;
+  return RadMeanInfoGain;
 }
 
-double RFIDCriterion::getTotalEntropyEllipse(Pose target, double maxX,
+double RadMeanCriterion::getTotalEntropyEllipse(Pose target, double maxX,
                                              double minX, int tag_i,
                                              GridMap *belief_map) {
   // 1.-  Get elipsoid iterator.
@@ -147,7 +167,7 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target, double maxX,
   return getTotalEntropyEllipse(target, el_iterator, tag_i, belief_map);
 }
 
-double RFIDCriterion::getTotalEntropyEllipse(Pose target,
+double RadMeanCriterion::getTotalEntropyEllipse(Pose target,
                                              grid_map::EllipseIterator iterator,
                                              int tag_i, GridMap *belief_map) {
 
@@ -171,15 +191,15 @@ double RFIDCriterion::getTotalEntropyEllipse(Pose target,
   return total_entropy;
 }
 
-std::string RFIDCriterion::getTagLayerName(int tag_num) {
+std::string RadMeanCriterion::getTagLayerName(int tag_num) {
   return std::to_string(tag_num);
 }
 
-double RFIDCriterion::evaluateEntropyTopologicalNode(
+double RadMeanCriterion::evaluateEntropyTopologicalNode(
     Pose p, unordered_map<string, string> mappingWaypoints,
     vector<bayesian_topological_localisation::DistributionStamped>
         belief_topomaps) {
-  float RFIDInfoGain = 0.0;
+  float RadMeanInfoGain = 0.0;
   double likelihood = 0.0;
   EvaluationRecords record;
   string encoding = record.getEncodedKey(p);
@@ -189,7 +209,7 @@ double RFIDCriterion::evaluateEntropyTopologicalNode(
   if (search != mappingWaypoints.end()) {
     waypointName = search->second;
   } else {
-    std::cout << "[RFIDCriterion.cpp@evaluateEntropyTopologicalMap] WayPoint "
+    std::cout << "[RadMeanCriterion.cpp@evaluateEntropyTopologicalMap] WayPoint "
                  "Not found\n";
   }
 
@@ -206,14 +226,14 @@ double RFIDCriterion::evaluateEntropyTopologicalNode(
       }
       // cout << "[B]: " << accumulate(belief_topomaps.at(tag_id).values.begin(), belief_topomaps.at(tag_id).values.end(), 0.0) << endl;
       likelihood = belief_topomaps.at(tag_id).values[index];
-      RFIDInfoGain += this->computeEntropy(likelihood);
+      RadMeanInfoGain += this->computeEntropy(likelihood);
     }
   }
 
-  return RFIDInfoGain;
+  return RadMeanInfoGain;
 }
 
-double RFIDCriterion::evaluateEntropyTopologicalMap(
+double RadMeanCriterion::evaluateEntropyTopologicalMap(
     vector<bayesian_topological_localisation::DistributionStamped>
         belief_topomaps) {
   double entropy = 0.0;
@@ -230,7 +250,7 @@ double RFIDCriterion::evaluateEntropyTopologicalMap(
   return entropy;
 }
 
-double RFIDCriterion::computeKLTopologicalMap(
+double RadMeanCriterion::computeKLTopologicalMap(
     vector<bayesian_topological_localisation::DistributionStamped>
         prior_distributions,
     vector<bayesian_topological_localisation::DistributionStamped>
@@ -254,7 +274,7 @@ double RFIDCriterion::computeKLTopologicalMap(
   return KL_div;
 }
 
-double RFIDCriterion::computeEntropy(double likelihood) {
+double RadMeanCriterion::computeEntropy(double likelihood) {
   double neg_likelihood, log2_likelihood, log2_neg_likelihood = 0.0;
   if (isnan(likelihood))
     likelihood = 0.0;
@@ -274,7 +294,7 @@ double RFIDCriterion::computeEntropy(double likelihood) {
 
 vector<
     std::pair<string, bayesian_topological_localisation::DistributionStamped>>
-RFIDCriterion::findDistributionFromTime(
+RadMeanCriterion::findDistributionFromTime(
     double time,
     vector<unordered_map<float,
                          std::pair<string, bayesian_topological_localisation::
@@ -321,7 +341,7 @@ RFIDCriterion::findDistributionFromTime(
 }
 
 vector<vector<bayesian_topological_localisation::DistributionStamped>>
-RFIDCriterion::getRFIDLikelihood(
+RadMeanCriterion::getRFIDLikelihood(
     Pose p, prediction_tools tools,
     unordered_map<string, string> mappingWaypoints,
     vector<std::pair<string,
@@ -382,7 +402,7 @@ RFIDCriterion::getRFIDLikelihood(
 }
 
 // vector<bayesian_topological_localisation::DistributionStamped>
-// RFIDCriterion::mergePriorLikelihood(
+// RadMeanCriterion::mergePriorLikelihood(
 //     prediction_tools tools,
 //     vector<std::pair<string,
 //                      bayesian_topological_localisation::DistributionStamped>>
@@ -411,7 +431,7 @@ RFIDCriterion::getRFIDLikelihood(
 //           tmp_distribution = update_srv.response.current_prob_dist;
 //         } 
 //         else
-//           cout << "[RFIDCriterion.cpp@mergePriorLikelihood] An error occured" << endl;
+//           cout << "[RadMeanCriterion.cpp@mergePriorLikelihood] An error occured" << endl;
 //       }
 //     }
 //     posterior_distributions.push_back(tmp_distribution);

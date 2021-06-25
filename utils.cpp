@@ -729,6 +729,8 @@ void Utilities::filePutContents(const std::string &name,
         outfile << "pf_x, pf_y" << endl;
       } else if (name.find("gps_tag_pose") != string::npos) {
         outfile << "gps_x, gps_y" << endl;
+      }else if (name.find("rad_readings") != string::npos) {
+        outfile << "robot_x, robot_y, intensity_level" << endl;
       }
     } else {
       // std::cout << "File exists! Appending data!" << endl;
@@ -1291,4 +1293,23 @@ bool Utilities::loadMap(std::unordered_map<string, double> *map, string path){
   const auto end = std::chrono::steady_clock::now();
   std::cout<<"Load time = "<< std::chrono::duration<double, std::milli> (end-start).count() << " ms" << std::endl;
   return true;
+}
+
+
+bayesian_topological_localisation::DistributionStamped 
+        Utilities::getRadiationDistribution(nav_msgs::OccupancyGrid grid, GridMapRosConverter converter, 
+                                ros::Publisher *pub, list<Pose> topoMap, unordered_map<string, string> mappingWaypoints){
+                              
+  GridMap radiation_map;
+  grid_map_msgs::GridMap radiation_map_msg;
+  converter.fromOccupancyGrid(grid, "radiation", radiation_map);
+  converter.toMessage(radiation_map, radiation_map_msg);
+  radiation_map_msg.info.header.frame_id = "loc_map";
+  pub->publish(radiation_map_msg);
+  // converter.fromMessage(radiation_map_msg, radiation_map);
+  std::vector<string> layers_name = radiation_map.getLayers();
+  bayesian_topological_localisation::DistributionStamped
+      tmp_belief_topo = this->convertGridBeliefMapToTopoMap(
+          radiation_map, topoMap, mappingWaypoints, layers_name[0], 0.5);
+  return tmp_belief_topo;
 }

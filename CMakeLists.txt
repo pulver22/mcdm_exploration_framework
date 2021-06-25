@@ -48,7 +48,7 @@ include_directories(
 add_library(next_best_sense pose.cpp map.cpp newray.cpp mcdmfunction.cpp
 map.cpp evaluationrecords.cpp Criteria/sensingtimecriterion.cpp
 Criteria/informationgaincriterion.cpp Criteria/mcdmweightreader.cpp Criteria/traveldistancecriterion.cpp
-Criteria/batterystatuscriterion.cpp Criteria/RFIDCriterion.cpp
+Criteria/batterystatuscriterion.cpp Criteria/radmeancriterion.cpp Criteria/radvariancecriterion.cpp
 Criteria/weightmatrix.cpp Criteria/criterioncomparator.cpp Criteria/criterion.cpp
 PathFinding/astar.cpp PathFinding/node.cpp RFIDGridmap.cpp utils.cpp)
 

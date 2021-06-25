@@ -263,7 +263,7 @@ public:
     /*
    * Calculate a prediction for a maximum horizon (e.g, 50seconds) and
    * obtain a list of belief, one for each second. Pass this list to
-   * RFIDCriterion and seek the corresponding one for the candidate location in
+   * RadMeanCriterion and seek the corresponding one for the candidate location in
    * exam.
    */
     vector<unordered_map<
@@ -275,6 +275,9 @@ public:
 
     void saveMap(const std::unordered_map<string, double> *map, string path);
     bool loadMap(std::unordered_map<string, double> *map, string path);
+
+    bayesian_topological_localisation::DistributionStamped getRadiationDistribution(nav_msgs::OccupancyGrid grid, GridMapRosConverter converter, 
+                                ros::Publisher *pub, list<Pose> topoMap, unordered_map<string, string> mappingWaypoints);
 };
 
 #endif // UTILITIES_H

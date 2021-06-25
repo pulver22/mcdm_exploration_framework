@@ -17,10 +17,10 @@ WeightMatrix *MCDMWeightReader::getMatrix(float w_criterion_1, float w_criterion
   to_use = (w_criterion_2 > 0.0) ? true : false;
   matrix->insertSingleCriterion(TRAVEL_DISTANCE, w_criterion_2, to_use);
   to_use = (w_criterion_3 > 0.0) ? true : false;
-  matrix->insertSingleCriterion(SENSING_TIME, w_criterion_3, to_use);
+  matrix->insertSingleCriterion(RAD_MEAN, w_criterion_3, to_use);
   string str1(INFORMATION_GAIN);
   string str2(TRAVEL_DISTANCE);
-  string str3(SENSING_TIME);
+  string str3(RAD_MEAN);
   list<string> list1;
   list<string> list2;
   list<string> list3;
@@ -49,10 +49,10 @@ WeightMatrix *MCDMWeightReader::getMatrix(float w_criterion_1, float w_criterion
 //  //int numCriteria = 3;
 //  matrix->insertSingleCriterion(INFORMATION_GAIN,0.2,true);
 //  matrix->insertSingleCriterion(TRAVEL_DISTANCE,0.2,true);
-//  matrix->insertSingleCriterion(SENSING_TIME,0.6,true);
+//  matrix->insertSingleCriterion(RAD_MEAN,0.6,true);
 //  string str1(INFORMATION_GAIN);
 //  string str2(TRAVEL_DISTANCE);
-//  string str3(SENSING_TIME);
+//  string str3(RAD_MEAN);
 //  list<string> list1 ;
 //  list<string> list2 ;
 //  list<string> list3 ;
@@ -85,13 +85,13 @@ WeightMatrix *MCDMWeightReader::getMatrix(float w_criterion_1, float w_criterion
   to_use = (w_criterion_2 > 0.0) ? true : false;
   matrix->insertSingleCriterion(TRAVEL_DISTANCE, w_criterion_2, to_use);
   to_use = (w_criterion_3 > 0.0) ? true : false;
-  matrix->insertSingleCriterion(SENSING_TIME, w_criterion_3, to_use);
+  matrix->insertSingleCriterion(RAD_MEAN, w_criterion_3, to_use);
   to_use = (w_criterion_4 > 0.0) ? true : false;
-  matrix->insertSingleCriterion(RFID_READING, w_criterion_4, to_use);
+  matrix->insertSingleCriterion(RAD_VARIANCE, w_criterion_4, to_use);
   string str1(INFORMATION_GAIN);
   string str2(TRAVEL_DISTANCE);
-  string str3(SENSING_TIME);
-  string str4(RFID_READING);
+  string str3(RAD_MEAN);
+  string str4(RAD_VARIANCE);
   list<string> list1;  // IG, TD
   list1.push_back(str1);
   list1.push_back(str2);
@@ -157,15 +157,15 @@ WeightMatrix *MCDMWeightReader::getMatrix(float w_criterion_1, float w_criterion
   to_use = (w_criterion_2 > 0.0) ? true : false;
   matrix->insertSingleCriterion(TRAVEL_DISTANCE, w_criterion_2, to_use);
   to_use = (w_criterion_3 > 0.0) ? true : false;
-  matrix->insertSingleCriterion(SENSING_TIME, w_criterion_3, to_use);
+  matrix->insertSingleCriterion(RAD_MEAN, w_criterion_3, to_use);
   to_use = (w_criterion_4 > 0.0) ? true : false;
-  matrix->insertSingleCriterion(RFID_READING, w_criterion_4, to_use);
+  matrix->insertSingleCriterion(RAD_VARIANCE, w_criterion_4, to_use);
   to_use = (w_criterion_5 > 0.0) ? true : false;
   matrix->insertSingleCriterion(BATTERY_STATUS, w_criterion_5, to_use);
   string str1(INFORMATION_GAIN);
   string str2(TRAVEL_DISTANCE);
-  string str3(SENSING_TIME);
-  string str4(RFID_READING);
+  string str3(RAD_MEAN);
+  string str4(RAD_VARIANCE);
   string str5(BATTERY_STATUS);
   list<string> list1;  // IG, TD
   list1.push_back(str1);

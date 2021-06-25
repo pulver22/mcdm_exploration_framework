@@ -4,7 +4,8 @@
 #define TRAVEL_DISTANCE "travelDistance"
 #define INFORMATION_GAIN "informationGain"
 #define SENSING_TIME "sensingTime"
-#define RFID_READING "rfidReading"
+#define RAD_MEAN "radMean"
 #define BATTERY_STATUS "batteryStatus"
+#define RAD_VARIANCE "radVariance"
 
 #endif // CRITERIANAME_H

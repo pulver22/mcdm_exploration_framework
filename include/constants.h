@@ -14,13 +14,17 @@
 
 #define EVALUATION_TIME 70.0
 
-const int MAX_TABULIST_COUNT = 0;
+const int MAX_TABULIST_COUNT = 10;
 
 struct prediction_tools {
   vector<ros::ServiceClient> pf_stateless_update_srv_list;
   vector<ros::ServiceClient> radarmodel_fake_reading_srv_list;
-  vector<bayesian_topological_localisation::DistributionStamped> prior_distributions;
+  vector<bayesian_topological_localisation::DistributionStamped> mean_values_distribution;
+  vector<bayesian_topological_localisation::DistributionStamped> var_values_distribution;
   list<Pose> topoMap;
+  vector<pair<float, float>> coordinates;
+  vector<float> mean_values;
+  vector<float> var_values;
 };
 
 

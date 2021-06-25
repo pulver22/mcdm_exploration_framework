@@ -236,3 +236,39 @@ double Criterion::getPathLenFromMatrix(string currentRobotWayPoint,
   //TODO: convert current waypoint and destination one into index and then retrieve distance
   return distances_map.at(key);
 }
+
+double Criterion::getTopoNodeValue(
+    Pose p, unordered_map<string, string> mappingWaypoints,
+    vector<bayesian_topological_localisation::DistributionStamped>
+        belief_topomaps) {
+  float RadVarianceCriterion = 0.0;
+  double likelihood = 0.0;
+  EvaluationRecords record;
+  string encoding = record.getEncodedKey(p);
+  auto search = mappingWaypoints.find(encoding);
+  string waypointName;
+  // Look for waypoint name associated to the pose in exam
+  if (search != mappingWaypoints.end()) {
+    waypointName = search->second;
+  } else {
+    std::cout << "[RadMeanCriterion.cpp@evaluateEntropyTopologicalMap] WayPoint "
+                 "Not found\n";
+  }
+
+  if (belief_topomaps.size() != 0) {
+    // For every belief map, look for the waypoint and access its value
+    for (int tag_id = 0; tag_id < belief_topomaps.size(); tag_id++) {
+      vector<string> nodes_list = belief_topomaps.at(tag_id).nodes;
+      int index = 0;
+      for (auto it = nodes_list.begin(); it != nodes_list.end(); it++) {
+        if (*it == waypointName)
+          break;
+        else
+          index++;
+      }
+      RadVarianceCriterion += belief_topomaps.at(tag_id).values[index];
+    }
+  }
+
+  return RadVarianceCriterion;
+}

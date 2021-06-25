@@ -54,9 +54,14 @@
 #include <iomanip>
 #include <experimental/filesystem> // or #include <filesystem> for C++17 and up
 // #include "rasberry_people_perception/NoisyGPS.h"
-#include "ncnr_logging/GetRadiationMaps.h"
+#include "ncnr_logging/GetRadiationPredictions.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "grid_map_msgs/GridMap.h"
+#include "ncnr_logging/GetRadiationLevel.h"
+// TODO: fix the following
+// #include "poisson_gp/setQueryPoints.h"
+// #include "poisson_gp/addReading.h"
+// #include "poisson_gp/setQueryPoints.h"
     
     
 using namespace std;
@@ -76,7 +81,7 @@ void printROSParams();
 void loadROSParams();
 ros::NodeHandle createROSComms();
 void tag_coverage_callback(const std_msgs::Float32 msg);
-void radiation_map_callback(const grid_map_msgs::GridMap msg);
+// void radiation_map_callback(const grid_map_msgs::GridMap msg);
 void gps_callback(const visualization_msgs::MarkerConstPtr &msg);
 void sensing();
 
@@ -90,8 +95,9 @@ float costresolution;
 int costwidth;
 int costheight;
 geometry_msgs::Pose costorigin;
-nav_msgs::OccupancyGrid costmap_grid, radiation_occ_grid;
+nav_msgs::OccupancyGrid costmap_grid, mean_occ_grid, var_occ_grid;
 strands_navigation_msgs::TopologicalMap topological_map;
+float current_rad_level = 0;
 
 double min_pan_angle, max_pan_angle, min_tilt_angle, max_tilt_angle,
     sample_delay, tilt_angle;
@@ -102,7 +108,7 @@ double timeOfScanning = 0;
 bool btMode = false;
 // nav_msgs::GetPlan path;
 float tag_coverage_percentage = 0.0;
-GridMap radiation_map;
+GridMap radiation_mean_map, radiation_var_map;
 vector<bayesian_topological_localisation::DistributionStamped> belief_topomaps;
 grid_map_msgs::GridMap radiation_map_msg;
 GridMapRosConverter converter;
@@ -110,18 +116,11 @@ int belief_counter = 0;
 
 
 //  ROS PARAMETERS ....................................
-std::string static_map_srv_name;
-std::string radiation_map_srv_name, fake_radiation_map_srv_name;
-std::string make_plan_srv_name;
-std::string make_topo_plan_srv_name, get_topo_distances_srv_name;
-std::string move_base_goal_topic_name;
-std::string move_base_srv_name;
-std::string nav_grid_debug_topic_name;
-std::string planning_grid_debug_topic_name;
-std::string move_base_costmap_topic_name;
-std::string move_base_local_costmap_topic_name;
-std::string move_base_costmap_updates_topic_name;
-std::string  marker_pub_topic_name;
+std::string static_map_srv_name, make_plan_srv_name, make_topo_plan_srv_name, get_topo_distances_srv_name;
+std::string radiation_map_srv_name, fake_radiation_map_srv_name, radiation_level_srv_name, set_query_pts_srv_name, add_reading_srv_name, get_predictions_srv_name;
+std::string move_base_goal_topic_name, move_base_srv_name, move_base_costmap_topic_name, move_base_local_costmap_topic_name, move_base_costmap_updates_topic_name;
+std::string nav_grid_debug_topic_name, planning_grid_debug_topic_name;
+std::string marker_pub_topic_name;
 std::string rosbag_srv_name;
 std::string gazebo_model_state_srv_name;
 std::string experiment_finished_topic_name;
@@ -136,14 +135,11 @@ std::string pf_topic_name;
 
 
 // Ros services/subscribers/publishers
-ros::ServiceClient map_service_client_;
-ros::ServiceClient path_client;
-ros::ServiceClient topo_path_client, topo_distances_client;
-ros::ServiceClient radiation_map_client, fake_radiation_map_client;
-ros::ServiceClient localization_client;
-ros::ServiceClient pf_client, pf_stateless_client;
-ros::ServiceClient gps_client;
+ros::ServiceClient map_service_client_, path_client,topo_path_client, topo_distances_client;
+ros::ServiceClient radiation_map_client, fake_radiation_map_client, radiation_level_client, set_query_pts_client, add_readings_client, get_predictions_client;
+ros::ServiceClient localization_client, pf_client, pf_stateless_client, gps_client;
 ros::ServiceClient gazebo_model_state_client;
+bayesian_topological_localisation::DistributionStamped tmp_belief_topo;
 vector<ros::ServiceClient> pf_likelihoodClient_list, pf_stateless_likelihoodClient_list, gps_client_list;
 vector<bayesian_topological_localisation::DistributionStamped> stateless_belief_history;
 vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief;
@@ -165,7 +161,7 @@ ros::Publisher gridPub;
 ros::Publisher planningPub;
 ros::Publisher marker_pub;
 ros::Publisher pf_pub;
-ros::Publisher rad_grid_pub;
+ros::Publisher rad_mean_grid_pub, rad_var_grid_pub;
 vector<ros::Publisher> pf_topoMap_pub_list;
 // vector<string> tag_discovered;
 
@@ -223,7 +219,9 @@ int main(int argc, char **argv) {
   double coverage;
 
   // Create srv request for the RFID belief map
-  nav_msgs::GetMap radiation_map_srv;
+  // nav_msgs::GetMap radiation_map_srv;
+  ncnr_logging::GetRadiationPredictions radiation_map_srv;
+  ncnr_logging::GetRadiationLevel radiation_level_srv;
   bayesian_topological_localisation::LocaliseAgent localization_srv;
   bayesian_topological_localisation::UpdateLikelihoodObservation prediction_srv;
   // bayesian_topological_localisation::Predict prediction_stateless_srv;
@@ -276,19 +274,19 @@ int main(int argc, char **argv) {
       double resolution = atof(argv[5]);
       double w_info_gain = atof(argv[6]);
       double w_travel_distance = atof(argv[7]);
-      double w_sensing_time = atof(argv[8]);
+      double w_rad_mean = atof(argv[8]);
       double w_battery_status = atof(argv[9]);
-      double w_rfid_gain = atof(argv[10]);
+      double w_rad_variance = atof(argv[10]);
       // Normalize the weight such that their sum is always equal to 1
-      double norm_w_info_gain, norm_w_travel_distance, norm_w_sensing_time,
-      norm_w_rfid_gain, norm_w_battery_status;
-      double sum_w = w_info_gain + w_travel_distance + w_sensing_time +
-                    w_rfid_gain + w_battery_status;
+      double norm_w_info_gain, norm_w_travel_distance, norm_w_rad_mean,
+      norm_w_rad_variance, norm_w_battery_status;
+      double sum_w = w_info_gain + w_travel_distance + w_rad_mean +
+                    w_rad_variance + w_battery_status;
       norm_w_info_gain = w_info_gain / sum_w;
       norm_w_travel_distance = w_travel_distance / sum_w;
-      norm_w_sensing_time = w_sensing_time / sum_w;
+      norm_w_rad_mean = w_rad_mean / sum_w;
       norm_w_battery_status = w_battery_status / sum_w;
-      norm_w_rfid_gain = w_rfid_gain / sum_w;
+      norm_w_rad_variance = w_rad_variance / sum_w;
       bool use_mcdm = bool(atoi(argv[11]));
       int num_tags = atoi(argv[12]);
       int max_iterations = atoi(argv[13]);
@@ -300,14 +298,11 @@ int main(int argc, char **argv) {
       oss << std::put_time(&tm, "%d-%m-%Y-%H-%M-%S/");
       auto str = oss.str();
       string map_path = log_dest_folder + path_distances_map ;
-      std::vector<std::string> pf_log;
-      std::vector<std::string> gt_log;
-      std::vector<std::string> gps_log;
-      std::vector<std::string> pf_vs_gt_log;
-      std::string coverage_log;
-      std::string out_log;
-      coverage_log = log_dest_folder + "coverage_mcdm.csv";
-      out_log = log_dest_folder + "mcdm_result.csv";
+      std::vector<std::string> pf_log, gt_log, gps_log, pf_vs_gt_log;
+      std::string coverage_log, out_log, rad_readings_log;
+      coverage_log = log_dest_folder + "nbs_coverage.csv";
+      out_log = log_dest_folder + "nbs_result.csv";
+      rad_readings_log = log_dest_folder + "readings.csv";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -319,9 +314,9 @@ int main(int argc, char **argv) {
       cout << "Criteria: " << endl;
       cout << "   w_info_gain: " << norm_w_info_gain << endl;
       cout << "   w_travel_distance: " << norm_w_travel_distance << endl;
-      cout << "   w_sensing_time: " << norm_w_sensing_time << endl;
+      cout << "   w_rad_mean: " << norm_w_rad_mean << endl;
       cout << "   w_battery_status: " << norm_w_battery_status << endl;
-      cout << "   w_rfid_gain: " << norm_w_rfid_gain << endl;
+      cout << "   w_rad_variance: " << norm_w_rad_variance << endl;
 
       // dummy::Map map = dummy::Map(costresolution, costresolution, costwidth,
       // costheight, occdata, costorigin);
@@ -332,6 +327,9 @@ int main(int argc, char **argv) {
       utils.convertStrandTopoMapToListPose(
           &topological_map, &topoMap, initRange, initFov, &mappingWaypoints);
       prediction_tools.topoMap = topoMap;
+      for (auto it = topoMap.begin(); it != topoMap.end(); it++){
+        prediction_tools.coordinates.push_back(make_pair(it->getX(), it->getY()));
+      }
       ROS_DEBUG("TopologicalMap created");
 
       // NOTE: let's create a map to store distance between each node and every other node;
@@ -391,8 +389,8 @@ int main(int argc, char **argv) {
       bool backTracking = false;
       NewRay ray;
       ray.setGridToPathGridScale(gridToPathGridScale);
-      MCDMFunction function(norm_w_info_gain, norm_w_travel_distance, norm_w_sensing_time,
-                            norm_w_rfid_gain, norm_w_battery_status, use_mcdm);
+      MCDMFunction function(norm_w_info_gain, norm_w_travel_distance, norm_w_rad_mean,
+                            norm_w_rad_variance, norm_w_battery_status, use_mcdm);
       long sensedCells = 0;
       long newSensedCells = 0;
       long totalFreeCells = map.getTotalFreeCells();
@@ -441,62 +439,7 @@ int main(int argc, char **argv) {
       bool break_loop = false;
       string robotName = "jackal";
 
-      // Record the particle filters and create a subscriber
-      // cout << "\nCreating PF agents for " << to_string(num_tags) << " tags" << endl;
-      // for (int tag_id=1; tag_id<=num_tags; tag_id++){
-      //   localization_srv.request.name = "tag_" + to_string(tag_id);
-      //   localization_srv.request.n_particles = 500;
-      //   localization_srv.request.do_prediction = true;
-      //   localization_srv.request.prediction_rate = 0.5;
-      //   if (localization_client.call(localization_srv)) {
-      //     printf("[ParticleFilter] Initialization successful "
-      //               "for tag %d\n", tag_id);
-      //     pf_topic_name = "/tag_" + to_string(tag_id) + "/likelihood_obs";
-      //     pf_pub = nh.advertise<bayesian_topological_localisation::
-      //                               DistributionStamped>(
-      //         pf_topic_name, 1000);
-      //     pf_topoMap_pub_list.push_back(pf_pub);
-
-      //     printf("    Creating client...\n");
-      //     pf_srv_name = "/tag_" + to_string(tag_id) + "/update_likelihood_obs";
-      //     pf_client =
-      //         nh.serviceClient<bayesian_topological_localisation::
-      //                               UpdateLikelihoodObservation>(
-      //             pf_srv_name);
-      //     gps_srv_name = "/tag_" + to_string(tag_id) + "/gps_pose";
-      //     gps_client= nh.serviceClient<rasberry_people_perception::NoisyGPS>(gps_srv_name);
-      //     pf_stateless_srv_name = "/tag_" + to_string(tag_id) + "/predict_stateless";
-      //     // pf_stateless_client = nh.serviceClient<bayesian_topological_localisation::
-      //     //                           Predict>(
-      //     //         pf_stateless_srv_name);
-      //     pf_likelihoodClient_list.push_back(pf_client);
-      //     // Create srv client for stateless update
-      //     pf_srv_name = "/tag_" + to_string(tag_id) + "/update_stateless";
-      //     // pf_client =
-      //     //     nh.serviceClient<bayesian_topological_localisation::
-      //     //                           UpdatePriorLikelihoodObservation>(
-      //     //         pf_srv_name);
-      //     // prediction_tools.pf_stateless_update_srv_list.push_back(pf_client);
-      //     gps_client_list.push_back(gps_client);
-      //     // pf_stateless_likelihoodClient_list.push_back(pf_stateless_client);
-
-      //     // create folders for each tag
-      //     std::string _log_dest_folder = log_dest_folder + "/" + str + "/"; // + "/tag_" + to_string(tag_id);
-      //     cout << "Creating folder: " << _log_dest_folder << endl;
-      //     fs::create_directories(_log_dest_folder);
-      //     cout << "Creation completed! " << endl;
-      //     pf_log.push_back(_log_dest_folder + "pf_tag_pose_");
-      //     gt_log.push_back(_log_dest_folder + "gt_tag_pose_");
-      //     gps_log.push_back(_log_dest_folder + "gps_tag_pose_");
-      //     pf_vs_gt_log.push_back(_log_dest_folder + "pf_vs_gt_");
-      //   }else
-      //       ROS_ERROR("[ParticleFilter] Error while initializing for "
-      //                 "tag %d\n", tag_id);
-      //   // initialize lists
-      //   current_tag_waypoint_prediction.push_back("");
-      //   belief_topomaps.push_back(
-      //                       bayesian_topological_localisation::DistributionStamped());
-      // }
+      
 
       belief_topomaps.push_back(bayesian_topological_localisation::DistributionStamped());
       // sleep(5.0);
@@ -593,92 +536,67 @@ int main(int argc, char **argv) {
           // here save the tag ids
           std::vector<string> tag_ids;
           // if we also navigate for finding a tag
-          if (norm_w_rfid_gain > 0) {
+          if (norm_w_rad_variance > 0) {
+            // Give 5 second to make radiation sensor stabilise
+            ros::Duration(5).sleep();
+            if(radiation_level_client.waitForExistence(ros::Duration(5.0))){
+              if (radiation_level_client.call(radiation_level_srv)) {
+                cout << "   RadiationLevel client answered" << endl;
+                current_rad_level = radiation_level_srv.response.rad_level;
+                content = to_string(target.getX()) + "," +
+                          to_string(target.getY()) + "," + 
+                          to_string(current_rad_level) + "\n";
+                utils.filePutContents(rad_readings_log, content, true);
+                // TODO: At this point, 'target' and 'current_rad_level' must
+                // be sent to the GP for interpolating
+              }
+            }
             // Get an updated RFID belief map
             printf("Updating the belief...\n");
             if(radiation_map_client.waitForExistence(ros::Duration(5.0))){
               if (radiation_map_client.call(radiation_map_srv)) {
                 cout << "   RadiationMap client answered" << endl;
-                radiation_occ_grid = radiation_map_srv.response.map;
-                converter.fromOccupancyGrid(radiation_occ_grid, "radiation", radiation_map);
-                converter.toMessage(radiation_map, radiation_map_msg);
-                rad_grid_pub.publish(radiation_map_msg);
-                // converter.fromMessage(radiation_map_msg, radiation_map);
-                std::vector<string> layers_name = radiation_map.getLayers();
-                // // The layers_name vector contains "ref_map, X, Y, 0" which are
-                // // for not for finding the tags. So we can remove their name to
-                // // avoid checking this layers.
-                // layers_name.erase(layers_name.begin(), layers_name.begin() + 3);
-                // If there are any tags discovered...
-                if (layers_name.size() != 0) {
-                  // We now instantiate the Particle Filter for each tag
-                  // discovered
-                  for (auto it = layers_name.begin(); it != layers_name.end();
-                      it++) {
-                    cout << "----- layer " << *it << endl; 
-                    // If the laters name contains more than 2 character,
-                    // skip it because it can be some debug layer (e.g.,
-                    // obst_losses)
-                    // if (it->size() > 2)
-                    //   continue;
+                mean_occ_grid = radiation_map_srv.response.mean_predictions;
+                var_occ_grid = radiation_map_srv.response.variance_predictions;
+                // Convert the mean values grid into topological map
+                tmp_belief_topo = utils.getRadiationDistribution(mean_occ_grid, converter, &rad_mean_grid_pub, topoMap, mappingWaypoints);
+                tmp_belief_topo.header.stamp = ros::Time::now();
+                belief_topomaps.at(0) = tmp_belief_topo;
+                prediction_tools.mean_values_distribution = belief_topomaps;
+                // Do the same for the variance values grid
+                tmp_belief_topo = utils.getRadiationDistribution(mean_occ_grid, converter, &rad_var_grid_pub, topoMap, mappingWaypoints);
+                tmp_belief_topo.header.stamp = ros::Time::now();
+                belief_topomaps.at(0) = tmp_belief_topo;
+                prediction_tools.var_values_distribution = belief_topomaps;
 
-                    // Publish to the PF the sensor reading
-                    bayesian_topological_localisation::DistributionStamped
-                        tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
-                            radiation_map, topoMap, mappingWaypoints, *it, 0.5);
-                    tmp_belief_topo.header.stamp = ros::Time::now();
+                // converter.fromOccupancyGrid(mean_occ_grid, "radiation", radiation_mean_map);
+                // converter.toMessage(radiation_mean_map, radiation_map_msg);
+                // radiation_map_msg.info.header.frame_id = "loc_map";
+                // rad_mean_grid_pub.publish(radiation_map_msg);
+                // // converter.fromMessage(radiation_map_msg, radiation_map);
+                // std::vector<string> layers_name = radiation_mean_map.getLayers();
+                // // // The layers_name vector contains "ref_map, X, Y, 0" which are
+                // // // for not for finding the tags. So we can remove their name to
+                // // // avoid checking this layers.
+                // // layers_name.erase(layers_name.begin(), layers_name.begin() + 3);
+                // // If there are any tags discovered...
+                // if (layers_name.size() != 0) {
+                //   // We now instantiate the Particle Filter for each tag
+                //   // discovered
+                //   for (auto it = layers_name.begin(); it != layers_name.end();
+                //       it++) {
+                //     cout << "----- layer " << *it << endl; 
+                //     // Publish to the PF the sensor reading
+                //     bayesian_topological_localisation::DistributionStamped
+                //         tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
+                //             radiation_mean_map, topoMap, mappingWaypoints, *it, 0.5);
+                //     tmp_belief_topo.header.stamp = ros::Time::now();
 
-                    // int index = std::stoi(*it);
-                    // prediction_srv.request.likelihood = tmp_belief_topo;
-                    // prediction_srv.request.identifying = true;
-                    // if (pf_likelihoodClient_list.at(index).call(
-                    //         prediction_srv)) {
-                    //   cout << "   [" << index << "] Prediction srv called successfully" << endl;
-                    //   // printf("[PF - Tag %d ] Prediction: %s\n", index,
-                    //   //           prediction_srv.response.estimated_node.c_str());
-                    //   // Store waypoint prediction coming from particle filter
-                    //   current_tag_waypoint_prediction.at(index) = prediction_srv.response.estimated_node;
-                    //   pf_tag_pose = utils.getWaypointPoseFromName(current_tag_waypoint_prediction.at(index), &topological_map);
-                    //   // Save pf prediction (expressed as metric position) on log
-                    //   content = to_string(pf_tag_pose.position.x) + "," + to_string(pf_tag_pose.position.y) + "\n";
-                    //   utils.filePutContents(pf_log.at(index) + to_string(index) + ".csv", content, true);
-                    //   // Save noisy gps location on log
-                    //   if (gps_client_list.at(index).call(gps_srv)){
-                    //     content = to_string(gps_srv.response.p.x) + "," + to_string(gps_srv.response.p.y) + "\n";
-                    //     utils.filePutContents(gps_log.at(index) + to_string(index) + ".csv", content, true);
-                    //   }
-                      
-                    //   // Obtain ground truth position from Gazebo's engine
-                    //   string model_name = "tag_" + to_string(index + 1);
-                    //   string closerWaypoint;
-                    //   // cout << "Model_name: " << model_name << endl;
-                    //   if (utils.getModelClosestWaypoint(model_name, topological_map, closerWaypoint, gt_tag_pose))
-                    //   {
-                    //     // Save ground truth on log
-                    //     content = to_string(gt_tag_pose.position.x) + "," + to_string(gt_tag_pose.position.y)+ "\n";
-                    //     utils.filePutContents(gt_log.at(index) + to_string(index) + ".csv", content, true);
-                    //     // Look for closer waypoint to current pose
-                    //     // and compare it to the PF prediction
-                    //     distance_pf_gt = sqrt(pow(pf_tag_pose.position.x - gt_tag_pose.position.x,2) + 
-                    //                 pow(pf_tag_pose.position.y - gt_tag_pose.position.y,2));
-                    //     // Save to log prediction and ground truth
-                    //     content =
-                    //         current_tag_waypoint_prediction.at(index) + "," +
-                    //         closerWaypoint + "," + to_string(distance_pf_gt) + "\n";
-                    //     // cout << "Prediction VS GT: " << content << endl;
-                    //     utils.filePutContents(pf_vs_gt_log.at(index) + to_string(index) + ".csv", content, true);
-                    //     // save closest waypoint for this tag
-                    //     cout << "adding wayponit to remove: " << closerWaypoint << endl;
-                    //     closest_waypoints.push_back(closerWaypoint);
-                    //   }
-                    //   tag_ids.push_back(std::to_string(index + 1));
-                      belief_topomaps.at(0) = tmp_belief_topo;
-                          // prediction_srv.response.current_prob_dist;
-                      prediction_tools.prior_distributions = belief_topomaps;
-                    // } else
-                    //     cout << "   [" << index << "][ERROR] PF node did not reply!" << endl;               
-                  }
-                }
+                //     belief_topomaps.at(0) = tmp_belief_topo;
+                //     prediction_tools.mean_values_distribution = belief_topomaps;
+                               
+                  // }
+                // }
                 cout << "Belief updated!" << endl;
               } else {
                 printf("ATTENTION! Failed to get the radiation map\n");
@@ -723,7 +641,7 @@ int main(int argc, char **argv) {
               utils.pushInitialPositions(*cw_it,
                                          map, x, y, orientation, range, FOV, threshold, actualPose,
                                          &graph2, &topo_path_client, &mapping_time_belief, &function, &batteryTime,
-                                         &radiation_map, &mappingWaypoints, &prediction_tools, &distances_map);
+                                         &radiation_mean_map, &mappingWaypoints, &prediction_tools, &distances_map);
             }
           }
 
@@ -765,7 +683,7 @@ int main(int argc, char **argv) {
             start = ros::Time::now().toSec();
             record = *function.evaluateFrontiers(rob_closerWaypoint, 
                 frontiers, map, threshold, topo_path_client, mapping_time_belief, batteryTime,
-                radiation_map, mappingWaypoints, prediction_tools, distances_map);
+                radiation_mean_map, mappingWaypoints, prediction_tools, distances_map);
             cout << "   Evaluation: " << ros::Time::now().toSec() - start << endl;
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with
@@ -947,11 +865,11 @@ int main(int argc, char **argv) {
       utils.printResult(newSensedCells, totalFreeCells, precision,
                         numConfiguration, travelledDistance, numOfTurning,
                         totalAngle, totalScanTime, resolution, norm_w_info_gain,
-                        norm_w_travel_distance, norm_w_sensing_time, 
-                        norm_w_battery_status, norm_w_rfid_gain, out_log);
+                        norm_w_travel_distance, norm_w_rad_mean, 
+                        norm_w_battery_status, norm_w_rad_variance, out_log);
       // Find the tag
       std::vector<std::pair<int, std::pair<int, int>>> tag_positions =
-          utils.findTagFromBeliefMap(&radiation_map);
+          utils.findTagFromBeliefMap(&radiation_mean_map);
       cout << "Tags positions (for all the found ones):" << endl;
       for (int i = 0; i < tag_positions.size(); i++) {
         std::pair<int, std::pair<int, int>> tag = tag_positions.at(i);
@@ -1067,6 +985,10 @@ void loadROSParams(){
   private_node_handle.param("pf_topic_name", pf_topic_name, std::string("/prob_dist_obs"));
   private_node_handle.param("gazebo_model_state_srv_name", gazebo_model_state_srv_name, std::string("/gazebo/get_model_state"));
   private_node_handle.param("experiment_finished_topic_name", experiment_finished_topic_name, std::string("/experiment_finished"));
+  private_node_handle.param("radiation_level_srv_name", radiation_level_srv_name, std::string("/get_radiation_level"));
+  private_node_handle.param("set_query_pts_srv_name", set_query_pts_srv_name, std::string("/setQueryPoints"));
+  private_node_handle.param("add_reading_srv_name", add_reading_srv_name, std::string("/addReading"));
+  private_node_handle.param("get_predictions_srv_name", get_predictions_srv_name, std::string("/getPredictions"));
 }
 
 void printROSParams(){
@@ -1075,6 +997,10 @@ void printROSParams(){
   printf("   - robot_radius [%3.3f]\n",  robot_radius);
   printf("   - static_map_srv_name [%s]\n", static_map_srv_name.c_str());
   printf("   - radiation_map_srv_name [%s]\n", radiation_map_srv_name.c_str());
+  printf("   - radiation_level_srv_name [%s]\n", radiation_level_srv_name.c_str());
+  printf("   - set_query_pts_srv_name [%s]\n", set_query_pts_srv_name.c_str());
+  printf("   - set_query_pts_srv_name [%s]\n", set_query_pts_srv_name.c_str());
+  printf("   - get_predictions_srv_name [%s]\n", get_predictions_srv_name.c_str());
   // printf("   - fake_radiation_map_srv_name [%s]\n", fake_radiation_map_srv_name.c_str());
   printf("   - make_plan_srv_name [%s]\n", make_plan_srv_name.c_str());
   printf("   - make_topo_plan_srv_name [%s]\n", make_topo_plan_srv_name.c_str());
@@ -1105,7 +1031,13 @@ ros::NodeHandle createROSComms(){
   path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
   topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
   topo_distances_client = nh.serviceClient<strands_navigation_msgs::GetRouteBetween>(get_topo_distances_srv_name, true);
-  radiation_map_client = nh.serviceClient<nav_msgs::GetMap>(radiation_map_srv_name);
+  // radiation_map_client = nh.serviceClient<nav_msgs::GetMap>(radiation_map_srv_name);
+  radiation_map_client = nh.serviceClient<ncnr_logging::GetRadiationPredictions>(radiation_map_srv_name);
+  radiation_level_client = nh.serviceClient<ncnr_logging::GetRadiationLevel>(radiation_level_srv_name);
+  // TODO: Fix the data type
+  // set_query_pts_client = nh.serviceClient<poisson_gp::setQueryPoints>(set_query_pts_srv_name);
+  // add_readings_client = nh.serviceClient<poisson_gp::addReading>(add_reading_srv_name);
+  // get_predictions_client = nh.serviceClient<poisson_gp::getPredictions>(get_predictions_srv_name;
   // fake_radiation_map_client = nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(fake_radiation_map_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
@@ -1118,7 +1050,8 @@ ros::NodeHandle createROSComms(){
   marker_pub =  nh.advertise<visualization_msgs::Marker>(marker_pub_topic_name, 10);
   stats_pub =  nh.advertise<std_msgs::String>(stats_topic_name, 1, true);
   experiment_finished_pub = nh.advertise<std_msgs::Bool>(experiment_finished_topic_name, 1, true);
-  rad_grid_pub = nh.advertise<grid_map_msgs::GridMap>("radiation_grid_map", 1000);
+  rad_mean_grid_pub = nh.advertise<grid_map_msgs::GridMap>("radiation_mean_grid_map", 1000);
+  rad_var_grid_pub = nh.advertise<grid_map_msgs::GridMap>("radiation_var_grid_map", 1000);
   // Create srv client for fake likelihood readings
   // prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_radiation_map_client);
 
@@ -1156,9 +1089,9 @@ void tag_coverage_callback(const std_msgs::Float32 msg){
   // cout << "   [CALLBACK] : " << tag_coverage_callback << endl;
 }
 
-void radiation_map_callback(const grid_map_msgs::GridMap msg){
-  converter.fromMessage(msg, radiation_map);
-}
+// void radiation_map_callback(const grid_map_msgs::GridMap msg){
+//   converter.fromMessage(msg, radiation_mean_map);
+// }
 
 void gps_callback(const visualization_msgs::MarkerConstPtr &msg){
   gps_tag_pose = msg->pose;

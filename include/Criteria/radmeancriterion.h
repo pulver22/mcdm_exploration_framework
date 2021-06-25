@@ -1,8 +1,8 @@
 //
 // Created by pulver on 29/07/2019.
 //
-#ifndef RFIDCRITERION_H
-#define RFIDCRITERION_H
+#ifndef RadMeanCriterion_H
+#define RadMeanCriterion_H
 
 #include "criterion.h"
 #include "map.h"
@@ -10,10 +10,10 @@
 #include <vector>
 #include "utils.h"
 
-class RFIDCriterion : public Criterion {
+class RadMeanCriterion : public Criterion {
 public:
-  RFIDCriterion(double weight);
-  virtual ~RFIDCriterion();
+  RadMeanCriterion(double weight);
+  virtual ~RadMeanCriterion();
   double evaluate(string currentRobotWayPoint,
       Pose &p, dummy::Map map, ros::ServiceClient path_client,
       vector<unordered_map<float,
@@ -61,6 +61,7 @@ private:
 
   std::string getTagLayerName(int tag_num);
 
+
   double evaluateEntropyTopologicalNode(
       Pose p, unordered_map<string, string> mappingWaypoints,
       vector<bayesian_topological_localisation::DistributionStamped>
@@ -91,11 +92,12 @@ private:
           vector<std::pair<string, bayesian_topological_localisation::DistributionStamped>> pf_update_distributions,
           vector<vector<bayesian_topological_localisation::DistributionStamped>> rfid_reading_likelihoods);
 
+
 protected:
-  double RFIDInfoGain = 0.0;
+  double RadMeanInfoGain = 0.0;
   double tmp_belief = 0.0;
   float _free_space_val = 1.0; // or 1.0
   Utilities _utils;
 };
 
-#endif // RFIDCRITERION_H
+#endif // RadMeanCriterion_H

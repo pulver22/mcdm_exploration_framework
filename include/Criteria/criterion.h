@@ -67,7 +67,10 @@ public:
   double getPathLenFromMatrix(string currentRobotWayPoint, 
     Pose &p, std::unordered_map<string, double> distances_map,
     unordered_map<string, string> mappingWaypoints);
-
+  double getTopoNodeValue(Pose p, unordered_map<string, string> mappingWaypoints,
+      vector<bayesian_topological_localisation::DistributionStamped>
+        belief_topomaps);
+        
   // Setters and getters
   string getName();
   double getWeight();

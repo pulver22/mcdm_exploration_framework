@@ -1,5 +1,5 @@
 #include "mcdmfunction.h"
-#include "Criteria/RFIDCriterion.h"
+#include "Criteria/radmeancriterion.h"
 #include "Criteria/batterystatuscriterion.h"
 #include "Criteria/criteriaName.h"
 #include "Criteria/criterion.h"
@@ -118,8 +118,8 @@ Criterion *MCDMFunction::createCriterion(string name, double weight) {
     toRet = new InformationGainCriterion(weight);
   } else if (name == (TRAVEL_DISTANCE)) {
     toRet = new TravelDistanceCriterion(weight);
-  } else if (name == (RFID_READING)) {
-    toRet = new RFIDCriterion(weight);
+  } else if (name == (RAD_MEAN)) {
+    toRet = new RadMeanCriterion(weight);
   } else if (name == (BATTERY_STATUS)) {
     toRet = new BatteryStatusCriterion(weight);
   }
