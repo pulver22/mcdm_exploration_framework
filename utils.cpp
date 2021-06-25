@@ -1296,20 +1296,25 @@ bool Utilities::loadMap(std::unordered_map<string, double> *map, string path){
 }
 
 
-bayesian_topological_localisation::DistributionStamped 
+pair<bool, bayesian_topological_localisation::DistributionStamped> 
         Utilities::getRadiationDistribution(nav_msgs::OccupancyGrid grid, GridMapRosConverter converter, 
                                 ros::Publisher *pub, list<Pose> topoMap, unordered_map<string, string> mappingWaypoints){
                               
   GridMap radiation_map;
   grid_map_msgs::GridMap radiation_map_msg;
+  bayesian_topological_localisation::DistributionStamped
+      tmp_belief_topo;
+  bool success = false;
   converter.fromOccupancyGrid(grid, "radiation", radiation_map);
   converter.toMessage(radiation_map, radiation_map_msg);
   radiation_map_msg.info.header.frame_id = "loc_map";
   pub->publish(radiation_map_msg);
   // converter.fromMessage(radiation_map_msg, radiation_map);
   std::vector<string> layers_name = radiation_map.getLayers();
-  bayesian_topological_localisation::DistributionStamped
-      tmp_belief_topo = this->convertGridBeliefMapToTopoMap(
+  if (layers_name.size() != 0){
+    tmp_belief_topo = this->convertGridBeliefMapToTopoMap(
           radiation_map, topoMap, mappingWaypoints, layers_name[0], 0.5);
-  return tmp_belief_topo;
+    success = true;
+  } 
+  return make_pair(success, tmp_belief_topo);
 }

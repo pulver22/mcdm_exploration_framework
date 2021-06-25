@@ -1,8 +1,8 @@
 //
 // Created by pulver on 29/07/2019.
 //
-#ifndef RADVARIANCECROTERION_H
-#define RADVARIANCECROTERION_H
+#ifndef RADVARIANCECRITERION_H
+#define RADVARIANCECRITERION_H
 
 #include "criterion.h"
 #include "map.h"
@@ -13,7 +13,7 @@
 class RadVarianceCriterion : public Criterion {
 public:
   RadVarianceCriterion(double weight);
-  virtual ~RadVarianceCriterion();
+  ~RadVarianceCriterion();
   double evaluate(string currentRobotWayPoint,
       Pose &p, dummy::Map map, ros::ServiceClient path_client,
       vector<unordered_map<float,
@@ -28,9 +28,9 @@ public:
   //     vector<bayesian_topological_localisation::DistributionStamped>
   //       belief_topomaps);
 
-private:
-  void normalize(long minSensedX, int number);
-  int *intersect(int p1x, int p1y, int p2x, int p2y, Pose &p);
+// private:
+//   void normalize(long minSensedX, int number);
+//   int *intersect(int p1x, int p1y, int p2x, int p2y, Pose &p);
 
 
 protected:
@@ -40,4 +40,4 @@ protected:
   Utilities _utils;
 };
 
-#endif 
+#endif // RADVARIANCECRITERION_H

@@ -139,7 +139,7 @@ ros::ServiceClient map_service_client_, path_client,topo_path_client, topo_dista
 ros::ServiceClient radiation_map_client, fake_radiation_map_client, radiation_level_client, set_query_pts_client, add_readings_client, get_predictions_client;
 ros::ServiceClient localization_client, pf_client, pf_stateless_client, gps_client;
 ros::ServiceClient gazebo_model_state_client;
-bayesian_topological_localisation::DistributionStamped tmp_belief_topo;
+pair<bool, bayesian_topological_localisation::DistributionStamped> tmp_belief_topo;
 vector<ros::ServiceClient> pf_likelihoodClient_list, pf_stateless_likelihoodClient_list, gps_client_list;
 vector<bayesian_topological_localisation::DistributionStamped> stateless_belief_history;
 vector<unordered_map<float, std::pair<string, bayesian_topological_localisation::DistributionStamped>>> mapping_time_belief;
@@ -275,8 +275,8 @@ int main(int argc, char **argv) {
       double w_info_gain = atof(argv[6]);
       double w_travel_distance = atof(argv[7]);
       double w_rad_mean = atof(argv[8]);
-      double w_rad_variance = atof(argv[9]);
-      double w_battery_status = atof(argv[10]);
+      double w_rad_variance = atof(argv[10]);
+      double w_battery_status = atof(argv[9]);
       // Normalize the weight such that their sum is always equal to 1
       double norm_w_info_gain, norm_w_travel_distance, norm_w_rad_mean,
       norm_w_rad_variance, norm_w_battery_status;
@@ -560,14 +560,18 @@ int main(int argc, char **argv) {
                 var_occ_grid = radiation_map_srv.response.variance_predictions;
                 // Convert the mean values grid into topological map
                 tmp_belief_topo = utils.getRadiationDistribution(mean_occ_grid, converter, &rad_mean_grid_pub, topoMap, mappingWaypoints);
-                tmp_belief_topo.header.stamp = ros::Time::now();
-                belief_topomaps.at(0) = tmp_belief_topo;
-                prediction_tools.mean_values_distribution = belief_topomaps;
+                if(tmp_belief_topo.first == true){
+                  tmp_belief_topo.second.header.stamp = ros::Time::now();
+                  belief_topomaps.at(0) = tmp_belief_topo.second;
+                  prediction_tools.mean_values_distribution = belief_topomaps;
+                }
                 // Do the same for the variance values grid
                 tmp_belief_topo = utils.getRadiationDistribution(mean_occ_grid, converter, &rad_var_grid_pub, topoMap, mappingWaypoints);
-                tmp_belief_topo.header.stamp = ros::Time::now();
-                belief_topomaps.at(0) = tmp_belief_topo;
-                prediction_tools.var_values_distribution = belief_topomaps;
+                if(tmp_belief_topo.first == true){
+                  tmp_belief_topo.second.header.stamp = ros::Time::now();
+                  belief_topomaps.at(0) = tmp_belief_topo.second;
+                  prediction_tools.var_values_distribution = belief_topomaps;
+                }
 
                 // converter.fromOccupancyGrid(mean_occ_grid, "radiation", radiation_mean_map);
                 // converter.toMessage(radiation_mean_map, radiation_map_msg);

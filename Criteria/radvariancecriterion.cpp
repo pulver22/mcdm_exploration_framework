@@ -36,7 +36,6 @@ double RadVarianceCriterion::evaluate(string currentRobotWayPoint,
     std::unordered_map<string, double> distances_map) {
 
   this->RadVarianceInfoGain = 0;
-  
   vector<bayesian_topological_localisation::DistributionStamped>
       values = tools.var_values_distribution;
 

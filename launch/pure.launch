@@ -9,8 +9,8 @@
   <arg name="two_readers"         default="false"/>
   <arg name="w_info_gain"  	      default="0.1"/>
   <arg name="w_travel_distance"  	default="0.25"/>
-  <arg name="w_rad_mean"  	      default="0.25"/>
-  <arg name="w_rad_variance"  	  default="0.3"/>
+  <arg name="w_rad_mean"  	      default="0.1"/>
+  <arg name="w_rad_variance"  	  default="0.45"/>
   <arg name="w_battery_status"  	default="0.1"/>
   <arg name="fov"                 default="360"/>
   <arg name="radius"              default="3.5"/>
@@ -31,15 +31,15 @@
                                            $(arg w_info_gain) 
                                            $(arg w_travel_distance) 
                                            $(arg w_rad_mean) 
+                                           $(arg w_battery_status)
                                            $(arg w_rad_variance)
-                                           $(arg w_battery_status) 
                                            $(arg use_mcdm) 
                                            $(arg num_tags)
                                            $(arg max_iterations)
                                            $(arg distances_map)
                                            $(arg dest_folder)"/>
 
-  <arg name="bag_descriptor" default="$(arg scenario_name)_$(arg w_info_gain)_$(arg w_travel_distance)_$(arg w_sensing_time)_$(arg w_battery_status)_$(arg w_rfid_gain)_date_"/>
+  <arg name="bag_descriptor" default="$(arg scenario_name)_$(arg w_info_gain)_$(arg w_travel_distance)_$(arg w_rad_mean)_$(arg w_rad_variance)_$(arg w_battery_status)_date_"/>
   <!-- I highly recomend you that the bag descriptor has correct pure nav params -->
   <arg name="save_bag"  	default="false"/>
 

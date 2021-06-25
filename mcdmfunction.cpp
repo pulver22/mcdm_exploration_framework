@@ -1,5 +1,6 @@
 #include "mcdmfunction.h"
 #include "Criteria/radmeancriterion.h"
+#include "Criteria/radvariancecriterion.h"
 #include "Criteria/batterystatuscriterion.h"
 #include "Criteria/criteriaName.h"
 #include "Criteria/criterion.h"
@@ -112,8 +113,8 @@ MCDMFunction::~MCDMFunction() {
 // Create a criterion starting from its name and weight
 Criterion *MCDMFunction::createCriterion(string name, double weight) {
   Criterion *toRet = NULL;
-  if (name == (SENSING_TIME)) {
-    toRet = new SensingTimeCriterion(weight);
+  if (name == (RAD_VARIANCE)) {
+    toRet = new RadVarianceCriterion(weight);
   } else if (name == (INFORMATION_GAIN)) {
     toRet = new InformationGainCriterion(weight);
   } else if (name == (TRAVEL_DISTANCE)) {

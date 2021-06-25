@@ -1,8 +1,8 @@
 //
 // Created by pulver on 29/07/2019.
 //
-#ifndef RadMeanCriterion_H
-#define RadMeanCriterion_H
+#ifndef RADMEANCRITERION_H
+#define RADMEANCRITERION_H
 
 #include "criterion.h"
 #include "map.h"
@@ -100,4 +100,4 @@ protected:
   Utilities _utils;
 };
 
-#endif // RadMeanCriterion_H
+#endif // RADMEANCRITERION_H

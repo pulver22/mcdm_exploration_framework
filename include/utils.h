@@ -276,7 +276,7 @@ public:
     void saveMap(const std::unordered_map<string, double> *map, string path);
     bool loadMap(std::unordered_map<string, double> *map, string path);
 
-    bayesian_topological_localisation::DistributionStamped getRadiationDistribution(nav_msgs::OccupancyGrid grid, GridMapRosConverter converter, 
+    pair<bool, bayesian_topological_localisation::DistributionStamped> getRadiationDistribution(nav_msgs::OccupancyGrid grid, GridMapRosConverter converter, 
                                 ros::Publisher *pub, list<Pose> topoMap, unordered_map<string, string> mappingWaypoints);
 };
 
