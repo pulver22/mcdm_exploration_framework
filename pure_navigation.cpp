@@ -275,8 +275,8 @@ int main(int argc, char **argv) {
       double w_info_gain = atof(argv[6]);
       double w_travel_distance = atof(argv[7]);
       double w_rad_mean = atof(argv[8]);
-      double w_battery_status = atof(argv[9]);
-      double w_rad_variance = atof(argv[10]);
+      double w_rad_variance = atof(argv[9]);
+      double w_battery_status = atof(argv[10]);
       // Normalize the weight such that their sum is always equal to 1
       double norm_w_info_gain, norm_w_travel_distance, norm_w_rad_mean,
       norm_w_rad_variance, norm_w_battery_status;

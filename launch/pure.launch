@@ -7,11 +7,11 @@
 <launch>
   <!-- PARAMS .............................................................. -->
   <arg name="two_readers"         default="false"/>
-  <arg name="w_info_gain"  	      default="0.3"/>
-  <arg name="w_travel_distance"  	default="0.2"/>
-  <arg name="w_rad_mean"  	      default="0.1"/>
+  <arg name="w_info_gain"  	      default="0.1"/>
+  <arg name="w_travel_distance"  	default="0.25"/>
+  <arg name="w_rad_mean"  	      default="0.25"/>
+  <arg name="w_rad_variance"  	  default="0.3"/>
   <arg name="w_battery_status"  	default="0.1"/>
-  <arg name="w_rad_variance"  	  default="0.2"/>
   <arg name="fov"                 default="360"/>
   <arg name="radius"              default="3.5"/>
   <arg name="coverage_percentage" default="0.95"/>
@@ -30,9 +30,9 @@
                                            $(arg map_resolution) 
                                            $(arg w_info_gain) 
                                            $(arg w_travel_distance) 
-                                           $(arg w_sensing_time) 
+                                           $(arg w_rad_mean) 
+                                           $(arg w_rad_variance)
                                            $(arg w_battery_status) 
-                                           $(arg w_rfid_gain)
                                            $(arg use_mcdm) 
                                            $(arg num_tags)
                                            $(arg max_iterations)
