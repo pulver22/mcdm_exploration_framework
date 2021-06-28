@@ -36,23 +36,19 @@ double RadVarianceCriterion::evaluate(string currentRobotWayPoint,
     std::unordered_map<string, double> distances_map) {
 
   this->RadVarianceInfoGain = 0;
-  vector<bayesian_topological_localisation::DistributionStamped>
-      values = tools.var_values_distribution;
 
-  // 1) Compute entropy on a single waypoint
-  this->RadVarianceInfoGain = getTopoNodeValue(p, mappingWaypoints, values);
   // ORI) Read values from GP-prediction
-  // pair<float,float> current_pose = make_pair(p.getX(), p.getY());
-  // int index = 0;
+  pair<float,float> current_pose = make_pair(p.getX(), p.getY());
+  int index = 0;
   
-  // auto it = find(tools.coordinates.begin(), tools.coordinates.end(), current_pose);
-  // if (it != tools.coordinates.end() )
-  // {
-  //   index = it - tools.coordinates.begin();
-  //   this->RadVarianceInfoGain = tools.var_values[index];
-  // }else{
-  //   this->RadVarianceInfoGain = 0;
-  // }
+  auto it = find(tools.coordinates.begin(), tools.coordinates.end(), current_pose);
+  if (it != tools.coordinates.end() )
+  {
+    index = it - tools.coordinates.begin();
+    this->RadVarianceInfoGain = tools.var_values[index];
+  }else{
+    this->RadVarianceInfoGain = 0;
+  }
   
   Criterion::insertEvaluation(p, this->RadVarianceInfoGain);
   return this->RadVarianceInfoGain;

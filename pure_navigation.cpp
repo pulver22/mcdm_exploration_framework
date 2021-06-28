@@ -58,10 +58,9 @@
 #include "nav_msgs/OccupancyGrid.h"
 #include "grid_map_msgs/GridMap.h"
 #include "ncnr_logging/GetRadiationLevel.h"
-// TODO: fix the following
-// #include "poisson_gp/setQueryPoints.h"
-// #include "poisson_gp/addReading.h"
-// #include "poisson_gp/setQueryPoints.h"
+#include "gp_node/SetQueryPoints.h"
+#include "gp_node/AddReading.h"
+#include "gp_node/GetPredictions.h"
     
     
 using namespace std;
@@ -329,8 +328,22 @@ int main(int argc, char **argv) {
       prediction_tools.topoMap = topoMap;
       for (auto it = topoMap.begin(); it != topoMap.end(); it++){
         prediction_tools.coordinates.push_back(make_pair(it->getX(), it->getY()));
+        prediction_tools.x_values.push_back(it->getX());
+        prediction_tools.y_values.push_back(it->getY());
       }
       ROS_DEBUG("TopologicalMap created");
+
+      // ORI: Set the topo-nodes coordinates to the GP
+      gp_node::SetQueryPoints gp_set_points;
+      gp_set_points.request.x_values = prediction_tools.x_values;
+      gp_set_points.request.y_values = prediction_tools.y_values;
+      bool gp_query_srv_call = set_query_pts_client.call(gp_set_points);
+      if(gp_query_srv_call){
+        cout << "[ORI] GP points correctly set!" << endl;
+      }else {
+        cout << "[ORI] ERROR: It was not possible to correctly set the coordinates for the GP." << endl;
+      }
+
 
       // NOTE: let's create a map to store distance between each node and every other node;
       double start = ros::Time::now().toSec();
@@ -539,75 +552,34 @@ int main(int argc, char **argv) {
           if (norm_w_rad_variance > 0) {
             // Give 5 second to make radiation sensor stabilise
             ros::Duration(5).sleep();
-            if(radiation_level_client.waitForExistence(ros::Duration(5.0))){
-              if (radiation_level_client.call(radiation_level_srv)) {
-                cout << "   RadiationLevel client answered" << endl;
-                current_rad_level = radiation_level_srv.response.rad_level;
-                content = to_string(target.getX()) + "," +
-                          to_string(target.getY()) + "," + 
-                          to_string(current_rad_level) + "\n";
-                utils.filePutContents(rad_readings_log, content, true);
-                // TODO: At this point, 'target' and 'current_rad_level' must
-                // be sent to the GP for interpolating
-              }
-            }
-            // Get an updated RFID belief map
-            printf("Updating the belief...\n");
-            if(radiation_map_client.waitForExistence(ros::Duration(5.0))){
-              if (radiation_map_client.call(radiation_map_srv)) {
-                cout << "   RadiationMap client answered" << endl;
-                mean_occ_grid = radiation_map_srv.response.mean_predictions;
-                var_occ_grid = radiation_map_srv.response.variance_predictions;
-                // Convert the mean values grid into topological map
-                tmp_belief_topo = utils.getRadiationDistribution(mean_occ_grid, converter, &rad_mean_grid_pub, topoMap, mappingWaypoints);
-                if(tmp_belief_topo.first == true){
-                  tmp_belief_topo.second.header.stamp = ros::Time::now();
-                  belief_topomaps.at(0) = tmp_belief_topo.second;
-                  prediction_tools.mean_values_distribution = belief_topomaps;
-                }
-                // Do the same for the variance values grid
-                tmp_belief_topo = utils.getRadiationDistribution(mean_occ_grid, converter, &rad_var_grid_pub, topoMap, mappingWaypoints);
-                if(tmp_belief_topo.first == true){
-                  tmp_belief_topo.second.header.stamp = ros::Time::now();
-                  belief_topomaps.at(0) = tmp_belief_topo.second;
-                  prediction_tools.var_values_distribution = belief_topomaps;
-                }
-
-                // converter.fromOccupancyGrid(mean_occ_grid, "radiation", radiation_mean_map);
-                // converter.toMessage(radiation_mean_map, radiation_map_msg);
-                // radiation_map_msg.info.header.frame_id = "loc_map";
-                // rad_mean_grid_pub.publish(radiation_map_msg);
-                // // converter.fromMessage(radiation_map_msg, radiation_map);
-                // std::vector<string> layers_name = radiation_mean_map.getLayers();
-                // // // The layers_name vector contains "ref_map, X, Y, 0" which are
-                // // // for not for finding the tags. So we can remove their name to
-                // // // avoid checking this layers.
-                // // layers_name.erase(layers_name.begin(), layers_name.begin() + 3);
-                // // If there are any tags discovered...
-                // if (layers_name.size() != 0) {
-                //   // We now instantiate the Particle Filter for each tag
-                //   // discovered
-                //   for (auto it = layers_name.begin(); it != layers_name.end();
-                //       it++) {
-                //     cout << "----- layer " << *it << endl; 
-                //     // Publish to the PF the sensor reading
-                //     bayesian_topological_localisation::DistributionStamped
-                //         tmp_belief_topo = utils.convertGridBeliefMapToTopoMap(
-                //             radiation_mean_map, topoMap, mappingWaypoints, *it, 0.5);
-                //     tmp_belief_topo.header.stamp = ros::Time::now();
-
-                //     belief_topomaps.at(0) = tmp_belief_topo;
-                //     prediction_tools.mean_values_distribution = belief_topomaps;
-                               
-                  // }
-                // }
-                cout << "Belief updated!" << endl;
-              } else {
-                printf("ATTENTION! Failed to get the radiation map\n");
-              }
-              
-            } else cout << "[ERROR] Radiation service didn't reply on time. " << endl;
+            // if(radiation_level_client.waitForExistence(ros::Duration(5.0))){
+            //   if (radiation_level_client.call(radiation_level_srv)) {
+            //     cout << "   RadiationLevel client answered" << endl;
+            //     current_rad_level = radiation_level_srv.response.rad_level;
+            //     content = to_string(target.getX()) + "," +
+            //               to_string(target.getY()) + "," + 
+            //               to_string(current_rad_level) + "\n";
+            //     utils.filePutContents(rad_readings_log, content, true);
+            //   }
+            // }
             
+            // Obtain a reading calling the GP service
+            gp_node::AddReading add_reading_srv;
+            add_reading_srv.request.reading_x_loc = target.getX();
+            add_reading_srv.request.reading_y_loc = target.getY();
+            if (add_readings_client.call(add_reading_srv)){
+              cout << "   [ORI] Reading correctly sampled!" << endl;
+            }else cout << "   [ORI] ERROR in getting a reading." << endl;
+            
+            printf("Updating the predictions ...\n");
+            // Now, call the service for obtaining a prediction at each topological node
+            gp_node::GetPredictions get_prediction_srv;
+            if (get_predictions_client.call(get_prediction_srv)){
+              prediction_tools.mean_values = get_prediction_srv.response.mean_predictions;
+              prediction_tools.var_values = get_prediction_srv.response.variance_predictions;
+              cout << "   [ORI] Prediction correctly obtained by the GP node." << endl;
+            }else cout << "   [ORI] ERROR in getting the predictions." << endl;
+                        
           }
           
 
@@ -1038,10 +1010,9 @@ ros::NodeHandle createROSComms(){
   // radiation_map_client = nh.serviceClient<nav_msgs::GetMap>(radiation_map_srv_name);
   radiation_map_client = nh.serviceClient<ncnr_logging::GetRadiationPredictions>(radiation_map_srv_name);
   radiation_level_client = nh.serviceClient<ncnr_logging::GetRadiationLevel>(radiation_level_srv_name);
-  // TODO: Fix the data type
-  // set_query_pts_client = nh.serviceClient<poisson_gp::setQueryPoints>(set_query_pts_srv_name);
-  // add_readings_client = nh.serviceClient<poisson_gp::addReading>(add_reading_srv_name);
-  // get_predictions_client = nh.serviceClient<poisson_gp::getPredictions>(get_predictions_srv_name;
+  set_query_pts_client = nh.serviceClient<gp_node::SetQueryPoints>(set_query_pts_srv_name);
+  add_readings_client = nh.serviceClient<gp_node::AddReading>(add_reading_srv_name);
+  get_predictions_client = nh.serviceClient<gp_node::GetPredictions>(get_predictions_srv_name);
   // fake_radiation_map_client = nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(fake_radiation_map_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);

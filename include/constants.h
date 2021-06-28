@@ -23,6 +23,8 @@ struct prediction_tools {
   vector<bayesian_topological_localisation::DistributionStamped> var_values_distribution;
   list<Pose> topoMap;
   vector<pair<float, float>> coordinates;
+  vector<float> x_values;
+  vector<float> y_values;
   vector<float> mean_values;
   vector<float> var_values;
 };
