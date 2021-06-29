@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iterator>
+#include <numeric>  // std::accumulate
 
 #define _USE_MATH_DEFINES
 
@@ -289,8 +290,9 @@ int main(int argc, char **argv) {
       bool use_mcdm = bool(atoi(argv[11]));
       int num_tags = atoi(argv[12]);
       int max_iterations = atoi(argv[13]);
-      std::string path_distances_map = (argv[14]);
-      std::string log_dest_folder = (argv[15]);
+      float gp_var_threshold = atof(argv[14])
+      std::string path_distances_map = (argv[15]);
+      std::string log_dest_folder = (argv[16]);
       auto t = std::time(nullptr);
       auto tm = *std::localtime(&t);
       std::ostringstream oss;
@@ -335,6 +337,11 @@ int main(int argc, char **argv) {
 
       // ORI: Set the topo-nodes coordinates to the GP
       gp_node::SetQueryPoints gp_set_points;
+      // double arr[prediction_tools.x_values.size()];
+      // std::copy(prediction_tools.x_values.begin(), prediction_tools.x_values.end(), arr);
+      // gp_set_points.request.x_values = arr;
+      // std::copy(prediction_tools.y_values.begin(), prediction_tools.y_values.end(), arr);
+      // gp_set_points.request.y_values = arr;
       gp_set_points.request.x_values = prediction_tools.x_values;
       gp_set_points.request.y_values = prediction_tools.y_values;
       bool gp_query_srv_call = set_query_pts_client.call(gp_set_points);
@@ -343,7 +350,6 @@ int main(int argc, char **argv) {
       }else {
         cout << "[ORI] ERROR: It was not possible to correctly set the coordinates for the GP." << endl;
       }
-
 
       // NOTE: let's create a map to store distance between each node and every other node;
       double start = ros::Time::now().toSec();
@@ -377,7 +383,6 @@ int main(int argc, char **argv) {
         utils.saveMap(&distances_map, map_path);
         cout << "Saving on disk completed" << endl;
       }
-      // exit(0);
 
       map.plotPathPlanningGridColor("/tmp/pathplanning_start.png");
 
@@ -459,6 +464,10 @@ int main(int argc, char **argv) {
 
       // add the service client to utils so it can use it
       utils.setGazeboModelStateClient(gazebo_model_state_client);
+
+      // ORI utils
+      float initial_map_variance, current_map_variance = 0.0;
+      float variance_ratio;
 
       do {
 
@@ -565,10 +574,16 @@ int main(int argc, char **argv) {
             
             // Obtain a reading calling the GP service
             gp_node::AddReading add_reading_srv;
+            cout << target.getX() << " " << target.getY() << endl;
             add_reading_srv.request.reading_x_loc = target.getX();
             add_reading_srv.request.reading_y_loc = target.getY();
             if (add_readings_client.call(add_reading_srv)){
               cout << "   [ORI] Reading correctly sampled!" << endl;
+              current_rad_level = add_reading_srv.response.reading_value;
+              content = to_string(target.getX()) + "," +
+                        to_string(target.getY()) + "," + 
+                        to_string(current_rad_level) + "\n";
+              utils.filePutContents(rad_readings_log, content, true);
             }else cout << "   [ORI] ERROR in getting a reading." << endl;
             
             printf("Updating the predictions ...\n");
@@ -577,9 +592,17 @@ int main(int argc, char **argv) {
             if (get_predictions_client.call(get_prediction_srv)){
               prediction_tools.mean_values = get_prediction_srv.response.mean_predictions;
               prediction_tools.var_values = get_prediction_srv.response.variance_predictions;
+              if (count == 0){
+                initial_map_variance = accumulate(prediction_tools.var_values.begin(), prediction_tools.var_values.end(), 0.0);
+                current_map_variance = initial_map_variance;
+              }else {
+                current_map_variance = accumulate(prediction_tools.var_values.begin(), prediction_tools.var_values.end(), 0.0);
+              }
+              current_map_variance = current_map_variance / initial_map_variance;
               cout << "   [ORI] Prediction correctly obtained by the GP node." << endl;
-            }else cout << "   [ORI] ERROR in getting the predictions." << endl;
-                        
+              cout << "   Initial variance: " << initial_map_variance << ", current variance: " << current_map_variance 
+                   << "[" << 100 * (variance_ratio) << "]" << endl;
+            }else cout << "   [ORI] ERROR in getting the predictions." << endl;         
           }
           
 
@@ -813,7 +836,7 @@ int main(int argc, char **argv) {
 
       }
       // Perform exploration until a certain stopping criterion is achieved
-      while (batteryPercentage > 1.0 and count < max_iterations);
+      while (batteryPercentage > 1.0 and count < max_iterations and variance_ratio > gp_var_threshold);
       // Plotting utilities
       map.drawVisitedCells();
       map.printVisitedCells(history);
@@ -962,9 +985,9 @@ void loadROSParams(){
   private_node_handle.param("gazebo_model_state_srv_name", gazebo_model_state_srv_name, std::string("/gazebo/get_model_state"));
   private_node_handle.param("experiment_finished_topic_name", experiment_finished_topic_name, std::string("/experiment_finished"));
   private_node_handle.param("radiation_level_srv_name", radiation_level_srv_name, std::string("/get_radiation_level"));
-  private_node_handle.param("set_query_pts_srv_name", set_query_pts_srv_name, std::string("/setQueryPoints"));
-  private_node_handle.param("add_reading_srv_name", add_reading_srv_name, std::string("/addReading"));
-  private_node_handle.param("get_predictions_srv_name", get_predictions_srv_name, std::string("/getPredictions"));
+  private_node_handle.param("set_query_pts_srv_name", set_query_pts_srv_name, std::string("/gp_node/set_query_points"));
+  private_node_handle.param("add_reading_srv_name", add_reading_srv_name, std::string("/gp_node/add_reading"));
+  private_node_handle.param("get_predictions_srv_name", get_predictions_srv_name, std::string("/gp_node/get_predictions"));
 }
 
 void printROSParams(){

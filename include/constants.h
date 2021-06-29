@@ -14,7 +14,7 @@
 
 #define EVALUATION_TIME 70.0
 
-const int MAX_TABULIST_COUNT = 10;
+const int MAX_TABULIST_COUNT = 10;  // This should be equal to the number of nodes in the map
 
 struct prediction_tools {
   vector<ros::ServiceClient> pf_stateless_update_srv_list;
