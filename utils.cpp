@@ -4,6 +4,7 @@
 
 #include "include/utils.h"
 // #include "bayesian_topological_localisation/Predict.h"
+#include "strands_navigation_msgs/GetRouteBetween.h"
 #include "strands_navigation_msgs/GetRouteTo.h"
 #include "std_msgs/String.h"
 #include <Eigen/Dense>
@@ -1317,4 +1318,42 @@ pair<bool, bayesian_topological_localisation::DistributionStamped>
     success = true;
   } 
   return make_pair(success, tmp_belief_topo);
+}
+
+
+std::unordered_map<string, double> Utilities::createDistanceTable(string map_path, 
+    ros::ServiceClient topo_distances_client, strands_navigation_msgs::TopologicalMap topological_map){
+  std::unordered_map<string, double> distances_map;
+
+  double start = ros::Time::now().toSec();
+  cout << "Loading distances matrix from disk ..." << endl;
+  bool successfull_loading = this->loadMap(&distances_map, map_path);
+  if (successfull_loading == true){
+    cout << "   Distances map contains: " << distances_map.size() << "entries" << endl;
+  }else{
+    cout << "It doesn't exist. Create a new one ..." << endl;
+    strands_navigation_msgs::GetRouteBetween route;
+    double distance;
+    for(int i = 0; i < topological_map.nodes.size(); i++){
+      for(int j = 0; j <= i; j++){
+        route.request.origin = topological_map.nodes.at(i).name;
+        route.request.goal = topological_map.nodes.at(j).name;
+        bool route_srv_call = topo_distances_client.call(route);
+        if(route_srv_call){
+          cout << "   Called!" << endl;
+          distance = route.response.route.source.size();
+        }else {
+          distance = 1000;
+        }
+        if (i == j) distance = 0;
+        distances_map.emplace(topological_map.nodes.at(i).name + topological_map.nodes.at(j).name, distance);
+        distances_map.emplace(topological_map.nodes.at(j).name + topological_map.nodes.at(i).name, distance);
+      }
+      
+    }
+    cout << "    Completed! [" << ros::Time::now().toSec() - start << "s]" << endl;
+    this->saveMap(&distances_map, map_path);
+    cout << "Saving on disk completed" << endl;
+  }
+  return distances_map;
 }

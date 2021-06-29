@@ -321,11 +321,6 @@ int main(int argc, char **argv) {
 
       // ORI: Set the topo-nodes coordinates to the GP
       gp_node::SetQueryPoints gp_set_points;
-      // double arr[prediction_tools.x_values.size()];
-      // std::copy(prediction_tools.x_values.begin(), prediction_tools.x_values.end(), arr);
-      // gp_set_points.request.x_values = arr;
-      // std::copy(prediction_tools.y_values.begin(), prediction_tools.y_values.end(), arr);
-      // gp_set_points.request.y_values = arr;
       gp_set_points.request.x_values = prediction_tools.x_values;
       gp_set_points.request.y_values = prediction_tools.y_values;
       bool gp_query_srv_call = set_query_pts_client.call(gp_set_points);
@@ -337,39 +332,9 @@ int main(int argc, char **argv) {
 
       // NOTE: let's create a map to store distance between each node and every other node;
       double start = ros::Time::now().toSec();
-      std::unordered_map<string, double> distances_map;
-      cout << "Loading distances matrix from disk ..." << endl;
-      bool successfull_loading = utils.loadMap(&distances_map, map_path);
-      if (successfull_loading == true){
-        cout << "   Distances map contains: " << distances_map.size() << "entries" << endl;
-      }else{
-        cout << "It doesn't exist. Create a new one ..." << endl;
-        strands_navigation_msgs::GetRouteBetween route;
-        double distance;
-        for(int i = 0; i < topological_map.nodes.size(); i++){
-          for(int j = 0; j <= i; j++){
-            route.request.origin = topological_map.nodes.at(i).name;
-            route.request.goal = topological_map.nodes.at(j).name;
-            bool route_srv_call = topo_distances_client.call(route);
-            if(route_srv_call){
-              cout << "   Called!" << endl;
-              distance = route.response.route.source.size();
-            }else {
-              distance = 1000;
-            }
-            if (i == j) distance = 0;
-            distances_map.emplace(topological_map.nodes.at(i).name + topological_map.nodes.at(j).name, distance);
-            distances_map.emplace(topological_map.nodes.at(j).name + topological_map.nodes.at(i).name, distance);
-          }
-          
-        }
-        cout << "    Completed! [" << ros::Time::now().toSec() - start << "s]" << endl;
-        utils.saveMap(&distances_map, map_path);
-        cout << "Saving on disk completed" << endl;
-      }
-
+      std::unordered_map<string, double> distances_map = utils.createDistanceTable( map_path, topo_distances_client, topological_map);
+      
       map.plotPathPlanningGridColor("/tmp/pathplanning_start.png");
-
       map.plotGridColor("/tmp/nav_start.png");
 
       int gridToPathGridScale = map.getGridToPathGridScale();
@@ -494,12 +459,6 @@ int main(int argc, char **argv) {
           map.getGridIndex(target.getX(), target.getY(), i, j);
           gridPub.publish(map.toMessageGrid());
 
-          // Update starting point in the path
-          // path.request.start.header.frame_id = "map";
-          // path.request.start.pose.position.x = target.getX();
-          // path.request.start.pose.position.y = target.getY();
-          // path.request.start.pose.orientation.w = 1;
-
           float x = target.getX();
           float y = target.getY();
           float orientation = roundf(target.getOrientation() * 100) / 100;
@@ -546,17 +505,6 @@ int main(int argc, char **argv) {
           if (norm_w_rad_variance > 0) {
             // Give 5 second to make radiation sensor stabilise
             ros::Duration(5).sleep();
-            // if(radiation_level_client.waitForExistence(ros::Duration(5.0))){
-            //   if (radiation_level_client.call(radiation_level_srv)) {
-            //     cout << "   RadiationLevel client answered" << endl;
-            //     current_rad_level = radiation_level_srv.response.rad_level;
-            //     content = to_string(target.getX()) + "," +
-            //               to_string(target.getY()) + "," + 
-            //               to_string(current_rad_level) + "\n";
-            //     utils.filePutContents(rad_readings_log, content, true);
-            //   }
-            // }
-            
             // Obtain a reading calling the GP service
             gp_node::AddReading add_reading_srv;
             cout << target.getX() << " " << target.getY() << endl;

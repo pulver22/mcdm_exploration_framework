@@ -278,6 +278,8 @@ public:
 
     pair<bool, bayesian_topological_localisation::DistributionStamped> getRadiationDistribution(nav_msgs::OccupancyGrid grid, GridMapRosConverter converter, 
                                 ros::Publisher *pub, list<Pose> topoMap, unordered_map<string, string> mappingWaypoints);
+                            
+    std::unordered_map<string, double> createDistanceTable(string map_path, ros::ServiceClient topo_distances_client, strands_navigation_msgs::TopologicalMap topological_map);
 };
 
 #endif // UTILITIES_H
