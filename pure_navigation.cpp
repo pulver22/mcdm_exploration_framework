@@ -290,7 +290,7 @@ int main(int argc, char **argv) {
       bool use_mcdm = bool(atoi(argv[11]));
       int num_tags = atoi(argv[12]);
       int max_iterations = atoi(argv[13]);
-      float gp_var_threshold = atof(argv[14])
+      float gp_var_threshold = atof(argv[14]);
       std::string path_distances_map = (argv[15]);
       std::string log_dest_folder = (argv[16]);
       auto t = std::time(nullptr);
