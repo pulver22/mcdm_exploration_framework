@@ -767,19 +767,19 @@ int main(int argc, char **argv) {
                     &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
                   // Recently visited cells shouldn't be visited soon again
-                  if (tabuListCount > 0) {
-                    tabuListCount--;
-                  } else {
-                    // cout << "----> RESET TABULIST!! <----" << endl;
-                    // tabuList.clear();
-                    // posToEsclude.clear();
-                    // tabuListCount = MAX_TABULIST_COUNT;
+                  // if (tabuListCount > 0) {
+                  //   tabuListCount--;
+                  // } else {
+                  //   // cout << "----> RESET TABULIST!! <----" << endl;
+                  //   // tabuList.clear();
+                  //   // posToEsclude.clear();
+                  //   // tabuListCount = MAX_TABULIST_COUNT;
                     
-                    // NOTE: instead of emptying the list allowing to sample a cell 
-                    // visited only two steps ago, only remove the oldest waypoint
-                    tabuList.pop_front();
-                    posToEsclude.clear();
-                  }
+                  //   // NOTE: instead of emptying the list allowing to sample a cell 
+                  //   // visited only two steps ago, only remove the oldest waypoint
+                  //   tabuList.pop_front();
+                  //   posToEsclude.clear();
+                  // }
                   // We empty the lists before pushing the new target inside, 
                   // so it can't be selected at the next NBS iteration
                   utils.updatePathMetrics(
