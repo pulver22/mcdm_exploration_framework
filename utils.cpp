@@ -303,15 +303,15 @@ void Utilities::printResult(long newSensedCells, long totalFreeCells,
                             double travelledDistance, int numOfTurning,
                             double totalAngle, double totalScanTime,
                             double resolution, float w_info_gain,
-                            float w_travel_distance, float w_sensing_time,
-                            float w_battery_status, float w_rfid_gain,
-                            std::string fileURI) {
+                            float w_travel_distance, float w_rad_mean,
+                            float w_battery_status, float w_rad_variance, 
+                            float final_var_ratio, std::string fileURI) {
   cout << "-----------------------------------------------------------------"
        << endl;
   cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells << "[ "
        << 100 * float(newSensedCells) / float(totalFreeCells) << " %]" << endl;
   cout << "Total cell visited :" << numConfiguration << endl;
-  cout << "Total travelled distance (meters): " << travelledDistance << endl;
+  cout << "Total travelled distance (edges): " << travelledDistance << endl;
   //  cout << "Total travel time: " << travelledDistance / resolution << "s, "
   //       << (travelledDistance / resolution) / 60 << " m" << endl;
   //  cout << "I came back to the original position since i don't have any other
@@ -320,22 +320,23 @@ void Utilities::printResult(long newSensedCells, long totalFreeCells,
   //       << endl;
   //  cout << "Total exploration time (s): " << travelledDistance / resolution
   //  << endl; cout << "Total number of turning: " << numOfTurning << endl;
-  cout << "Sum of scan angles (radians): " << totalAngle << endl;
-  cout << "Total time for scanning: " << totalScanTime << endl;
+  // cout << "Sum of scan angles (radians): " << totalAngle << endl;
+  // cout << "Total time for scanning: " << totalScanTime << endl;
   //  cout << "Total time for exploration: "
   //       << travelledDistance / resolution + totalScanTime << "s, "
   //       << (travelledDistance / resolution + totalScanTime) / 60 << " m" <<
   //       endl;
   if (newSensedCells < precision * totalFreeCells) {
-    cout << "FINAL: MAP NOT EXPLORED! :(" << endl;
+    cout << "FINAL: MAP NOT FULLY EXPLORED!" << endl;
   } else {
     cout << "FINAL: MAP EXPLORED!" << endl;
   }
   std::ofstream txt(fileURI.c_str());
-  txt << w_info_gain << "," << w_travel_distance << "," << w_sensing_time << ","
-      << w_battery_status << "," << w_rfid_gain << ","
+  txt << w_info_gain << "," << w_travel_distance << "," << w_rad_mean << ","
+      << w_battery_status << "," << w_rad_variance << ","
       << float(newSensedCells) / float(totalFreeCells) << ","
-      << numConfiguration << "," << travelledDistance << "," << totalScanTime
+      << numConfiguration << "," << travelledDistance << "," << totalScanTime 
+      << "," << final_var_ratio
       << endl;
   txt.close();
   cout << "-----------------------------------------------------------------"

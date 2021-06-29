@@ -156,8 +156,8 @@ public:
                      long numConfiguration, double travelledDistance,
                      int numOfTurning, double totalAngle, double totalScanTime,
                      double resoion, float w_info_gain, float w_travel_distance,
-                     float w_sensing_time, float w_battery_status,
-                     float w_rfid_gain, std::string fileURI);
+                     float w_rad_mean, float w_battery_status,
+                     float w_rad_variance, float final_var_ratio, std::string fileURI);
 
     bool showMarkerandNavigate(Pose target, ros::Publisher *marker_pub,
                                dummy::Map *map,

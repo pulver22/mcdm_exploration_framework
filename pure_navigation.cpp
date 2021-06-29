@@ -73,9 +73,7 @@ namespace fs = std::experimental::filesystem;
 bool move(float x, float y, float orientation, float time_travel,
           list<Pose> *tabuList,
           std::list<std::pair<float, float> > *posToEsclude);
-void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg);
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg);
-void belief_topomap_callback(const bayesian_topological_localisation::DistributionStampedConstPtr &msg);
 void topological_map_callback(const strands_navigation_msgs::TopologicalMapConstPtr &msg);
 void printROSParams();
 void loadROSParams();
@@ -109,7 +107,6 @@ GridMap radiation_mean_map, radiation_var_map;
 vector<bayesian_topological_localisation::DistributionStamped> belief_topomaps;
 grid_map_msgs::GridMap radiation_map_msg;
 GridMapRosConverter converter;
-int belief_counter = 0;
 
 
 //  ROS PARAMETERS ....................................
@@ -505,6 +502,7 @@ int main(int argc, char **argv) {
           if (norm_w_rad_variance > 0) {
             // Give 5 second to make radiation sensor stabilise
             ros::Duration(5).sleep();
+            printf("Obtaining a reading ...\n");
             // Obtain a reading calling the GP service
             gp_node::AddReading add_reading_srv;
             cout << target.getX() << " " << target.getY() << endl;
@@ -533,7 +531,7 @@ int main(int argc, char **argv) {
               }
               variance_ratio = current_map_variance / initial_map_variance;
               cout << "   [ORI] Prediction correctly obtained by the GP node." << endl;
-              cout << "   Initial variance: " << initial_map_variance << ", current variance: " << current_map_variance 
+              cout << "     Initial variance: " << initial_map_variance << ", current variance: " << current_map_variance 
                    << "[" << 100 * (variance_ratio) << "]" << endl;
             }else cout << "   [ORI] ERROR in getting the predictions." << endl;         
           }
@@ -606,9 +604,7 @@ int main(int argc, char **argv) {
             }
             // FIXME: this can still be useful by not every iteration
             utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
-            // cout <<"Analysing all possible destinations : " << frontiers.size() << endl;
-            // mapping_time_belief = utils.getStatelessRFIDBelief(180.0, true, &pf_stateless_likelihoodClient_list);
-            cout << "Obtain current robot waypoint name" << endl;
+            // cout << "Obtain current robot waypoint name" << endl;
             string rob_closerWaypoint;
             utils.getModelClosestWaypoint(robotName, topological_map, rob_closerWaypoint, gt_tag_pose);
             cout << "Evaluating nodes..." << endl;
@@ -616,7 +612,7 @@ int main(int argc, char **argv) {
             record = *function.evaluateFrontiers(rob_closerWaypoint, 
                 frontiers, map, threshold, topo_path_client, mapping_time_belief, batteryTime,
                 radiation_mean_map, mappingWaypoints, prediction_tools, distances_map);
-            cout << "   Evaluation: " << ros::Time::now().toSec() - start << endl;
+            cout << "   Evaluation took : " << ros::Time::now().toSec() - start << "[s]" << endl;
             // FIXME: this shouldn't be necessary but I cannot remove it because
             // some cells in the tabulist are not removed with
             // cleanPossibleDestination2 Clean all the possible destination from
@@ -634,11 +630,6 @@ int main(int argc, char **argv) {
               // Select the new robot destination from the list of candidates
               std::pair<Pose, double> result = function.selectNewPose(&record);
               target = result.first;
-              // target = utils.selectFreePoseInLocalCostmap(
-              //     target, &frontiers, &map, &function, threshold,
-              //     &topo_path_client, &posToEsclude, &record,
-              //     move_base_local_costmap_topic_name, &batteryTime, &radiation_map,
-              //     &mappingWaypoints, &belief_topomaps);
               targetPos =
                   std::make_pair(int(target.getX()), int(target.getY()));
               // Select a new position until it is not explored recently
@@ -650,11 +641,6 @@ int main(int argc, char **argv) {
                   record.removeFrontier(target);
                   result = function.selectNewPose(&record);
                   target = result.first;
-                  // target = utils.selectFreePoseInLocalCostmap(
-                  //     target, &frontiers, &map, &function, threshold,
-                  //     &topo_path_client, &posToEsclude, &record,
-                  //     move_base_local_costmap_topic_name, &batteryTime,
-                  //     &radiation_map, &mappingWaypoints, &belief_topomaps);
                   targetPos =
                       std::make_pair(int(target.getX()), int(target.getY()));
                   posToEsclude.push_back(targetPos);
@@ -671,28 +657,9 @@ int main(int argc, char **argv) {
               // If the selected destination does not appear among the cells
               // already visited
               if ((!utils.containsPos(&posToEsclude, targetPos))) {
-
-                // i switch x and y to allow debugging graphically looking the image
-                // cout << "New target : x = " << targetPos.first << ", y = " << targetPos.second 
-                //     << ", orientation = " << target.getOrientation() * 180 / M_PI << endl;
                 // Add it to the list of visited cells as first-view
                 encodedKeyValue = 1;
                 backTracking = false;
-
-                // If the target has a different orientation from the current one,
-                // let's rotate the robot first
-                // cout << "Current Orientation: " << previous.getOrientation() << 
-                //   ", target Orientation: " << target.getOrientation() << endl;
-                // if (fmod(M_PI, std::abs(previous.getOrientation() - target.getOrientation())) > M_PI/6 ){
-                //   cout << "Let's rotate the robot." << endl;
-                //   utils.move(previous.getX(), 
-                //             previous.getY(), 
-                //             target.getOrientation(), 
-                //             20,
-                //             &tabuList,
-                //             &posToEsclude);
-                //   cout << "Rotation completed! Sending waypoint now." << endl;
-                // }
                 cout << "New destination found." << endl;
                 success = utils.showMarkerandNavigate(
                     target, &marker_pub, &map, &topo_path_client, &tabuList,
@@ -732,7 +699,6 @@ int main(int argc, char **argv) {
               else {
                 // NOTE: Technically, it shouldn't enter here due to the
                 // previous while loop
-                //                                cout << "3" << endl;
                 cout << "We shouldn't be here" << endl;
                 exit(0);
               }
@@ -748,11 +714,8 @@ int main(int argc, char **argv) {
             // If the record is empty, we didn't find a new position so we must finish
             if (break_loop == true)
               break;
-            // NOTE: not requested for testing purpose
-            // usleep(microseconds);
             sensedCells = newSensedCells;
             frontiers.clear();
-            // delete record;
           }
         }
 
@@ -782,10 +745,10 @@ int main(int argc, char **argv) {
       cout << "------------------ HISTORY -----------------" << endl;
       // Calculate which cells have been visited only once
       list<Pose> tmp_history = utils.cleanHistory(&history, &record);
-      utils.calculateDistance(tmp_history, &topo_path_client, robot_radius);
+      utils.calculateDistance(tmp_history, &path_client, robot_radius);
 
       cout << "------------------ TABULIST -----------------" << endl;
-      utils.calculateDistance(tabuList, &topo_path_client, robot_radius);
+      utils.calculateDistance(tabuList, &path_client, robot_radius);
 
       cout << "------------------- ending experiment ---------------" << endl;
       std_msgs::Bool finished;
@@ -796,7 +759,7 @@ int main(int argc, char **argv) {
                         numConfiguration, travelledDistance, numOfTurning,
                         totalAngle, totalScanTime, resolution, norm_w_info_gain,
                         norm_w_travel_distance, norm_w_rad_mean, 
-                        norm_w_battery_status, norm_w_rad_variance, out_log);
+                        norm_w_battery_status, norm_w_rad_variance, var_ratio, out_log);
       // Find the tag
       std::vector<std::pair<int, std::pair<int, int>>> tag_positions =
           utils.findTagFromBeliefMap(&radiation_mean_map);
@@ -829,9 +792,7 @@ int main(int argc, char **argv) {
 } // end main
 
 void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg) {
-  // printf("RECEIVED A MAP!");
   if (costmapReceived == 0) {
-    // cout << "CALLBACK FIRST!" << endl;
     costmap_grid = *msg;
     costresolution = msg->info.resolution;
     costwidth = msg->info.width;
@@ -840,52 +801,16 @@ void grid_callback(const nav_msgs::OccupancyGridConstPtr &msg) {
     for (int i = 0; i < msg.get()->data.size(); ++i) {
       occdata.push_back(msg->data.at(i));
     }
-    // std::cout << "size of occdata " << occdata.size()
-    //           << " size of message data " << msg->data.size() << std::endl;
-    // std::cout << "height " << msg->info.height << " width " << msg->info.width
-    //           << " resolution " << msg->info.resolution << std::endl;
     costmapReceived = 1;
   }
 }
 
-void belief_topomap_callback(const bayesian_topological_localisation::DistributionStampedConstPtr &msg){
-  belief_counter = belief_counter + 1;
-  cout << "ATTENZIONE" << endl;
-  // string tag = msg->header.frame_id;
-  // cout << "[belief_topomap_callback@pure_navigation.cpp]tag: " << tag << endl;
-  // int len = sizeof(tag)/sizeof(tag[0]);
-  // // std::string::size_type pos = tag.find(tag.end());
-  // int index = std::stoi(tag.substr(3, len));  // let's drop "tag_" substring
-  // cout << "[belief_topomap_callback@pure_navigation.cpp]index: " << index << endl;
-  // If there are not maps, push it back to avoid overflow, otherwise access the right index
-  // if (index != 0){
-  //   if (belief_topomaps.size() < index){
-  //     belief_topomaps.push_back(*msg);
-  //   }else belief_topomaps.at(index-1) = *msg;
-  // }
-}
 
 void topological_map_callback(const strands_navigation_msgs::TopologicalMapConstPtr &msg){
   if (topoMapReceived == 0){
     topological_map = *msg;
     topoMapReceived = 1;
-    // cout << "[TOPOLOGICALMAP] Number of elements: " << topological_map.nodes.size() << endl;
   }
-}
-
-void update_callback(const map_msgs::OccupancyGridUpdateConstPtr &msg) {
-  // NOTE: everything is commented because we don't want update the costmap
-  // since the environment is
-  // assumed static
-
-  // std::cout << "CALLBACK SECOND" << std::endl;
-
-  /*int index = 0;
-      for(int y=msg->y; y< msg->y+msg->height; y++) {
-              for(int x=msg->x; x< msg->x+msg->width; x++) {
-                      costmap_grid.data[ getIndex(x,y) ] = msg->data[ index++ ];
-              }
-      }*/
 }
 
 void loadROSParams(){
@@ -930,7 +855,6 @@ void printROSParams(){
   printf("   - set_query_pts_srv_name [%s]\n", set_query_pts_srv_name.c_str());
   printf("   - set_query_pts_srv_name [%s]\n", set_query_pts_srv_name.c_str());
   printf("   - get_predictions_srv_name [%s]\n", get_predictions_srv_name.c_str());
-  // printf("   - fake_radiation_map_srv_name [%s]\n", fake_radiation_map_srv_name.c_str());
   printf("   - make_plan_srv_name [%s]\n", make_plan_srv_name.c_str());
   printf("   - make_topo_plan_srv_name [%s]\n", make_topo_plan_srv_name.c_str());
   printf("   - move_base_goal_topic_name [%s]\n", move_base_goal_topic_name.c_str());
@@ -960,7 +884,6 @@ ros::NodeHandle createROSComms(){
   path_client = nh.serviceClient<nav_msgs::GetPlan>(make_plan_srv_name, true);
   topo_path_client = nh.serviceClient<strands_navigation_msgs::GetRouteTo>(make_topo_plan_srv_name, true);
   topo_distances_client = nh.serviceClient<strands_navigation_msgs::GetRouteBetween>(get_topo_distances_srv_name, true);
-  // radiation_map_client = nh.serviceClient<nav_msgs::GetMap>(radiation_map_srv_name);
   radiation_map_client = nh.serviceClient<ncnr_logging::GetRadiationPredictions>(radiation_map_srv_name);
   radiation_level_client = nh.serviceClient<ncnr_logging::GetRadiationLevel>(radiation_level_srv_name);
   set_query_pts_client = nh.serviceClient<gp_node::SetQueryPoints>(set_query_pts_srv_name);
@@ -968,8 +891,6 @@ ros::NodeHandle createROSComms(){
   get_predictions_client = nh.serviceClient<gp_node::GetPredictions>(get_predictions_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
-  //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
-
   // create publishers
   moveBasePub =   nh.advertise<geometry_msgs::PoseStamped>(move_base_goal_topic_name, 1000);
   gridPub = nh.advertise<grid_map_msgs::GridMap>(nav_grid_debug_topic_name, 1, true);
@@ -985,8 +906,6 @@ ros::NodeHandle createROSComms(){
     if (map_service_client_.call(srv_map)) {
       costmap_sub = nh.subscribe<nav_msgs::OccupancyGrid>(
            move_base_costmap_topic_name, 100, grid_callback);
-      costmap_update_sub = nh.subscribe<map_msgs::OccupancyGridUpdate>(
-           move_base_costmap_updates_topic_name, 10, update_callback);
       disConnected = false;
     } else {
       r.sleep();
