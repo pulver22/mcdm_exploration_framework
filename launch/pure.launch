@@ -50,7 +50,7 @@
       /nav_grid_visualization_debug/visited
       /plan_grid_visualization_debug/visited
   -->
-  <arg name="topic_list" default="/tf /tf_static /mcdm_stats /scan_filtered /map /loc_map /move_base/current_goal /lastTag"/>
+  <arg name="topic_list" default="/tf /tf_static /mcdm_stats /scan_filtered /map /loc_map /move_base/current_goal /lastTag /current_node"/>
 
   <env name="ROSCONSOLE_CONFIG_FILE"
     value="$(find next_best_sense)/config/custom_rosconsole.conf"/>
