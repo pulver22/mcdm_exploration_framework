@@ -583,7 +583,7 @@ int main(int argc, char **argv) {
               }else {
                 current_map_variance = accumulate(prediction_tools.var_values.begin(), prediction_tools.var_values.end(), 0.0);
               }
-              current_map_variance = current_map_variance / initial_map_variance;
+              variance_ratio = current_map_variance / initial_map_variance;
               cout << "   [ORI] Prediction correctly obtained by the GP node." << endl;
               cout << "   Initial variance: " << initial_map_variance << ", current variance: " << current_map_variance 
                    << "[" << 100 * (variance_ratio) << "]" << endl;
