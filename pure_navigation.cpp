@@ -80,9 +80,6 @@ void topological_map_callback(const strands_navigation_msgs::TopologicalMapConst
 void printROSParams();
 void loadROSParams();
 ros::NodeHandle createROSComms();
-void tag_coverage_callback(const std_msgs::Float32 msg);
-// void radiation_map_callback(const grid_map_msgs::GridMap msg);
-void gps_callback(const visualization_msgs::MarkerConstPtr &msg);
 void sensing();
 
 
@@ -175,9 +172,6 @@ geometry_msgs::Pose pf_tag_pose, gt_tag_pose, gps_tag_pose;
 double distance_pf_gt;
 grid_map::GridMap rad_grid_map;
 
-// Input : ./mcdm_online_exploration_ros ./../Maps/map_RiccardoFreiburg_1m2.pgm
-// 100 75 5 0 15 180 0.95 0.12
-// resolution x y orientation range centralAngle precision threshold
 int main(int argc, char **argv) {
 
   // mfc ...........................
@@ -229,19 +223,9 @@ int main(int argc, char **argv) {
 
 
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
-  stats_buffer.str("coveragePercent, numConfiguration, backTracking");
+  stats_buffer.str("currentTime,coveragePercent, numConfiguration, varianceRatio");
   stats_msg.data = stats_buffer.str();
   stats_pub.publish(stats_msg);
-
-  // Start recording the bag
-  // srv_rosbag.request.cmd = "record";
-  // if (rosbag_client.call(srv_rosbag)){
-  //   cout << "Start recording the bag..." << endl;
-  //   sleep(5);
-  // }else{
-  //   cout << "Error occurring while recording the bag. Exiting now!" << endl;
-  //   ros::shutdown();
-  // }
 
   std_msgs::Bool finished;
   finished.data = false;
@@ -446,7 +430,8 @@ int main(int argc, char **argv) {
       double targetX_meter, targetY_meter;
       bool success = false;
 
-      auto startMCDM = ros::Time::now().toSec();
+      auto startNBS = ros::Time::now().toSec();
+      auto endNBS = startNBS;
       string content;
 
       double entropy_map = 0;
@@ -484,7 +469,7 @@ int main(int argc, char **argv) {
                << "[ " << newSensedCells << " sensed] - ["
                << totalFreeCells << " total]"
                << "[ " << coverage << " %] - ["
-               << (ros::Time::now().toSec() - startMCDM) / 60.0 << " min ] - ["
+               << (ros::Time::now().toSec() - startNBS) / 60.0 << " min ] - ["
                << batteryPercentage << "% battery left]" << endl;
 
           // Look for the RFID coverage value
@@ -828,21 +813,19 @@ int main(int argc, char **argv) {
         coverage = 100 * float(newSensedCells) / float(totalFreeCells);
         batteryPercentage = 100 * batteryTime / MAX_BATTERY;
         stats_buffer.str(std::string()); // remove old data
-        stats_buffer << (coverage) << ", " << (numConfiguration) << ", "
-                     << (btMode);
+        endNBS = ros::Time::now().toSec();
+        stats_buffer << (endNBS) << ", " << (coverage) << ", " << (numConfiguration) << ", "
+                     << (variance_ratio);
         stats_msg.data = stats_buffer.str();
 
         stats_pub.publish(stats_msg);
 
       }
       // Perform exploration until a certain stopping criterion is achieved
-      while (batteryPercentage > 1.0 and count < max_iterations and variance_ratio > gp_var_threshold);
+      while (variance_ratio > gp_var_threshold);
       // Plotting utilities
       map.drawVisitedCells();
       map.printVisitedCells(history);
-      //        map.drawRFIDScan();
-      //        map.drawRFIDGridScan(myGrid);
-      //        myGrid.saveAs(("/home/pulver/Desktop/MCDM/rfid_result_gridmap.pgm"));
 
       cout << "Num configuration: " << numConfiguration << endl;
       cout << "Travelled distance calculated during the algorithm: "
@@ -878,11 +861,11 @@ int main(int argc, char **argv) {
       cout
           << "-----------------------------------------------------------------"
           << endl;
-      auto endMCDM = ros::Time::now().toSec();
+      endNBS = ros::Time::now().toSec();
 
-      double totalTimeMCDM = endMCDM - startMCDM;
-      cout << "Total time for MCDM algorithm : " << totalTimeMCDM << "s, "
-           << totalTimeMCDM / 60 << " m " << endl;
+      double totalTimeNBS = endNBS - startNBS;
+      cout << "Total time for NBS algorithm : " << totalTimeNBS << "s, "
+           << totalTimeNBS / 60 << " m " << endl;
       cout << "Spinning at the end" << endl;
 
 
@@ -964,7 +947,6 @@ void loadROSParams(){
   // LOAD ROS PARAMETERS ....................................
   private_node_handle.param("static_map_srv_name", static_map_srv_name, std::string("static_map"));
   private_node_handle.param("radiation_map_srv_name", radiation_map_srv_name, std::string("/get_radiation_map"));
-  // private_node_handle.param("fake_radiation_map_srv_name", fake_radiation_map_srv_name, std::string("/rfid_grid_map_node/get_fake_rfid_belief"));
   private_node_handle.param("/move_base/global_costmap/robot_radius", robot_radius, 0.25);
   private_node_handle.param("make_plan_srv_name", make_plan_srv_name, std::string("/move_base/make_plan"));
   private_node_handle.param("make_topo_plan_srv_name", make_topo_plan_srv_name, std::string("/get_simple_policy/get_route_to"));
@@ -978,7 +960,7 @@ void loadROSParams(){
   private_node_handle.param("move_base_local_costmap_topic_name", move_base_local_costmap_topic_name, std::string("/move_base/local_costmap/costmap"));
   private_node_handle.param("marker_pub_topic_name", marker_pub_topic_name, std::string("goal_pt"));
   private_node_handle.param("rosbag_srv_name", rosbag_srv_name, std::string("/record/cmd"));
-  private_node_handle.param("stats_topic_name", stats_topic_name, std::string("/mcdm_stats"));
+  private_node_handle.param("stats_topic_name", stats_topic_name, std::string("/nbs_stats"));
   private_node_handle.param("topological_map_topic_name", topological_map_topic_name, std::string("/topological_map"));
   private_node_handle.param("localization_srv_name", localization_srv_name, std::string("/bayesian_topological_localisation/localise_agent"));
   private_node_handle.param("pf_topic_name", pf_topic_name, std::string("/prob_dist_obs"));
@@ -1036,7 +1018,6 @@ ros::NodeHandle createROSComms(){
   set_query_pts_client = nh.serviceClient<gp_node::SetQueryPoints>(set_query_pts_srv_name);
   add_readings_client = nh.serviceClient<gp_node::AddReading>(add_reading_srv_name);
   get_predictions_client = nh.serviceClient<gp_node::GetPredictions>(get_predictions_srv_name);
-  // fake_radiation_map_client = nh.serviceClient<rfid_grid_map::GetFakeBeliefMaps>(fake_radiation_map_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
   //rosbag_client = nh.serviceClient<record_ros::String_cmd>(rosbag_srv_name);
@@ -1050,16 +1031,6 @@ ros::NodeHandle createROSComms(){
   experiment_finished_pub = nh.advertise<std_msgs::Bool>(experiment_finished_topic_name, 1, true);
   rad_mean_grid_pub = nh.advertise<grid_map_msgs::GridMap>("radiation_mean_grid_map", 1000);
   rad_var_grid_pub = nh.advertise<grid_map_msgs::GridMap>("radiation_var_grid_map", 1000);
-  // Create srv client for fake likelihood readings
-  // prediction_tools.radarmodel_fake_reading_srv_list.push_back(fake_radiation_map_client);
-
-  // create subscribers, only when we are sure the right people is publishing
-//  printf("[pure_navigation@createROSComms] Waiting for move_base action server to come up");
-//  MoveBaseClient ac(move_base_srv_name, true);
-//  while (!ac.waitForServer(ros::Duration(5.0))) {
-//    printf("[pure_navigation@createROSComms]... waiting ...");
-//  }
-  
 
   while (disConnected) {
     cout << "[pure_navigation@createROSComms] Waiting for static_map service to respond..." << endl;
@@ -1073,39 +1044,7 @@ ros::NodeHandle createROSComms(){
       r.sleep();
     }
   }
-  tag_coverage_sub = nh.subscribe<std_msgs::Float32>("tag_coverage", 10, tag_coverage_callback);
   topo_map_sub = nh.subscribe<strands_navigation_msgs::TopologicalMap>("/topological_map", 10, topological_map_callback);
-  // radiation_map_sub = nh.subscribe<grid_map_msgs::GridMap>("rfid_radiation_maps", 10, radiation_map_callback);
-  // pf_sub = nh.subscribe<bayesian_topological_localisation::DistributionStamped>("/tag_1/current_prob_dist", 1, belief_topomap_callback, ros::TransportHints().tcpNoDelay());  
-  // gps_sub = nh.subscribe<visualization_msgs::Marker>("/tag_1/gps_pose", 10, gps_callback);
   return nh;
 }
 
-
-void tag_coverage_callback(const std_msgs::Float32 msg){
-  tag_coverage_percentage = msg.data;
-  // cout << "   [CALLBACK] : " << tag_coverage_callback << endl;
-}
-
-// void radiation_map_callback(const grid_map_msgs::GridMap msg){
-//   converter.fromMessage(msg, radiation_mean_map);
-// }
-
-void gps_callback(const visualization_msgs::MarkerConstPtr &msg){
-  gps_tag_pose = msg->pose;
-}
-
-
-// void sensing(){
-//     ros::NodeHandle nh("~");
-//     ros::Subscriber rfid_sub;
-//     rfid_sub = nh.subscribe<std_msgs::Float32>("tag_coverage", 10, tag_coverage_callback);
-//     ros::AsyncSpinner spinner(0);
-//     spinner.start();
-//     auto start = chrono::high_resolution_clock::now();
-//     // gasDetection();
-//     while(ros::ok()){
-//         ROS_INFO("RFID sensing ...");
-//     }
-
-// }
