@@ -43,7 +43,7 @@
 
   <arg name="bag_descriptor" default="$(arg scenario_name)_$(arg w_info_gain)_$(arg w_travel_distance)_$(arg w_rad_mean)_$(arg w_rad_variance)_$(arg w_battery_status)_date_"/>
   <!-- I highly recomend you that the bag descriptor has correct pure nav params -->
-  <arg name="save_bag"  	default="false"/>
+  <arg name="save_bag"  	default="true"/>
 
   <!-- Topics to record:
     These two were removed because they suppose lots of data
