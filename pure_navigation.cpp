@@ -394,6 +394,7 @@ int main(int argc, char **argv) {
 
       auto startNBS = ros::Time::now().toSec();
       auto endNBS = startNBS;
+      double totalTimeNBS = endNBS - startNBS;
       string content;
 
       double entropy_map = 0;
@@ -511,10 +512,6 @@ int main(int argc, char **argv) {
             if (add_readings_client.call(add_reading_srv)){
               cout << "   [ORI] Reading correctly sampled!" << endl;
               current_rad_level = add_reading_srv.response.reading_value;
-              content = to_string(target.getX()) + "," +
-                        to_string(target.getY()) + "," + 
-                        to_string(current_rad_level) + "\n";
-              utils.filePutContents(rad_readings_log, content, true);
             }else cout << "   [ORI] ERROR in getting a reading." << endl;
             
             printf("Updating the predictions ...\n");
@@ -533,6 +530,15 @@ int main(int argc, char **argv) {
               cout << "   [ORI] Prediction correctly obtained by the GP node." << endl;
               cout << "     Initial variance: " << initial_map_variance << ", current variance: " << current_map_variance 
                    << "[" << 100 * (variance_ratio) << "]" << endl;
+              endNBS = ros::Time::now().toSec();
+              totalTimeNBS = endNBS - startNBS;
+              content = to_string(totalTimeNBS) + "," +
+                        to_string(target.getX()) + "," +
+                        to_string(target.getY()) + "," + 
+                        to_string(current_rad_level) + "," +
+                        to_string(current_map_variance) + "," +
+                        to_string(variance_ratio) + "\n";
+              utils.filePutContents(rad_readings_log, content, true);
             }else cout << "   [ORI] ERROR in getting the predictions." << endl;         
           }
           
@@ -725,8 +731,9 @@ int main(int argc, char **argv) {
         batteryPercentage = 100 * batteryTime / MAX_BATTERY;
         stats_buffer.str(std::string()); // remove old data
         endNBS = ros::Time::now().toSec();
-        stats_buffer << (endNBS) << ", " << (coverage) << ", " << (numConfiguration) << ", "
-                     << (variance_ratio);
+        totalTimeNBS = endNBS - startNBS;
+        stats_buffer << (totalTimeNBS) << ", " << (coverage) << ", " << (numConfiguration) << ", "
+                     << (current_map_variance) << ", " << (variance_ratio);
         stats_msg.data = stats_buffer.str();
 
         stats_pub.publish(stats_msg);
@@ -759,7 +766,7 @@ int main(int argc, char **argv) {
                         numConfiguration, travelledDistance, numOfTurning,
                         totalAngle, totalScanTime, resolution, norm_w_info_gain,
                         norm_w_travel_distance, norm_w_rad_mean, 
-                        norm_w_battery_status, norm_w_rad_variance, var_ratio, out_log);
+                        norm_w_battery_status, norm_w_rad_variance, variance_ratio, out_log);
       // Find the tag
       std::vector<std::pair<int, std::pair<int, int>>> tag_positions =
           utils.findTagFromBeliefMap(&radiation_mean_map);
@@ -773,8 +780,7 @@ int main(int argc, char **argv) {
           << "-----------------------------------------------------------------"
           << endl;
       endNBS = ros::Time::now().toSec();
-
-      double totalTimeNBS = endNBS - startNBS;
+      totalTimeNBS = endNBS - startNBS;
       cout << "Total time for NBS algorithm : " << totalTimeNBS << "s, "
            << totalTimeNBS / 60 << " m " << endl;
       cout << "Spinning at the end" << endl;

@@ -15,9 +15,9 @@
   <arg name="fov"                 default="360"/>
   <arg name="radius"              default="1.5"/>
   <arg name="coverage_percentage" default="0.95"/>
-  <arg name="frontier_threshold"  default="0.001"/>
+  <arg name="frontier_threshold"  default="0.01"/>
   <arg name="map_resolution"      default="0.25"/>
-  <arg name="gp_var_threshold"    default="0.30"/>
+  <arg name="gp_var_threshold"    default="0.01"/>
   <arg name="dest_folder"  	      default="/home/pulver/Desktop/ncnr_topoNBS/nbs/"/>
   <arg name="scenario_name"  	    default="ori_grid"/>
   <arg name="use_mcdm"            default="1"/>

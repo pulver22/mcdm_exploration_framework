@@ -732,7 +732,7 @@ void Utilities::filePutContents(const std::string &name,
       } else if (name.find("gps_tag_pose") != string::npos) {
         outfile << "gps_x, gps_y" << endl;
       }else if (name.find("rad_readings") != string::npos) {
-        outfile << "robot_x, robot_y, intensity_level" << endl;
+        outfile << "secs, robot_x, robot_y, intensity_level, current_var_map, variance_ratio" << endl;
       }
     } else {
       // std::cout << "File exists! Appending data!" << endl;
