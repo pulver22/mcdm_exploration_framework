@@ -696,31 +696,31 @@ void Utilities::filePutContents(const std::string &name,
     // std::cout << "File does not exist! Create a new one!" << endl;
     // outfile.open(name);
     // outfile <<
-    // "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,coverage,numConfiguration,travelledDistance,totalScanTime";
+    // "w_info_gain,w_travel_distance,w_rad_mean,w_rad_variance,coverage,numConfiguration,travelledDistance,totalScanTime";
   } else {
     if (pFile.peek() == std::ifstream::traits_type::eof()) { // file is empty
       // std::cout << "File does not exist! Create a new one!" << endl;
       outfile.open(name);
       if (name.find("result") != string::npos) {
-        outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,w_"
+        outfile << "w_info_gain,w_travel_distance,w_rad_mean,w_rad_variance,w_"
                    "battery_status,norm_w_info_gain,norm_w_travel_distance,"
-                   "norm_w_sensing_time,norm_w_rfid_gain,norm_w_battery_status,"
+                   "norm_w_rad_mean,norm_w_rad_variance,norm_w_battery_status,"
                    "coverage,numConfiguration,travelledDistance,totalScanTime,"
                    "accumulatedRxPower,batteryStatus,accuracy"
                 << endl;
       } else if (name.find("coverage") != string::npos) {
-        outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,w_"
+        outfile << "w_info_gain,w_travel_distance,w_rad_mean,w_rad_variance,w_"
                    "battery_status,norm_w_info_gain,norm_w_travel_distance,"
-                   "norm_w_sensing_time,norm_w_rfid_gain,norm_w_battery_status,"
+                   "norm_w_rad_mean,norm_w_rad_variance,norm_w_battery_status,"
                    "numConfiguration,increasingCoverage,travelledDistance"
                 << endl;
       } else if (name.find("distance") != string::npos) {
-        outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,w_"
+        outfile << "w_info_gain,w_travel_distance,w_rad_mean,w_rad_variance,w_"
                    "battery_status,tag1,tag2,tag3,tag4,tag5,tag6,tag7,tag8,"
                    "tag9,tag10"
                 << endl;
       } else if (name.find("accuracy") != string::npos) {
-        outfile << "w_info_gain,w_travel_distance,w_sensing_time,w_rfid_gain,w_"
+        outfile << "w_info_gain,w_travel_distance,w_rad_mean,w_rad_variance,w_"
                    "battery_status,range,numConfiguration,accuracy"
                 << endl;
       } else if (name.find("prediction") != string::npos) {

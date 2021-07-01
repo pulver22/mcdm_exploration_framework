@@ -420,8 +420,8 @@ int main(int argc, char **argv) {
       do {
 
         record.clear();
-        // if (btMode == false) {
-        while (record.size() == 0) {
+        
+        while (record.size() == 0) {  
           // At every iteration, the current pose of the robot is taken from the
           // TF-tree
           target = utils.getCurrentPose(resolution, costresolution, &map,
@@ -506,7 +506,6 @@ int main(int argc, char **argv) {
             printf("Obtaining a reading ...\n");
             // Obtain a reading calling the GP service
             gp_node::AddReading add_reading_srv;
-            cout << target.getX() << " " << target.getY() << endl;
             add_reading_srv.request.reading_x_loc = target.getX();
             add_reading_srv.request.reading_y_loc = target.getY();
             if (add_readings_client.call(add_reading_srv)){
@@ -657,8 +656,8 @@ int main(int argc, char **argv) {
                 }
               }
 
-              if (break_loop == true)
-                break;
+              // if (break_loop == true)
+              //   break;
 
               // If the selected destination does not appear among the cells
               // already visited
@@ -714,12 +713,10 @@ int main(int argc, char **argv) {
               cout << "There are no more waypoints significant to explore. End "
                       "the exploration task."
                    << endl;
+              break_loop = true;
               break;
             }
 
-            // If the record is empty, we didn't find a new position so we must finish
-            if (break_loop == true)
-              break;
             sensedCells = newSensedCells;
             frontiers.clear();
           }
@@ -740,7 +737,8 @@ int main(int argc, char **argv) {
         stats_msg.data = stats_buffer.str();
 
         stats_pub.publish(stats_msg);
-
+        if (break_loop == true)
+            break;
       }
       // Perform exploration until a certain stopping criterion is achieved
       while (variance_ratio > gp_var_threshold);
