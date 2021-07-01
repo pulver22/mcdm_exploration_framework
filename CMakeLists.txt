@@ -21,14 +21,25 @@ find_package(catkin REQUIRED COMPONENTS
   bayesian_topological_localisation
   # rasberry_people_perception
   ncnr_logging
+  gp_node
+  message_generation
 
 )
 
+add_service_files(
+  FILES
+  GetClosestNode.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES next_best_sense
-  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs 
+  CATKIN_DEPENDS move_base_msgs actionlib nav_msgs roscpp geometry_msgs std_msgs 
   # mfc: we will record using stats_pub
   # record_ros
 #  DEPENDS system_lib

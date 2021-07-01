@@ -62,6 +62,7 @@
 #include "gp_node/SetQueryPoints.h"
 #include "gp_node/AddReading.h"
 #include "gp_node/GetPredictions.h"
+#include "next_best_sense/GetClosestNode.h"
     
     
 using namespace std;
@@ -94,15 +95,6 @@ nav_msgs::OccupancyGrid costmap_grid, mean_occ_grid, var_occ_grid;
 strands_navigation_msgs::TopologicalMap topological_map;
 float current_rad_level = 0;
 
-double min_pan_angle, max_pan_angle, min_tilt_angle, max_tilt_angle,
-    sample_delay, tilt_angle;
-int num_pan_sweeps, num_tilt_sweeps;
-double sensing_range, offsetY_base_rmld, FoV;
-int statusPTU, prevStatusPTU;
-double timeOfScanning = 0;
-bool btMode = false;
-// nav_msgs::GetPlan path;
-float tag_coverage_percentage = 0.0;
 GridMap radiation_mean_map, radiation_var_map;
 vector<bayesian_topological_localisation::DistributionStamped> belief_topomaps;
 grid_map_msgs::GridMap radiation_map_msg;
@@ -111,7 +103,7 @@ GridMapRosConverter converter;
 
 //  ROS PARAMETERS ....................................
 std::string static_map_srv_name, make_plan_srv_name, make_topo_plan_srv_name, get_topo_distances_srv_name;
-std::string radiation_map_srv_name, fake_radiation_map_srv_name, radiation_level_srv_name, set_query_pts_srv_name, add_reading_srv_name, get_predictions_srv_name;
+std::string radiation_map_srv_name, fake_radiation_map_srv_name, radiation_level_srv_name, set_query_pts_srv_name, add_reading_srv_name, get_predictions_srv_name, get_closest_node_srv_name;
 std::string move_base_goal_topic_name, move_base_srv_name, move_base_costmap_topic_name, move_base_local_costmap_topic_name, move_base_costmap_updates_topic_name;
 std::string nav_grid_debug_topic_name, planning_grid_debug_topic_name;
 std::string marker_pub_topic_name;
@@ -130,7 +122,7 @@ std::string pf_topic_name;
 
 // Ros services/subscribers/publishers
 ros::ServiceClient map_service_client_, path_client,topo_path_client, topo_distances_client;
-ros::ServiceClient radiation_map_client, fake_radiation_map_client, radiation_level_client, set_query_pts_client, add_readings_client, get_predictions_client;
+ros::ServiceClient radiation_map_client, fake_radiation_map_client, radiation_level_client, set_query_pts_client, add_readings_client, get_predictions_client, get_closest_node_client;
 ros::ServiceClient localization_client, pf_client, pf_stateless_client, gps_client;
 ros::ServiceClient gazebo_model_state_client;
 pair<bool, bayesian_topological_localisation::DistributionStamped> tmp_belief_topo;
@@ -242,9 +234,7 @@ int main(int argc, char **argv) {
     if (costmapReceived == 1 and topoMapReceived == 1) {
       double initFov = atof(argv[1]);
       initFov = initFov * M_PI / 180;
-      FoV = initFov;
       int initRange = atoi(argv[2]);
-      sensing_range = initRange;
       double precision = atof(argv[3]);
       double threshold = atof(argv[4]);
 
@@ -284,7 +274,7 @@ int main(int argc, char **argv) {
       std::string coverage_log, out_log, rad_readings_log;
       coverage_log = log_dest_folder + "nbs_coverage.csv";
       out_log = log_dest_folder + "nbs_result.csv";
-      rad_readings_log = log_dest_folder + "readings.csv";
+      rad_readings_log = log_dest_folder + "rad_readings.csv";
       cout << "Config: " << endl;
       cout << "   InitFov: " << initFov << endl;
       cout << "   InitRange: " << initRange << endl;
@@ -315,6 +305,14 @@ int main(int argc, char **argv) {
         prediction_tools.y_values.push_back(it->getY());
       }
       ROS_DEBUG("TopologicalMap created");
+
+      // Define the scanning operation shape (ellipse vs circle)
+      double X_max = initRange;
+      // double X_min = 1;
+      double X_min = X_max;  // scanning a circle
+      double focal_length = (X_max - X_min) / 2.0; // (X_max - X_min)/2
+      double major_axis = focal_length + X_min;    // (focal_length + X_min)
+      double minor_axis = sqrt(pow(major_axis, 2) - pow(focal_length, 2));
 
       // ORI: Set the topo-nodes coordinates to the GP
       gp_node::SetQueryPoints gp_set_points;
@@ -405,8 +403,7 @@ int main(int argc, char **argv) {
 
       bool break_loop = false;
       string robotName = "jackal";
-
-      
+      string rob_closerWaypoint;
 
       belief_topomaps.push_back(bayesian_topological_localisation::DistributionStamped());
       // sleep(5.0);
@@ -440,16 +437,12 @@ int main(int argc, char **argv) {
           std_msgs::Float32ConstPtr msg =
               ros::topic::waitForMessage<std_msgs::Float32>("/tag_coverage",
                                                             ros::Duration(1));
-          if (msg != NULL) {
-            tag_coverage_percentage = msg->data;
-          }
 
           content =
               to_string(numConfiguration) + "," +
-              to_string(100 * float(newSensedCells) / float(totalFreeCells)) +
-              "," + to_string(tag_coverage_percentage) + "," +
-              to_string(travelled_distance_edges) + "\n";
-          // cout << tag_coverage_percentage << endl;
+              to_string(100 * float(newSensedCells) / float(totalFreeCells)) + "," + 
+              to_string(travelled_distance_edges) + "," +
+              to_string(travelled_distance_meters) + "\n";
           utils.filePutContents(coverage_log, content, true);
           ROS_DEBUG("  ==> Saving the coverage log ...");
 
@@ -458,28 +451,29 @@ int main(int argc, char **argv) {
           map.getGridIndex(target.getX(), target.getY(), i, j);
           gridPub.publish(map.toMessageGrid());
 
-          float x = target.getX();
-          float y = target.getY();
-          float orientation = roundf(target.getOrientation() * 100) / 100;
-          ; // cast orientation in [0, 360]
-          int range = target.getRange();
-          double FOV = target.getFOV();
+          // float x = target.getX();
+          // float y = target.getY();
+          // float orientation = roundf(target.getOrientation() * 100) / 100;
+          // ; // cast orientation in [0, 360]
+          // int range = target.getRange();
+          // double FOV = target.getFOV();
           string actualPose = function.getEncodedKey(target, 0);
           map.setCurrentPose(target);
           string encoding = to_string(target.getX()) + to_string(target.getY());
           visitedCell.emplace(encoding, 0);
           // Get the sensing time required for scanning
           target.setScanAngles(
-              map.getSensingTime(x, y, orientation, FOV, range));
+              map.getSensingTime(target.getX(), 
+                                 target.getY(), 
+                                 roundf(target.getOrientation() * 100) / 100, 
+                                 initFov, initRange));
           // Perform a scanning operation
-          double X_max = range;
-          // double X_min = 1;
-          double X_min = X_max;  // scanning a circle
-          double focal_length = (X_max - X_min) / 2.0; // (X_max - X_min)/2
-          double major_axis = focal_length + X_min;    // (focal_length + X_min)
-          double minor_axis = sqrt(pow(major_axis, 2) - pow(focal_length, 2));
           newSensedCells = sensedCells + map.performSensingOperationEllipse(
-                                             x, y, orientation, FOV, range,
+                                             target.getX(), 
+                                             target.getY(), 
+                                             roundf(target.getOrientation() * 100) / 100, 
+                                             initFov, 
+                                             initRange,
                                              target.getScanAngles().first,
                                              target.getScanAngles().second,
                                              minor_axis, major_axis);
@@ -488,8 +482,8 @@ int main(int argc, char **argv) {
               target.getScanAngles().second - target.getScanAngles().first;
           // Update the overall scanning time
           totalScanTime += utils.calculateScanTime(scanAngle * 180 / M_PI);
-          map.getPathPlanningIndex(x, y, cell_i, cell_j);
-          map.updatePathPlanningGrid(x, y, range);
+          map.getPathPlanningIndex(target.getX(), target.getY(), cell_i, cell_j);
+          map.updatePathPlanningGrid(target.getX(), target.getY(), initRange);
 
           gridPub.publish(map.toMessageGrid());
           planningPub.publish(map.toMessagePathPlanning());
@@ -575,7 +569,8 @@ int main(int argc, char **argv) {
             // there (calculated inside the function)
             for (auto cw_it = closest_waypoints.begin(); cw_it != closest_waypoints.end(); cw_it++){
               utils.pushInitialPositions(*cw_it,
-                                         map, x, y, orientation, range, FOV, threshold, actualPose,
+                                         map, target.getX(), target.getY(), roundf(target.getOrientation() * 100) / 100,
+                                         initRange, initFov, threshold, actualPose,
                                          &graph2, &topo_path_client, &mapping_time_belief, &function, &batteryTime,
                                          &radiation_mean_map, &mappingWaypoints, &prediction_tools, &distances_map);
             }
@@ -610,9 +605,14 @@ int main(int argc, char **argv) {
             }
             // FIXME: this can still be useful by not every iteration
             utils.cleanDestinationFromTabulist(&frontiers, &posToEsclude);
-            // cout << "Obtain current robot waypoint name" << endl;
-            string rob_closerWaypoint;
-            utils.getModelClosestWaypoint(robotName, topological_map, rob_closerWaypoint, gt_tag_pose);
+            
+            // Call the service to obtain closet waypoint to robot
+            next_best_sense::GetClosestNode closest_node_req;
+            if(get_closest_node_client.call(closest_node_req)){
+              rob_closerWaypoint = closest_node_req.response.closest_node;
+            }else {
+            }
+            // utils.getModelClosestWaypoint(robotName, topological_map, rob_closerWaypoint, gt_tag_pose);
             cout << "Evaluating nodes..." << endl;
             start = ros::Time::now().toSec();
             record = *function.evaluateFrontiers(rob_closerWaypoint, 
@@ -671,6 +671,7 @@ int main(int argc, char **argv) {
                     target, &marker_pub, &map, &topo_path_client, &tabuList,
                     &posToEsclude, TRANSL_SPEED, &batteryTime,
                     &travelled_distance_edges, &mappingWaypoints, topological_map, tag_ids);
+                travelled_distance_meters += utils.computeMetricDistance(target, &map, &path_client);
                 if (success == true) {
                   // Recently visited cells shouldn't be visited soon again
                   // if (tabuListCount > 0) {
@@ -748,7 +749,7 @@ int main(int argc, char **argv) {
       map.printVisitedCells(history);
 
       cout << "------------------ TABULIST -----------------" << endl;
-      travelled_distance_meters = utils.calculateDistanceMeters(tabuList, &path_client, robot_radius);
+      // travelled_distance_meters = utils.calculateDistanceMeters(tabuList, &path_client, robot_radius);
 
       cout << "------------------- ending experiment ---------------" << endl;
       std_msgs::Bool finished;
@@ -842,6 +843,7 @@ void loadROSParams(){
   private_node_handle.param("set_query_pts_srv_name", set_query_pts_srv_name, std::string("/gp_node/set_query_points"));
   private_node_handle.param("add_reading_srv_name", add_reading_srv_name, std::string("/gp_node/add_reading"));
   private_node_handle.param("get_predictions_srv_name", get_predictions_srv_name, std::string("/gp_node/get_predictions"));
+  private_node_handle.param("get_closest_node_srv_name", get_closest_node_srv_name, std::string("/get_closest_node"));
 }
 
 void printROSParams(){
@@ -888,6 +890,7 @@ ros::NodeHandle createROSComms(){
   set_query_pts_client = nh.serviceClient<gp_node::SetQueryPoints>(set_query_pts_srv_name);
   add_readings_client = nh.serviceClient<gp_node::AddReading>(add_reading_srv_name);
   get_predictions_client = nh.serviceClient<gp_node::GetPredictions>(get_predictions_srv_name);
+  get_closest_node_client = nh.serviceClient<next_best_sense::GetClosestNode>(get_closest_node_srv_name);
   localization_client = nh.serviceClient<bayesian_topological_localisation::LocaliseAgent>(localization_srv_name);
   gazebo_model_state_client = nh.serviceClient<gazebo_msgs::GetModelState>(gazebo_model_state_srv_name);
   // create publishers

@@ -170,6 +170,8 @@ public:
                                strands_navigation_msgs::TopologicalMap topological_map,
                                std::vector<string> tag_ids);
 
+    double computeMetricDistance(Pose target, dummy::Map *map, ros::ServiceClient *path_client);
+
     bool freeInLocalCostmap(Pose target,
                             std::string move_base_local_costmap_topic_name);
 

@@ -153,8 +153,6 @@ double Criterion::computeTopologicalDistance(
 }
 
 double Criterion::computeMetricDistance(Pose &p, dummy::Map *map, ros::ServiceClient *path_client) {
-  // cout << "travel " << endl;
-  Astar astar;
   Pose robotPosition = map->getRobotPosition();
   double path_len = 0;
 

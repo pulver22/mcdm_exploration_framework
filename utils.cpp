@@ -317,15 +317,24 @@ void Utilities::printResult(long newSensedCells, long totalFreeCells,
   } else {
     cout << "FINAL: MAP EXPLORED!" << endl;
   }
-  std::ofstream txt(fileURI.c_str());
-  txt << w_info_gain << "," << w_travel_distance << "," << w_rad_mean << ","
-      << w_battery_status << "," << w_rad_variance << ","
-      << float(newSensedCells) / float(totalFreeCells) << ","
-      << numConfiguration << "," << travelledDistanceEdges << ","  
-      << travelledDistanceMeters << ", " << totalScanTime 
-      << "," << final_var_ratio
-      << endl;
-  txt.close();
+  // std::ofstream txt(fileURI.c_str());
+  // txt << w_info_gain << "," << w_travel_distance << "," << w_rad_mean << ","
+  //     << w_battery_status << "," << w_rad_variance << ","
+  //     << float(newSensedCells) / float(totalFreeCells) << ","
+  //     << numConfiguration << "," << travelledDistanceEdges << ","  
+  //     << travelledDistanceMeters << ", " << totalScanTime 
+  //     << "," << final_var_ratio
+  //     << endl;
+  // txt.close();
+
+  string content = to_string(w_info_gain) + "," + to_string(w_travel_distance) + "," 
+          + to_string(w_rad_mean) + "," + to_string(w_rad_variance) + "," 
+          + to_string(w_battery_status) + ","
+          + to_string(float(newSensedCells) / float(totalFreeCells)) + ","
+          + to_string(numConfiguration) + "," + to_string(travelledDistanceEdges) + ","  
+          + to_string(travelledDistanceMeters) + ", " + to_string(totalScanTime) + "," 
+          + to_string(final_var_ratio);
+  this->filePutContents(fileURI, content, true);
   cout << "-----------------------------------------------------------------"
        << endl;
 }
@@ -546,7 +555,7 @@ bool Utilities::showMarkerandNavigate(
   // move_base_msgs::MoveBaseGoal goal;
 
   // Get distance from metric map
-  // double path_len = criterion_utils_.computeMetricDistance(target, map, path_len);
+  // double path_len = criterion_utils_.computeMetricDistance(target, map, path_client);
   // Get distance from topological map
   double path_len = criterion_utils_.computeTopologicalDistance(target, path_client, mappingWaypoints);
   // cout << "   PathLen: " << path_len << endl;
@@ -559,6 +568,10 @@ bool Utilities::showMarkerandNavigate(
 
   return moveTopological(target, time_travel, tabuList, posToEsclude,
                          mappingWaypoints, topological_map, tag_ids, marker_pub);
+}
+
+double Utilities::computeMetricDistance(Pose target, dummy::Map *map, ros::ServiceClient *path_client){
+  return criterion_utils_.computeMetricDistance(target, map, path_client);
 }
 
 bool Utilities::freeInLocalCostmap(
@@ -689,17 +702,12 @@ void Utilities::filePutContents(const std::string &name,
       // std::cout << "File does not exist! Create a new one!" << endl;
       outfile.open(name);
       if (name.find("result") != string::npos) {
-        outfile << "w_info_gain,w_travel_distance,w_rad_mean,w_rad_variance,w_"
-                   "battery_status,norm_w_info_gain,norm_w_travel_distance,"
-                   "norm_w_rad_mean,norm_w_rad_variance,norm_w_battery_status,"
-                   "coverage,numConfiguration,travelledDistance,totalScanTime,"
-                   "accumulatedRxPower,batteryStatus,accuracy"
+        outfile << "w_info_gain, w_travel_distance, w_rad_mean, w_rad_variance,w_"
+                   "battery_status, finalCoverage, numConfiguration, travelledDistanceEdges,"
+                   "travelledDistanceMeters, totalScanTime, finalVarianceRatio"
                 << endl;
       } else if (name.find("coverage") != string::npos) {
-        outfile << "w_info_gain,w_travel_distance,w_rad_mean,w_rad_variance,w_"
-                   "battery_status,norm_w_info_gain,norm_w_travel_distance,"
-                   "norm_w_rad_mean,norm_w_rad_variance,norm_w_battery_status,"
-                   "numConfiguration,increasingCoverage,travelledDistance"
+        outfile << "numConfiguration, increasingCoverage, travelledDistanceEdges, travelledDistanceMeters"
                 << endl;
       } else if (name.find("distance") != string::npos) {
         outfile << "w_info_gain,w_travel_distance,w_rad_mean,w_rad_variance,w_"

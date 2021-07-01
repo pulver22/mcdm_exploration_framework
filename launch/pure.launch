@@ -67,6 +67,8 @@
       <rosparam command="load" file="$(find next_best_sense)/config/visualization2.yaml" />
   </node>
 
+  <node pkg="next_best_sense" type="closest_node.py" name="get_closest_point_srv"/>
+
   <!-- base bringup -->
   <!-- GDB: launch-prefix=gdb -ex run -/-args -->
   <node pkg="next_best_sense" type="pure_navigation" name="nbs" output="screen"  args="$(arg pure_args)" unless="$(arg two_readers)">
