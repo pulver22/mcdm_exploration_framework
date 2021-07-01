@@ -220,7 +220,7 @@ int main(int argc, char **argv) {
 
 
   // first time, add header. THIS SHOULD MATCH WHAT YOU PUBLISH LATER!!!!!!
-  stats_buffer.str("currentTime,coveragePercent, numConfiguration, varianceRatio");
+  stats_buffer.str("currentTime,coveragePercent, numConfiguration, varianceMap, varianceRatio");
   stats_msg.data = stats_buffer.str();
   stats_pub.publish(stats_msg);
 
@@ -732,8 +732,11 @@ int main(int argc, char **argv) {
         stats_buffer.str(std::string()); // remove old data
         endNBS = ros::Time::now().toSec();
         totalTimeNBS = endNBS - startNBS;
-        stats_buffer << (totalTimeNBS) << ", " << (coverage) << ", " << (numConfiguration) << ", "
-                     << (current_map_variance) << ", " << (variance_ratio);
+        stats_buffer << (totalTimeNBS) << ", " 
+                     << (coverage) << ", " 
+                     << (numConfiguration) << ", "
+                     << (current_map_variance) << ", " 
+                     << (variance_ratio);
         stats_msg.data = stats_buffer.str();
 
         stats_pub.publish(stats_msg);
