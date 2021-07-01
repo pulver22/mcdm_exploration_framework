@@ -8,10 +8,10 @@
   <!-- PARAMS .............................................................. -->
   <arg name="two_readers"         default="false"/>
   <arg name="w_info_gain"  	      default="0.1"/>
-  <arg name="w_travel_distance"  	default="0.25"/>
-  <arg name="w_rad_mean"  	      default="0.1"/>
-  <arg name="w_rad_variance"  	  default="0.45"/>
-  <arg name="w_battery_status"  	default="0.1"/>
+  <arg name="w_travel_distance"  	default="0.35"/>
+  <arg name="w_rad_mean"  	      default="0.15"/>
+  <arg name="w_rad_variance"  	  default="0.35"/>
+  <arg name="w_battery_status"  	default="0.05"/>
   <arg name="fov"                 default="360"/>
   <arg name="radius"              default="1.5"/>
   <arg name="coverage_percentage" default="0.95"/>
