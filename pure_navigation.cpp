@@ -360,7 +360,8 @@ int main(int argc, char **argv) {
       long totalFreeCells = map.getTotalFreeCells();
       int count = 0;
       int countBT;
-      double travelledDistance = 0;
+      double travelled_distance_edges = 0;
+      double travelled_distance_meters = 0;
       int numOfTurning = 0;
       double totalAngle = 0;
       unordered_map<string, int> visitedCell;
@@ -447,7 +448,7 @@ int main(int argc, char **argv) {
               to_string(numConfiguration) + "," +
               to_string(100 * float(newSensedCells) / float(totalFreeCells)) +
               "," + to_string(tag_coverage_percentage) + "," +
-              to_string(travelledDistance) + "\n";
+              to_string(travelled_distance_edges) + "\n";
           // cout << tag_coverage_percentage << endl;
           utils.filePutContents(coverage_log, content, true);
           ROS_DEBUG("  ==> Saving the coverage log ...");
@@ -669,7 +670,7 @@ int main(int argc, char **argv) {
                 success = utils.showMarkerandNavigate(
                     target, &marker_pub, &map, &topo_path_client, &tabuList,
                     &posToEsclude, TRANSL_SPEED, &batteryTime,
-                    &travelledDistance, &mappingWaypoints, topological_map, tag_ids);
+                    &travelled_distance_edges, &mappingWaypoints, topological_map, tag_ids);
                 if (success == true) {
                   // Recently visited cells shouldn't be visited soon again
                   // if (tabuListCount > 0) {
@@ -691,7 +692,7 @@ int main(int argc, char **argv) {
                       &count, &target, &previous, actualPose, &frontiers, &graph2,
                       &map, &function, &tabuList, &posToEsclude, &history,
                       encodedKeyValue, &numConfiguration, &totalAngle,
-                      &travelledDistance, &numOfTurning, scanAngle,
+                      &travelled_distance_edges, &numOfTurning, scanAngle,
                       &topo_path_client, backTracking, robot_radius, &mappingWaypoints);
                 }
                 // Update the number of configurations of the robot along the task
@@ -746,17 +747,8 @@ int main(int argc, char **argv) {
       map.drawVisitedCells();
       map.printVisitedCells(history);
 
-      cout << "Num configuration: " << numConfiguration << endl;
-      cout << "Travelled distance calculated during the algorithm: "
-           << travelledDistance << endl;
-
-      cout << "------------------ HISTORY -----------------" << endl;
-      // Calculate which cells have been visited only once
-      list<Pose> tmp_history = utils.cleanHistory(&history, &record);
-      utils.calculateDistance(tmp_history, &path_client, robot_radius);
-
       cout << "------------------ TABULIST -----------------" << endl;
-      utils.calculateDistance(tabuList, &path_client, robot_radius);
+      travelled_distance_meters = utils.calculateDistanceMeters(tabuList, &path_client, robot_radius);
 
       cout << "------------------- ending experiment ---------------" << endl;
       std_msgs::Bool finished;
@@ -764,7 +756,7 @@ int main(int argc, char **argv) {
       experiment_finished_pub.publish(finished);
 
       utils.printResult(newSensedCells, totalFreeCells, precision,
-                        numConfiguration, travelledDistance, numOfTurning,
+                        numConfiguration, travelled_distance_edges, travelled_distance_meters, numOfTurning,
                         totalAngle, totalScanTime, resolution, norm_w_info_gain,
                         norm_w_travel_distance, norm_w_rad_mean, 
                         norm_w_battery_status, norm_w_rad_variance, variance_ratio, out_log);

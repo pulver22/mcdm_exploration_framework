@@ -158,7 +158,7 @@ Pose Utilities::createFromInitialPose(Pose pose, float variation, int range,
   return tmp;
 }
 
-void Utilities::calculateDistance(list<Pose> history,
+double Utilities::calculateDistanceMeters(list<Pose> history,
                                   ros::ServiceClient *path_client,
                                   double robot_radius) {
   std::list<Pose>::iterator it = history.begin();
@@ -191,7 +191,7 @@ void Utilities::calculateDistance(list<Pose> history,
   }
   cout << "Number of waypoints: " << history.size() << endl;
   cout << "Travelled distance (meters): " << travelledDistance << endl;
-       << endl;
+  return travelledDistance;
 }
 
 void Utilities::updatePathMetrics(
@@ -297,7 +297,8 @@ list<Pose> Utilities::cleanHistory(vector<string> *history,
 
 void Utilities::printResult(long newSensedCells, long totalFreeCells,
                             double precision, long numConfiguration,
-                            double travelledDistance, int numOfTurning,
+                            double travelledDistanceEdges, double travelledDistanceMeters,
+                            int numOfTurning,
                             double totalAngle, double totalScanTime,
                             double resolution, float w_info_gain,
                             float w_travel_distance, float w_rad_mean,
@@ -308,21 +309,9 @@ void Utilities::printResult(long newSensedCells, long totalFreeCells,
   cout << "Area sensed: " << newSensedCells << " / " << totalFreeCells << "[ "
        << 100 * float(newSensedCells) / float(totalFreeCells) << " %]" << endl;
   cout << "Total cell visited :" << numConfiguration << endl;
-  cout << "Total travelled distance (edges): " << travelledDistance << endl;
-  //  cout << "Total travel time: " << travelledDistance / resolution << "s, "
-  //       << (travelledDistance / resolution) / 60 << " m" << endl;
-  //  cout << "I came back to the original position since i don't have any other
-  //  "
-  //          "candidate position"
-  //       << endl;
-  //  cout << "Total exploration time (s): " << travelledDistance / resolution
-  //  << endl; cout << "Total number of turning: " << numOfTurning << endl;
-  // cout << "Sum of scan angles (radians): " << totalAngle << endl;
-  // cout << "Total time for scanning: " << totalScanTime << endl;
-  //  cout << "Total time for exploration: "
-  //       << travelledDistance / resolution + totalScanTime << "s, "
-  //       << (travelledDistance / resolution + totalScanTime) / 60 << " m" <<
-  //       endl;
+  cout << "Total travelled distance (edges): " << travelledDistanceEdges << endl;
+  cout << "Total travelled distance (meters): " << travelledDistanceMeters << endl;
+  
   if (newSensedCells < precision * totalFreeCells) {
     cout << "FINAL: MAP NOT FULLY EXPLORED!" << endl;
   } else {
@@ -332,7 +321,8 @@ void Utilities::printResult(long newSensedCells, long totalFreeCells,
   txt << w_info_gain << "," << w_travel_distance << "," << w_rad_mean << ","
       << w_battery_status << "," << w_rad_variance << ","
       << float(newSensedCells) / float(totalFreeCells) << ","
-      << numConfiguration << "," << travelledDistance << "," << totalScanTime 
+      << numConfiguration << "," << travelledDistanceEdges << ","  
+      << travelledDistanceMeters << ", " << totalScanTime 
       << "," << final_var_ratio
       << endl;
   txt.close();

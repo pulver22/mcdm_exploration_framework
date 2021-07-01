@@ -121,7 +121,7 @@ public:
    */
     double calculateScanTime(double scanAngle);
 
-    void calculateDistance(list<Pose> history, ros::ServiceClient *path_client,
+    double calculateDistanceMeters(list<Pose> history, ros::ServiceClient *path_client,
                            double robot_radius);
 
     /**
@@ -153,7 +153,7 @@ public:
                             EvaluationRecords *record_history);
 
     void printResult(long newSensedCells, long totalFreeCells, double precision,
-                     long numConfiguration, double travelledDistance,
+                     long numConfiguration, double travelledDistanceEdges, double travelledDistanceMeters,
                      int numOfTurning, double totalAngle, double totalScanTime,
                      double resoion, float w_info_gain, float w_travel_distance,
                      float w_rad_mean, float w_battery_status,
