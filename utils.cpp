@@ -163,7 +163,6 @@ void Utilities::calculateDistance(list<Pose> history,
                                   double robot_radius) {
   std::list<Pose>::iterator it = history.begin();
   double travelledDistance = 0;
-  int numOfTurning = 0;
   nav_msgs::GetPlan path;
   path.request.goal.header.frame_id = "map";
   // Calculate the overall path connecting these cells
@@ -190,11 +189,9 @@ void Utilities::calculateDistance(list<Pose> history,
     }
     travelledDistance = travelledDistance + path_len;
   }
-  cout << "Number of cells: " << history.size() << endl;
-  cout << "Num of Turning: " << numOfTurning << endl;
-  cout << "Travelled distance (cells): " << travelledDistance << endl;
-  cout << "Travelled distance (meters): " << travelledDistance / 2.0
-       << endl; // Valid only if resolution == 1.0 (cell side is 0.5m)
+  cout << "Number of waypoints: " << history.size() << endl;
+  cout << "Travelled distance (meters): " << travelledDistance << endl;
+       << endl;
 }
 
 void Utilities::updatePathMetrics(
